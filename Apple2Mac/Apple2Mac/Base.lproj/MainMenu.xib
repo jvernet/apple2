@@ -853,7 +853,6 @@ DQ
                 <outlet property="window" destination="Mzv-VG-jce" id="86q-Ys-9Mt"/>
             </connections>
         </customObject>
-        <toolbarItem implicitItemIdentifier="ED8F052E-C9AE-42F6-BA6D-2A675E8390E5" label="Disks" paletteLabel="Disks" tag="-1" image="Disks" id="iyV-hM-okT"/>
     </objects>
     <resources>
         <image name="CPU" width="32" height="32"/>
