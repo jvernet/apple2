@@ -17,7 +17,7 @@
                 <menuItem title="Apple2Mac" id="56">
                     <menu key="submenu" title="Apple2Mac" systemMenu="apple" id="57">
                         <items>
-                            <menuItem title="About Apple2Mac" id="58">
+                            <menuItem title="A propos de Apple2Mac" id="58">
                                 <modifierMask key="keyEquivalentModifierMask"/>
                                 <connections>
                                     <action selector="orderFrontStandardAboutPanel:" target="-2" id="142"/>
@@ -26,7 +26,7 @@
                             <menuItem isSeparatorItem="YES" id="236">
                                 <modifierMask key="keyEquivalentModifierMask" command="YES"/>
                             </menuItem>
-                            <menuItem title="Preferences…" keyEquivalent="," id="129">
+                            <menuItem title="Préférences…" keyEquivalent="," id="129">
                                 <connections>
                                     <action selector="showPreferences:" target="M8b-ga-iOS" id="oDD-g4-QEJ"/>
                                 </connections>
@@ -40,18 +40,18 @@
                             <menuItem isSeparatorItem="YES" id="144">
                                 <modifierMask key="keyEquivalentModifierMask" command="YES"/>
                             </menuItem>
-                            <menuItem title="Hide Apple2Mac" keyEquivalent="h" id="134">
+                            <menuItem title="Masquer Apple2Mac" keyEquivalent="h" id="134">
                                 <connections>
                                     <action selector="hide:" target="-1" id="367"/>
                                 </connections>
                             </menuItem>
-                            <menuItem title="Hide Others" keyEquivalent="h" id="145">
+                            <menuItem title="Masquer les autres" keyEquivalent="h" id="145">
                                 <modifierMask key="keyEquivalentModifierMask" option="YES" command="YES"/>
                                 <connections>
                                     <action selector="hideOtherApplications:" target="-1" id="368"/>
                                 </connections>
                             </menuItem>
-                            <menuItem title="Show All" id="150">
+                            <menuItem title="Tout montrer" id="150">
                                 <connections>
                                     <action selector="unhideAllApplications:" target="-1" id="370"/>
                                 </connections>
@@ -59,7 +59,7 @@
                             <menuItem isSeparatorItem="YES" id="149">
                                 <modifierMask key="keyEquivalentModifierMask" command="YES"/>
                             </menuItem>
-                            <menuItem title="Quit Apple2Mac" keyEquivalent="q" id="136">
+                            <menuItem title="Quitter Apple2Mac" keyEquivalent="q" id="136">
                                 <connections>
                                     <action selector="terminate:" target="-3" id="449"/>
                                 </connections>
@@ -71,7 +71,7 @@
                     <modifierMask key="keyEquivalentModifierMask"/>
                     <menu key="submenu" title="Fichier" id="ma8-CB-dnr">
                         <items>
-                            <menuItem title="Reboot Emulator" id="Xr5-Y9-tRL" userLabel="Menu Item - Reboot">
+                            <menuItem title="Redémarrer emulateur" id="Xr5-Y9-tRL" userLabel="Menu Item - Reboot">
                                 <string key="keyEquivalent" base64-UTF8="YES">
 CA
 </string>
@@ -80,7 +80,7 @@ CA
                                     <action selector="reboot:" target="M8b-ga-iOS" id="XtR-At-SSS"/>
                                 </connections>
                             </menuItem>
-                            <menuItem title="Toggle CPU Speed" keyEquivalent="S" id="pJl-yR-ULm">
+                            <menuItem title="Changer la vitesse" keyEquivalent="S" id="pJl-yR-ULm">
                                 <connections>
                                     <action selector="toggleCPUSpeed:" target="M8b-ga-iOS" id="JUd-Uf-yyX"/>
                                 </connections>
@@ -91,11 +91,11 @@ CA
                                 </connections>
                             </menuItem>
                             <menuItem isSeparatorItem="YES" id="Bp7-3g-GDj"/>
-                            <menuItem title="Disks" id="rp2-u6-d0B" userLabel="Menu Item - Disks">
+                            <menuItem title="Disques" id="rp2-u6-d0B" userLabel="Menu Item - Disks">
                                 <modifierMask key="keyEquivalentModifierMask"/>
-                                <menu key="submenu" title="Disks" systemMenu="help" id="8XK-7x-7hh">
+                                <menu key="submenu" title="Disques" systemMenu="help" id="8XK-7x-7hh">
                                     <items>
-                                        <menuItem title="Insert..." keyEquivalent="D" id="JhN-ZL-f2O" userLabel="Menu Item - Insert">
+                                        <menuItem title="Insérer..." keyEquivalent="D" id="JhN-ZL-f2O" userLabel="Menu Item - Insert">
                                             <connections>
                                                 <action selector="showDisksWindow:" target="M8b-ga-iOS" id="EEd-WE-b9g"/>
                                             </connections>
@@ -117,9 +117,9 @@ CA
                         </items>
                     </menu>
                 </menuItem>
-                <menuItem title="Edit" id="ZKa-Nk-KCW">
+                <menuItem title="Edition" id="ZKa-Nk-KCW">
                     <modifierMask key="keyEquivalentModifierMask"/>
-                    <menu key="submenu" title="Edit" id="WCv-04-9tQ">
+                    <menu key="submenu" title="Edition" id="WCv-04-9tQ">
                         <items>
                             <menuItem title="Undo" enabled="NO" keyEquivalent="z" id="7ji-O5-1oP">
                                 <connections>
@@ -132,201 +132,33 @@ CA
                                 </connections>
                             </menuItem>
                             <menuItem isSeparatorItem="YES" id="cRv-NN-CM3"/>
-                            <menuItem title="Cut" keyEquivalent="x" id="B9f-O6-lco">
+                            <menuItem title="Couper" keyEquivalent="x" id="B9f-O6-lco">
                                 <connections>
                                     <action selector="cut:" target="-1" id="cEF-Mr-gEI"/>
                                 </connections>
                             </menuItem>
-                            <menuItem title="Copy" keyEquivalent="c" id="BRV-TN-Pzv">
+                            <menuItem title="Copier" keyEquivalent="c" id="BRV-TN-Pzv">
                                 <connections>
                                     <action selector="copy:" target="-1" id="xcu-og-fVt"/>
                                 </connections>
                             </menuItem>
-                            <menuItem title="Paste" keyEquivalent="v" id="geM-qO-aZ2">
+                            <menuItem title="Coller" keyEquivalent="v" id="geM-qO-aZ2">
                                 <connections>
                                     <action selector="paste:" target="-1" id="uDP-lX-2QO"/>
                                 </connections>
                             </menuItem>
-                            <menuItem title="Paste and Match Style" enabled="NO" keyEquivalent="V" id="gUM-x3-iEs">
-                                <modifierMask key="keyEquivalentModifierMask" option="YES" command="YES"/>
-                                <connections>
-                                    <action selector="pasteAsPlainText:" target="-1" id="62M-Kk-7W0"/>
-                                </connections>
-                            </menuItem>
-                            <menuItem title="Delete" id="i2b-GO-OI0">
+                            <menuItem title="Effacer" id="i2b-GO-OI0">
                                 <modifierMask key="keyEquivalentModifierMask"/>
                                 <connections>
                                     <action selector="delete:" target="-1" id="Ofc-Df-mrY"/>
                                 </connections>
                             </menuItem>
-                            <menuItem title="Select All" keyEquivalent="a" id="l6c-o9-Lcb">
+                            <menuItem title="Tout selectionner" keyEquivalent="a" id="l6c-o9-Lcb">
                                 <connections>
                                     <action selector="selectAll:" target="-1" id="hfq-sH-Hrd"/>
                                 </connections>
                             </menuItem>
                             <menuItem isSeparatorItem="YES" id="gPI-YZ-Ej7"/>
-                            <menuItem title="Find" id="wpu-4I-0bh">
-                                <modifierMask key="keyEquivalentModifierMask"/>
-                                <menu key="submenu" title="Find" id="Hm4-5s-n7i">
-                                    <items>
-                                        <menuItem title="Find…" tag="1" keyEquivalent="f" id="xx4-kU-rZA">
-                                            <connections>
-                                                <action selector="performFindPanelAction:" target="-1" id="QjO-TQ-NTO"/>
-                                            </connections>
-                                        </menuItem>
-                                        <menuItem title="Find Next" tag="2" keyEquivalent="g" id="Mzr-n7-gii">
-                                            <connections>
-                                                <action selector="performFindPanelAction:" target="-1" id="uJq-AO-zpb"/>
-                                            </connections>
-                                        </menuItem>
-                                        <menuItem title="Find Previous" tag="3" keyEquivalent="G" id="EcB-rH-6Fn">
-                                            <connections>
-                                                <action selector="performFindPanelAction:" target="-1" id="7oO-Bh-siN"/>
-                                            </connections>
-                                        </menuItem>
-                                        <menuItem title="Use Selection for Find" tag="7" keyEquivalent="e" id="cYe-Hg-XZ2">
-                                            <connections>
-                                                <action selector="performFindPanelAction:" target="-1" id="NLQ-EP-xeT"/>
-                                            </connections>
-                                        </menuItem>
-                                        <menuItem title="Jump to Selection" keyEquivalent="j" id="VRT-xH-o4f">
-                                            <connections>
-                                                <action selector="centerSelectionInVisibleArea:" target="-1" id="hvL-8z-0XQ"/>
-                                            </connections>
-                                        </menuItem>
-                                    </items>
-                                </menu>
-                            </menuItem>
-                            <menuItem title="Spelling and Grammar" id="lBL-48-NL8">
-                                <modifierMask key="keyEquivalentModifierMask"/>
-                                <menu key="submenu" title="Spelling" id="7rr-yF-apD">
-                                    <items>
-                                        <menuItem title="Show Spelling and Grammar" keyEquivalent=":" id="TxR-Iv-fxN">
-                                            <connections>
-                                                <action selector="showGuessPanel:" target="-1" id="Fi5-eF-xtd"/>
-                                            </connections>
-                                        </menuItem>
-                                        <menuItem title="Check Document Now" keyEquivalent=";" id="1NC-db-BRz">
-                                            <connections>
-                                                <action selector="checkSpelling:" target="-1" id="4Cb-VT-uRv"/>
-                                            </connections>
-                                        </menuItem>
-                                        <menuItem isSeparatorItem="YES" id="1VO-3p-hKr"/>
-                                        <menuItem title="Check Spelling While Typing" id="R7T-Py-IUl">
-                                            <modifierMask key="keyEquivalentModifierMask"/>
-                                            <connections>
-                                                <action selector="toggleContinuousSpellChecking:" target="-1" id="fRX-Xn-i0s"/>
-                                            </connections>
-                                        </menuItem>
-                                        <menuItem title="Check Grammar With Spelling" id="A2e-bf-a76">
-                                            <modifierMask key="keyEquivalentModifierMask"/>
-                                            <connections>
-                                                <action selector="toggleGrammarChecking:" target="-1" id="PYu-Cs-Nvn"/>
-                                            </connections>
-                                        </menuItem>
-                                        <menuItem title="Correct Spelling Automatically" id="Z8h-ou-V7a">
-                                            <modifierMask key="keyEquivalentModifierMask"/>
-                                            <connections>
-                                                <action selector="toggleAutomaticSpellingCorrection:" target="-1" id="keB-gX-m3T"/>
-                                            </connections>
-                                        </menuItem>
-                                    </items>
-                                </menu>
-                            </menuItem>
-                            <menuItem title="Substitutions" id="jb7-2B-6xa">
-                                <modifierMask key="keyEquivalentModifierMask"/>
-                                <menu key="submenu" title="Substitutions" id="iMe-LJ-g9B">
-                                    <items>
-                                        <menuItem title="Show Substitutions" id="Fa7-uJ-Naj">
-                                            <modifierMask key="keyEquivalentModifierMask"/>
-                                            <connections>
-                                                <action selector="orderFrontSubstitutionsPanel:" target="-1" id="PoI-1s-Hjv"/>
-                                            </connections>
-                                        </menuItem>
-                                        <menuItem isSeparatorItem="YES" id="lQF-eK-0p9"/>
-                                        <menuItem title="Smart Copy/Paste" id="KS0-Pe-biv">
-                                            <modifierMask key="keyEquivalentModifierMask"/>
-                                            <connections>
-                                                <action selector="toggleSmartInsertDelete:" target="-1" id="Rrf-F9-auF"/>
-                                            </connections>
-                                        </menuItem>
-                                        <menuItem title="Smart Quotes" id="uXJ-Bm-7aA">
-                                            <modifierMask key="keyEquivalentModifierMask"/>
-                                            <connections>
-                                                <action selector="toggleAutomaticQuoteSubstitution:" target="-1" id="pZw-O8-1Q6"/>
-                                            </connections>
-                                        </menuItem>
-                                        <menuItem title="Smart Dashes" id="8KL-lT-U1f">
-                                            <modifierMask key="keyEquivalentModifierMask"/>
-                                            <connections>
-                                                <action selector="toggleAutomaticDashSubstitution:" target="-1" id="EHC-04-hyV"/>
-                                            </connections>
-                                        </menuItem>
-                                        <menuItem title="Smart Links" id="hq9-VC-W6c">
-                                            <modifierMask key="keyEquivalentModifierMask"/>
-                                            <connections>
-                                                <action selector="toggleAutomaticLinkDetection:" target="-1" id="3BN-Bo-i7K"/>
-                                            </connections>
-                                        </menuItem>
-                                        <menuItem title="Data Detectors" id="qeO-vj-7ge">
-                                            <modifierMask key="keyEquivalentModifierMask"/>
-                                            <connections>
-                                                <action selector="toggleAutomaticDataDetection:" target="-1" id="fAF-LU-W4B"/>
-                                            </connections>
-                                        </menuItem>
-                                        <menuItem title="Text Replacement" id="vGB-cx-gYU">
-                                            <modifierMask key="keyEquivalentModifierMask"/>
-                                            <connections>
-                                                <action selector="toggleAutomaticTextReplacement:" target="-1" id="sQF-gF-l9g"/>
-                                            </connections>
-                                        </menuItem>
-                                    </items>
-                                </menu>
-                            </menuItem>
-                            <menuItem title="Transformations" id="898-0g-Oio">
-                                <modifierMask key="keyEquivalentModifierMask"/>
-                                <menu key="submenu" title="Transformations" id="7Zl-6t-TqO">
-                                    <items>
-                                        <menuItem title="Make Upper Case" id="6C2-i8-KVq">
-                                            <modifierMask key="keyEquivalentModifierMask"/>
-                                            <connections>
-                                                <action selector="uppercaseWord:" target="-1" id="pjO-OZ-Lwk"/>
-                                            </connections>
-                                        </menuItem>
-                                        <menuItem title="Make Lower Case" id="ZZP-5z-YrA">
-                                            <modifierMask key="keyEquivalentModifierMask"/>
-                                            <connections>
-                                                <action selector="lowercaseWord:" target="-1" id="4ZN-4K-BgR"/>
-                                            </connections>
-                                        </menuItem>
-                                        <menuItem title="Capitalize" id="MIg-Ae-S5l">
-                                            <modifierMask key="keyEquivalentModifierMask"/>
-                                            <connections>
-                                                <action selector="capitalizeWord:" target="-1" id="wNF-kk-YaV"/>
-                                            </connections>
-                                        </menuItem>
-                                    </items>
-                                </menu>
-                            </menuItem>
-                            <menuItem title="Speech" id="phA-NA-yWC">
-                                <modifierMask key="keyEquivalentModifierMask"/>
-                                <menu key="submenu" title="Speech" id="voe-xv-aqn">
-                                    <items>
-                                        <menuItem title="Start Speaking" id="zfA-gc-OcH">
-                                            <modifierMask key="keyEquivalentModifierMask"/>
-                                            <connections>
-                                                <action selector="startSpeaking:" target="-1" id="kdt-Em-BHj"/>
-                                            </connections>
-                                        </menuItem>
-                                        <menuItem title="Stop Speaking" id="FHw-p7-luT">
-                                            <modifierMask key="keyEquivalentModifierMask"/>
-                                            <connections>
-                                                <action selector="stopSpeaking:" target="-1" id="cAo-hP-Ubn"/>
-                                            </connections>
-                                        </menuItem>
-                                    </items>
-                                </menu>
-                            </menuItem>
                         </items>
                     </menu>
                 </menuItem>
@@ -334,7 +166,7 @@ CA
                     <modifierMask key="keyEquivalentModifierMask"/>
                     <menu key="submenu" title="Fenêtre" systemMenu="window" id="v0D-uE-mdE">
                         <items>
-                            <menuItem title="Minimize" keyEquivalent="m" id="dq0-ap-hiO">
+                            <menuItem title="Placer dans le dock" keyEquivalent="m" id="dq0-ap-hiO">
                                 <connections>
                                     <action selector="performMiniaturize:" target="-1" id="wuW-Cq-NVB"/>
                                 </connections>
@@ -345,13 +177,13 @@ CA
                                     <action selector="performZoom:" target="-1" id="Rab-bb-j9C"/>
                                 </connections>
                             </menuItem>
-                            <menuItem title="Toggle Full Screen" keyEquivalent="F" id="Lem-uE-El9">
+                            <menuItem title="Plein écran" keyEquivalent="F" id="Lem-uE-El9">
                                 <connections>
                                     <action selector="toggleFullScreen:" target="M8b-ga-iOS" id="0fX-bE-3MN"/>
                                 </connections>
                             </menuItem>
                             <menuItem isSeparatorItem="YES" id="yFd-C5-chc"/>
-                            <menuItem title="Bring All to Front" id="Kwp-da-LVP">
+                            <menuItem title="Tout ramener au premier plan" id="Kwp-da-LVP">
                                 <modifierMask key="keyEquivalentModifierMask"/>
                                 <connections>
                                     <action selector="arrangeInFront:" target="-1" id="iee-gu-gae"/>
@@ -360,11 +192,11 @@ CA
                         </items>
                     </menu>
                 </menuItem>
-                <menuItem title="Help" id="490">
+                <menuItem title="Aide" id="490">
                     <modifierMask key="keyEquivalentModifierMask"/>
-                    <menu key="submenu" title="Help" systemMenu="help" id="491">
+                    <menu key="submenu" title="Aide" systemMenu="help" id="491">
                         <items>
-                            <menuItem title="Apple2Mac Help" keyEquivalent="?" id="492" userLabel="Menu Item - Apple2Mac Help">
+                            <menuItem title="Aide Apple2Mac" keyEquivalent="?" id="492" userLabel="Menu Item - Apple2Mac Help">
                                 <connections>
                                     <action selector="showHelp:" target="-1" id="493"/>
                                 </connections>
@@ -452,7 +284,7 @@ CA
                 <outlet property="window" destination="371" id="z3B-S9-PsV"/>
             </connections>
         </customObject>
-        <window title="Insert Disks" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" oneShot="NO" releasedWhenClosed="NO" showsToolbarButton="NO" visibleAtLaunch="NO" animationBehavior="default" id="RAk-at-ZT4" userLabel="Window - Insert Disks">
+        <window title="Insérer Disques" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" oneShot="NO" releasedWhenClosed="NO" showsToolbarButton="NO" visibleAtLaunch="NO" animationBehavior="default" id="RAk-at-ZT4" userLabel="Window - Insert Disks">
             <windowStyleMask key="styleMask" titled="YES" closable="YES"/>
             <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
             <rect key="contentRect" x="109" y="132" width="522" height="302"/>
@@ -464,7 +296,7 @@ CA
                     <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" id="laF-n4-ciZ">
                         <rect key="frame" x="18" y="273" width="237" height="17"/>
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
-                        <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" alignment="center" title="Slot 6 Drive A" id="Vea-pb-q49">
+                        <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" alignment="center" title="Slot 6 Disque A" id="Vea-pb-q49">
                             <font key="font" metaFont="systemBold"/>
                             <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
                             <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
@@ -482,7 +314,7 @@ CA
                     <button verticalHuggingPriority="750" id="j1W-BP-P7S">
                         <rect key="frame" x="82" y="75" width="99" height="32"/>
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
-                        <buttonCell key="cell" type="push" title="Choose..." bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="nVq-kA-8RS">
+                        <buttonCell key="cell" type="push" title="Choisir..." bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="nVq-kA-8RS">
                             <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
                             <font key="font" metaFont="system"/>
                         </buttonCell>
@@ -493,7 +325,7 @@ CA
                     <button verticalHuggingPriority="750" id="lI0-3f-IsR">
                         <rect key="frame" x="337" y="75" width="99" height="32"/>
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
-                        <buttonCell key="cell" type="push" title="Choose..." bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="nmE-5R-fEx">
+                        <buttonCell key="cell" type="push" title="Choisir..." bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="nmE-5R-fEx">
                             <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
                             <font key="font" metaFont="system"/>
                         </buttonCell>
@@ -548,39 +380,11 @@ CA
                             <action selector="reboot:" target="M8b-ga-iOS" id="nKX-T4-WQa"/>
                         </connections>
                     </button>
-                    <matrix verticalHuggingPriority="750" allowsEmptySelection="NO" autorecalculatesCellSize="YES" id="0vx-rm-Mio">
-                        <rect key="frame" x="20" y="153" width="212" height="18"/>
-                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
-                        <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
-                        <size key="cellSize" width="88" height="18"/>
-                        <size key="intercellSpacing" width="4" height="2"/>
-                        <buttonCell key="prototype" type="radio" title="Radio" imagePosition="left" alignment="left" inset="2" id="800-L1-WxW">
-                            <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
-                            <font key="font" metaFont="system"/>
-                        </buttonCell>
-                        <cells>
-                            <column>
-                                <buttonCell type="radio" title="Read only" imagePosition="left" alignment="left" state="on" tag="1" inset="2" id="2ap-2b-hRw">
-                                    <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
-                                    <font key="font" metaFont="system"/>
-                                </buttonCell>
-                            </column>
-                            <column>
-                                <buttonCell type="radio" title="Read/write" imagePosition="left" alignment="left" inset="2" id="aq6-LE-mOR">
-                                    <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
-                                    <font key="font" metaFont="system"/>
-                                </buttonCell>
-                            </column>
-                        </cells>
-                        <connections>
-                            <action selector="diskAProtectionChanged:" target="FHO-g2-V3A" id="Mes-Qd-Soy"/>
-                        </connections>
-                    </matrix>
                     <matrix verticalHuggingPriority="750" allowsEmptySelection="NO" autorecalculatesCellSize="YES" id="Alr-gf-yTN">
                         <rect key="frame" x="271" y="153" width="212" height="18"/>
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                         <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
-                        <size key="cellSize" width="88" height="18"/>
+                        <size key="cellSize" width="120" height="18"/>
                         <size key="intercellSpacing" width="4" height="2"/>
                         <buttonCell key="prototype" type="radio" title="Radio" imagePosition="left" alignment="left" inset="2" id="uEc-fa-XXZ">
                             <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
@@ -588,13 +392,13 @@ CA
                         </buttonCell>
                         <cells>
                             <column>
-                                <buttonCell type="radio" title="Read only" imagePosition="left" alignment="left" state="on" tag="1" inset="2" id="1XS-2y-htU">
+                                <buttonCell type="radio" title="Lecture" imagePosition="left" alignment="left" state="on" tag="1" inset="2" id="1XS-2y-htU">
                                     <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
                                     <font key="font" metaFont="system"/>
                                 </buttonCell>
                             </column>
                             <column>
-                                <buttonCell type="radio" title="Read/write" imagePosition="left" alignment="left" inset="2" id="Obp-F0-hno">
+                                <buttonCell type="radio" title="Lecture/écriture" imagePosition="left" alignment="left" inset="2" id="Obp-F0-hno">
                                     <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
                                     <font key="font" metaFont="system"/>
                                 </buttonCell>
@@ -607,7 +411,7 @@ CA
                     <button id="Ur3-rW-YJG">
                         <rect key="frame" x="18" y="133" width="172" height="18"/>
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
-                        <buttonCell key="cell" type="check" title="Load on app startup" bezelStyle="regularSquare" imagePosition="left" alignment="left" inset="2" id="Jxo-4D-2c5">
+                        <buttonCell key="cell" type="check" title="Ouvrir au démarrage" bezelStyle="regularSquare" imagePosition="left" alignment="left" inset="2" id="Jxo-4D-2c5">
                             <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
                             <font key="font" metaFont="system"/>
                             <connections>
@@ -618,7 +422,7 @@ CA
                     <button id="Ceo-uO-cRu">
                         <rect key="frame" x="269" y="133" width="172" height="18"/>
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
-                        <buttonCell key="cell" type="check" title="Load on app startup" bezelStyle="regularSquare" imagePosition="left" alignment="left" inset="2" id="koX-nf-iKo">
+                        <buttonCell key="cell" type="check" title="Ouvrir au démarrage" bezelStyle="regularSquare" imagePosition="left" alignment="left" inset="2" id="koX-nf-iKo">
                             <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
                             <font key="font" metaFont="system"/>
                         </buttonCell>
@@ -654,9 +458,37 @@ DQ
                             <action selector="disksOK:" target="FHO-g2-V3A" id="8qD-fL-VNb"/>
                         </connections>
                     </button>
+                    <matrix verticalHuggingPriority="750" allowsEmptySelection="NO" autorecalculatesCellSize="YES" id="0vx-rm-Mio">
+                        <rect key="frame" x="5" y="153" width="242" height="18"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                        <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                        <size key="cellSize" width="119" height="18"/>
+                        <size key="intercellSpacing" width="4" height="2"/>
+                        <buttonCell key="prototype" type="radio" title="Radio" imagePosition="left" alignment="left" inset="2" id="800-L1-WxW">
+                            <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
+                            <font key="font" metaFont="system"/>
+                        </buttonCell>
+                        <cells>
+                            <column>
+                                <buttonCell type="radio" title="Lecture" imagePosition="left" alignment="left" state="on" tag="1" inset="2" id="2ap-2b-hRw">
+                                    <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
+                                    <font key="font" metaFont="system"/>
+                                </buttonCell>
+                            </column>
+                            <column>
+                                <buttonCell type="radio" title="Lecture/écriture" imagePosition="left" alignment="left" inset="2" id="aq6-LE-mOR">
+                                    <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
+                                    <font key="font" metaFont="system"/>
+                                </buttonCell>
+                            </column>
+                        </cells>
+                        <connections>
+                            <action selector="diskAProtectionChanged:" target="FHO-g2-V3A" id="Mes-Qd-Soy"/>
+                        </connections>
+                    </matrix>
                 </subviews>
             </view>
-            <point key="canvasLocation" x="-139" y="-901"/>
+            <point key="canvasLocation" x="-78" y="-899"/>
         </window>
         <customObject id="FHO-g2-V3A" customClass="EmulatorDiskController">
             <connections>
@@ -673,7 +505,7 @@ DQ
                 <outlet property="startupLoadDiskB" destination="Ceo-uO-cRu" id="V0B-0f-YZu"/>
             </connections>
         </customObject>
-        <window title="Apple2Mac Preferences" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" oneShot="NO" releasedWhenClosed="NO" showsToolbarButton="NO" visibleAtLaunch="NO" animationBehavior="default" id="Mzv-VG-jce" userLabel="Window - Prefs" customClass="EmulatorWindow">
+        <window title="Apple2Mac Préférences" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" oneShot="NO" releasedWhenClosed="NO" showsToolbarButton="NO" visibleAtLaunch="NO" animationBehavior="default" id="Mzv-VG-jce" userLabel="Window - Prefs" customClass="EmulatorWindow">
             <windowStyleMask key="styleMask" titled="YES" closable="YES"/>
             <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
             <rect key="contentRect" x="109" y="132" width="580" height="360"/>
@@ -687,7 +519,7 @@ DQ
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                         <font key="font" metaFont="system"/>
                         <tabViewItems>
-                            <tabViewItem label="General" identifier="1" id="9QL-dh-vnO">
+                            <tabViewItem label="Général" identifier="1" id="9QL-dh-vnO">
                                 <view key="view" id="NHh-74-iPh">
                                     <rect key="frame" x="10" y="33" width="534" height="298"/>
                                     <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
@@ -695,7 +527,7 @@ DQ
                                         <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" setsMaxLayoutWidthAtFirstLayout="YES" id="RMd-Jf-hgi">
                                             <rect key="frame" x="225" y="278" width="84" height="17"/>
                                             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
-                                            <textFieldCell key="cell" sendsActionOnEndEditing="YES" alignment="center" title="CPU Speed" id="cbb-4q-VuM">
+                                            <textFieldCell key="cell" sendsActionOnEndEditing="YES" alignment="center" title="Vitesse CPU" id="cbb-4q-VuM">
                                                 <font key="font" metaFont="system"/>
                                                 <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
                                                 <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
@@ -765,9 +597,9 @@ DQ
                                             </connections>
                                         </slider>
                                         <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" setsMaxLayoutWidthAtFirstLayout="YES" id="hHW-BV-aWU">
-                                            <rect key="frame" x="225" y="160" width="84" height="17"/>
+                                            <rect key="frame" x="225" y="153" width="136" height="24"/>
                                             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
-                                            <textFieldCell key="cell" sendsActionOnEndEditing="YES" alignment="center" title="Alt Speed" id="aPu-QU-jtF">
+                                            <textFieldCell key="cell" sendsActionOnEndEditing="YES" alignment="center" title="Vitesse alternative" id="aPu-QU-jtF">
                                                 <font key="font" metaFont="system"/>
                                                 <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
                                                 <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
@@ -785,7 +617,7 @@ DQ
                                             <rect key="frame" x="17" y="237" width="442" height="58"/>
                                             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                             <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
-                                            <size key="cellSize" width="353" height="18"/>
+                                            <size key="cellSize" width="318" height="18"/>
                                             <size key="intercellSpacing" width="4" height="2"/>
                                             <buttonCell key="prototype" type="radio" title="Radio" imagePosition="left" alignment="left" enabled="NO" state="on" inset="2" id="fXT-Uh-8o7">
                                                 <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
@@ -793,15 +625,15 @@ DQ
                                             </buttonCell>
                                             <cells>
                                                 <column>
-                                                    <buttonCell type="radio" title="No soundcard" imagePosition="left" alignment="left" enabled="NO" tag="1" inset="2" id="QsT-B1-n2t">
+                                                    <buttonCell type="radio" title="Pas de carte son" imagePosition="left" alignment="left" enabled="NO" state="on" tag="1" inset="2" id="QsT-B1-n2t">
                                                         <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
                                                         <font key="font" metaFont="system"/>
                                                     </buttonCell>
-                                                    <buttonCell type="radio" title="Mockingboard Revision &quot;C&quot; in Slot 4/5" imagePosition="left" alignment="left" enabled="NO" state="on" inset="2" id="dqc-yy-ATU">
+                                                    <buttonCell type="radio" title="Mockingboard Revision &quot;C&quot;  Slot 4/5" imagePosition="left" alignment="left" enabled="NO" state="on" inset="2" id="dqc-yy-ATU">
                                                         <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
                                                         <font key="font" metaFont="system"/>
                                                     </buttonCell>
-                                                    <buttonCell type="radio" title="Mockingboard Revision &quot;C&quot; in Slot 4, Phasor in Slot 5" imagePosition="left" alignment="left" enabled="NO" inset="2" id="oY0-fc-5pv">
+                                                    <buttonCell type="radio" title="Mockingboard Revision &quot;C&quot;  Slot 4, Phasor Slot 5" imagePosition="left" alignment="left" enabled="NO" inset="2" id="oY0-fc-5pv">
                                                         <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
                                                         <font key="font" metaFont="system"/>
                                                     </buttonCell>
@@ -849,9 +681,9 @@ DQ
                                             <sliderCell key="cell" enabled="NO" state="on" alignment="left" maxValue="100" doubleValue="50" tickMarkPosition="below" numberOfTickMarks="5" sliderType="linear" id="Cma-o2-8gh"/>
                                         </slider>
                                         <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" id="RsU-77-Dkx">
-                                            <rect key="frame" x="15" y="241" width="96" height="17"/>
+                                            <rect key="frame" x="-2" y="241" width="113" height="17"/>
                                             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
-                                            <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" alignment="right" title="Graphic Effects :" id="foK-d1-Lrb">
+                                            <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" alignment="right" title="Effets Graphiques" id="foK-d1-Lrb">
                                                 <font key="font" metaFont="system"/>
                                                 <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
                                                 <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
@@ -860,7 +692,7 @@ DQ
                                         <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" id="dak-eg-hHn">
                                             <rect key="frame" x="15" y="277" width="96" height="17"/>
                                             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
-                                            <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" alignment="right" title="Color :" id="eHo-1T-edz">
+                                            <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" alignment="right" title="Couleur :" id="eHo-1T-edz">
                                                 <font key="font" metaFont="system"/>
                                                 <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
                                                 <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
@@ -1017,7 +849,7 @@ DQ
                     </tabView>
                 </subviews>
             </view>
-            <point key="canvasLocation" x="-195" y="-831"/>
+            <point key="canvasLocation" x="-102" y="-914"/>
         </window>
         <customObject id="mUW-Rh-bL1" customClass="EmulatorPrefsController">
             <connections>
