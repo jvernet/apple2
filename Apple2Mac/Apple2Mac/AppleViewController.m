@@ -10,9 +10,9 @@
 #import "common.h"
 #import "modelUtil.h"
 
-@interface AppleViewController ()
+//@interface AppleViewController ()
 
-@end
+//@end
 
 @implementation AppleViewController
 

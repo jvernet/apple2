@@ -85,6 +85,8 @@
         cpu_pause();
         emulator_start();
         video_backend->init(0);
+        keydriver_setGlyphScale(1);
+        interface_setGlyphScale(1);
         
         _animating = NO;
         _renderFrameInterval = 1;

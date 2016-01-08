@@ -22,3 +22,15 @@
 
 /* Class = "UIBarButtonItem"; title = "Item"; ObjectID = "d5g-uX-Ssk"; */
 "d5g-uX-Ssk.title" = "CPU";
+
+"9ng-ES-puf.title" = "Retour";
+
+"IIm-Ae-hIr.title" = "Retour";
+
+/* Disk Scene */
+
+"PHz-oi-44l.title" = "Disques";
+"PHz-oi-44l.prompt"= "Choisir disques";
+"dwm-hP-IsN.text" = "Lecture Seule";
+"0AD-L4-9pL.text" = "Lecture Seule";
+
