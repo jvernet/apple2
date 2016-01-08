@@ -18,6 +18,7 @@
 
 @property (nonatomic, readonly, getter=isAnimating, assign) BOOL animating;
 @property (nonatomic, assign) NSInteger renderFrameInterval;
+@property (retain, nonatomic) IBOutlet UIToolbar *MainToolBar;
 
 - (void)pauseRendering;
 - (void)resumeRendering;
