@@ -71,11 +71,6 @@
                     <simulatedOrientationMetrics key="simulatedOrientationMetrics"/>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="dkx-z0-nzr" sceneMemberID="firstResponder"/>
-                <pongPressGestureRecognizer allowableMovement="10" minimumPressDuration="0.5" id="qLb-uK-fyp">
-                    <connections>
-                        <action selector="upSwipe:" destination="BYZ-38-t0r" id="Cmc-PK-Rhh"/>
-                    </connections>
-                </pongPressGestureRecognizer>
             </objects>
             <point key="canvasLocation" x="60" y="-290.49295774647885"/>
         </scene>
