@@ -21,8 +21,36 @@
    
     NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
     //self.path = [[paths objectAtIndex:0] stringByAppendingPathComponent:@"Disks"];
+    //TODO: seed if a Subdirectory named Inbox exist
+    //      if case, move all files to Document and delete Inbox
+    //      Then browse...
     self.path = [paths objectAtIndex:0];
     NSLog(@"Path:%@",self.path);
+    NSString *inboxPath;
+    inboxPath = [self.path stringByAppendingPathComponent:@"Inbox"];
+     NSLog(@"Path:%@",self.path);
+    if ([[NSFileManager defaultManager] fileExistsAtPath:inboxPath]) //Check if Inbox exist
+    {
+        NSLog(@"Inbox Exist");
+        NSArray *inboxContent = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:inboxPath error:NULL]; //Get content
+        int Count;
+        NSString *fileToMove,*fileDest;
+        
+        for (Count = 0; Count < (int)[inboxContent count]; Count++)
+        {
+            fileToMove=[inboxPath stringByAppendingPathComponent:[inboxContent objectAtIndex:Count]];
+            fileDest=[self.path stringByAppendingPathComponent:[inboxContent objectAtIndex:Count]];
+            NSLog(@"File %d: %@>%@", (Count + 1), fileToMove,fileDest);
+            [[NSFileManager defaultManager] moveItemAtPath:fileToMove toPath:fileDest  error:nil];
+        }
+        
+        NSError *error;
+        if (![[NSFileManager defaultManager] removeItemAtPath:inboxPath error:&error])	//Delete it
+        {
+            NSLog(@"Delete directory error: %@", error);
+        }
+    }
+    
     self._disks=[[NSFileManager defaultManager] contentsOfDirectoryAtPath:self.path error:NULL];
     
     // Connect data
@@ -30,6 +58,8 @@
     self.disk1Picker.delegate = self;
     self.disk2Picker.dataSource = self;
     self.disk2Picker.delegate = self;
+    
+    
 }
 
 // The number of columns of data

@@ -82,10 +82,10 @@ static void *_button_tap_delayed_thread(void *dummyptr) {
         }
 
         struct timespec wait;
-        clock_gettime(1, &wait); // should use CLOCK_MONOTONIC ?
+        clock_gettime(CLOCK_MONOTONIC, &wait); // should use CLOCK_MONOTONIC ?
         wait = timespec_add(wait, joys.tapDelayNanos);
         int timedOut = pthread_cond_timedwait(&joys.tapDelayCond, &joys.tapDelayMutex, &wait); // wait and possibly consume event
-       // assert((!timedOut || timedOut == ETIMEDOUT) && "should not fail any other way");
+       //JV Crash on IOS assert((!timedOut || timedOut == ETIMEDOUT) && "should not fail any other way");
 
         if (!timedOut) {
             if (!deepSleep) {
