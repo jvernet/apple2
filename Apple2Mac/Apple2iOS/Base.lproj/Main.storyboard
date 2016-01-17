@@ -87,68 +87,75 @@
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
                             <slider opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" value="1" minValue="0.5" maxValue="4" continuous="NO" translatesAutoresizingMaskIntoConstraints="NO" id="oBP-0d-AK1" userLabel="cpuSpeedSlide">
-                                <rect key="frame" x="18" y="176" width="233" height="31"/>
+                                <rect key="frame" x="18" y="107" width="233" height="31"/>
                                 <connections>
                                     <action selector="sliderDidMove:" destination="Bdv-8H-ns5" eventType="valueChanged" id="pp6-hb-eUx"/>
                                 </connections>
                             </slider>
                             <slider opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" value="2" minValue="0.5" maxValue="4" continuous="NO" translatesAutoresizingMaskIntoConstraints="NO" id="6mP-Ec-f93" userLabel="altSpeedSlide">
-                                <rect key="frame" x="23" y="267" width="228" height="31"/>
+                                <rect key="frame" x="23" y="199" width="228" height="31"/>
                                 <connections>
                                     <action selector="sliderDidMove:" destination="Bdv-8H-ns5" eventType="valueChanged" id="JBu-EB-QzS"/>
                                 </connections>
                             </slider>
-                            <pickerView contentMode="center" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="WGm-hY-OEW">
-                                <rect key="frame" x="0.0" y="343" width="359" height="123"/>
-                            </pickerView>
                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" text="%" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="jIk-gU-h7b">
-                                <rect key="frame" x="125" y="147" width="49" height="21"/>
+                                <rect key="frame" x="125" y="78" width="49" height="21"/>
                                 <fontDescription key="fontDescription" type="system" pointSize="17"/>
                                 <color key="textColor" red="0.0" green="0.0" blue="0.0" alpha="1" colorSpace="calibratedRGB"/>
                                 <nil key="highlightedColor"/>
                             </label>
                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" text="CPU Speed:" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="Iq0-cg-cM9">
-                                <rect key="frame" x="15" y="147" width="93" height="21"/>
+                                <rect key="frame" x="15" y="78" width="93" height="21"/>
                                 <fontDescription key="fontDescription" type="system" pointSize="17"/>
                                 <color key="textColor" red="0.0" green="0.0" blue="0.0" alpha="1" colorSpace="calibratedRGB"/>
                                 <nil key="highlightedColor"/>
                             </label>
                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" text="%" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="N7I-7S-5tU">
-                                <rect key="frame" x="125" y="237" width="54" height="21"/>
+                                <rect key="frame" x="125" y="168" width="54" height="21"/>
                                 <fontDescription key="fontDescription" type="system" pointSize="17"/>
                                 <color key="textColor" red="0.0" green="0.0" blue="0.0" alpha="1" colorSpace="calibratedRGB"/>
                                 <nil key="highlightedColor"/>
                             </label>
                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" text="Alt Speed:" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="h92-qb-Rzn">
-                                <rect key="frame" x="34" y="237" width="79" height="21"/>
+                                <rect key="frame" x="34" y="168" width="79" height="21"/>
                                 <fontDescription key="fontDescription" type="system" pointSize="17"/>
                                 <color key="textColor" red="0.0" green="0.0" blue="0.0" alpha="1" colorSpace="calibratedRGB"/>
                                 <nil key="highlightedColor"/>
                             </label>
                             <switch opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="750" verticalHuggingPriority="750" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" on="YES" translatesAutoresizingMaskIntoConstraints="NO" id="SUp-G2-zVO">
-                                <rect key="frame" x="257" y="176" width="51" height="31"/>
+                                <rect key="frame" x="257" y="107" width="51" height="31"/>
                                 <connections>
                                     <action selector="peggedChoiceChanged:" destination="Bdv-8H-ns5" eventType="valueChanged" id="UYy-Wm-jwi"/>
                                 </connections>
                             </switch>
                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" text="Max" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="z2P-aE-OU0">
-                                <rect key="frame" x="265" y="147" width="32" height="21"/>
+                                <rect key="frame" x="265" y="78" width="32" height="21"/>
                                 <fontDescription key="fontDescription" type="system" pointSize="17"/>
                                 <color key="textColor" red="0.0" green="0.0" blue="0.0" alpha="1" colorSpace="calibratedRGB"/>
                                 <nil key="highlightedColor"/>
                             </label>
                             <switch opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="750" verticalHuggingPriority="750" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" on="YES" translatesAutoresizingMaskIntoConstraints="NO" id="PXo-sH-Lgu">
-                                <rect key="frame" x="262" y="266" width="51" height="31"/>
+                                <rect key="frame" x="262" y="199" width="51" height="31"/>
                                 <connections>
                                     <action selector="peggedChoiceChanged:" destination="Bdv-8H-ns5" eventType="valueChanged" id="nDr-IN-iOl"/>
                                 </connections>
                             </switch>
                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" text="Max" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="qOR-C1-4kH">
-                                <rect key="frame" x="270" y="237" width="32" height="21"/>
+                                <rect key="frame" x="270" y="168" width="32" height="21"/>
                                 <fontDescription key="fontDescription" type="system" pointSize="17"/>
                                 <color key="textColor" red="0.0" green="0.0" blue="0.0" alpha="1" colorSpace="calibratedRGB"/>
                                 <nil key="highlightedColor"/>
                             </label>
+                            <pickerView contentMode="center" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="WGm-hY-OEW">
+                                <rect key="frame" x="0.0" y="244" width="359" height="68"/>
+                            </pickerView>
+                            <segmentedControl opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="left" contentVerticalAlignment="top" segmentControlStyle="bordered" selectedSegmentIndex="0" translatesAutoresizingMaskIntoConstraints="NO" id="kdl-3o-38S">
+                                <rect key="frame" x="383" y="151" width="99" height="29"/>
+                                <segments>
+                                    <segment title="Mono"/>
+                                    <segment title="Color"/>
+                                </segments>
+                            </segmentedControl>
                         </subviews>
                         <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
                     </view>
@@ -172,7 +179,7 @@
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="tqd-Zi-o6N" userLabel="First Responder" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="1567.5" y="-865.14084507042253"/>
+            <point key="canvasLocation" x="1540" y="-868"/>
         </scene>
         <!--Navigation Controller-->
         <scene sceneID="qIj-Na-8nw">
