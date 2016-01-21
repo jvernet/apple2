@@ -693,7 +693,6 @@ static void gltouchkbd_beginCalibration(void) {
 }
 
 static void gltouchkbd_endCalibration(void) {
-    video_redraw();
     isCalibrating = false;
 }
 

@@ -190,7 +190,7 @@ void Java_org_deadc0de_apple2ix_Apple2View_nativeGraphicsInitialized(JNIEnv *env
     LOG("width:%d height:%d", width, height);
     video_shutdown();
     video_backend->reshape(width, height);
-    video_backend->init((void *)0);
+    video_init();
 }
 
 void Java_org_deadc0de_apple2ix_Apple2Activity_nativeEmulationResume(JNIEnv *env, jclass cls) {

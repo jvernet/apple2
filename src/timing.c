@@ -50,7 +50,7 @@
 
 // cycle counting
 double cycles_persec_target = CLK_6502;
-unsigned long long cycles_count_total = 0;
+unsigned long cycles_count_total = 0;           // Running at spec ~1MHz, this will approach overflow in ~4000secs
 int cycles_speaker_feedback = 0;
 int32_t cpu65_cycles_to_execute = 0;            // cycles-to-execute by cpu65_run()
 int32_t cpu65_cycle_count = 0;                  // cycles currently excuted by cpu65_run()
@@ -163,9 +163,7 @@ void reinitialize(void) {
 
     softswitches = SS_TEXT | SS_IOUDIS | SS_C3ROM | SS_LCWRT | SS_LCSEC;
 
-    video_setpage( 0 );
-
-    video_redraw();
+    video_setDirty(A2_DIRTY_FLAG);
 
     cpu65_init();
 
@@ -279,11 +277,11 @@ static void *cpu_thread(void *dummyptr) {
     int debugging_cycles0 = 0;
     int debugging_cycles = 0;
 
-#if DEBUG_TIMING
     unsigned long dbg_ticks = 0;
+#if DEBUG_TIMING
     int speaker_neg_feedback = 0;
     int speaker_pos_feedback = 0;
-    unsigned int dbg_cycles_executed = 0;
+    unsigned long dbg_cycles_executed = 0;
 #endif
 
     do
@@ -311,6 +309,11 @@ static void *cpu_thread(void *dummyptr) {
         }
 
         LOG("cpu_thread : begin main loop ...");
+
+#ifndef NDEBUG
+        extern void timing_testCyclesCountOverflow(void);
+        timing_testCyclesCountOverflow();
+#endif
 
         clock_gettime(CLOCK_MONOTONIC, &t0);
 
@@ -428,7 +431,7 @@ static void *cpu_thread(void *dummyptr) {
 #ifdef AUDIO_ENABLED
                         !speaker_isActive() &&
 #endif
-                        !video_isDirty() && (!disk6.motor_off && (disk_motor_time.tv_sec || disk_motor_time.tv_nsec > DISK_MOTOR_QUIET_NSECS)) )
+                        !video_isDirty(A2_DIRTY_FLAG) && (!disk6.motor_off && (disk_motor_time.tv_sec || disk_motor_time.tv_nsec > DISK_MOTOR_QUIET_NSECS)) )
                 {
                     TIMING_LOG("auto switching to full speed");
                     _timing_initialize(CPU_SCALE_FASTEST);
@@ -464,6 +467,11 @@ static void *cpu_thread(void *dummyptr) {
                     TRACE_CPU_END();
                 }
 
+                dbg_ticks += EXECUTION_PERIOD_NSECS;
+                if ((dbg_ticks % (NANOSECONDS_PER_SECOND>>1)) == 0)
+                {
+                    video_flashText(); // TODO FIXME : proper FLASH timing ...
+                }
 #if DEBUG_TIMING
                 // collect timing statistics
                 if (speaker_neg_feedback > cycles_speaker_feedback)
@@ -475,7 +483,6 @@ static void *cpu_thread(void *dummyptr) {
                     speaker_pos_feedback = cycles_speaker_feedback;
                 }
 
-                dbg_ticks += EXECUTION_PERIOD_NSECS;
                 if ((dbg_ticks % NANOSECONDS_PER_SECOND) == 0)
                 {
                     TIMING_LOG("tick:(%ld.%ld) real:(%ld.%ld) cycles exe: %d ... speaker feedback: %d/%d", t0.tv_sec, t0.tv_nsec, ti.tv_sec, ti.tv_nsec, dbg_cycles_executed, speaker_neg_feedback, speaker_pos_feedback);
@@ -493,7 +500,7 @@ static void *cpu_thread(void *dummyptr) {
 #ifdef AUDIO_ENABLED
                             speaker_isActive() ||
 #endif
-                            video_isDirty() || (disk6.motor_off && (disk_motor_time.tv_sec || disk_motor_time.tv_nsec > DISK_MOTOR_QUIET_NSECS))) )
+                            video_isDirty(A2_DIRTY_FLAG) || (disk6.motor_off && (disk_motor_time.tv_sec || disk_motor_time.tv_nsec > DISK_MOTOR_QUIET_NSECS))) )
                 {
                     double speed = alt_speed_enabled ? cpu_altscale_factor : cpu_scale_factor;
                     if (speed < CPU_SCALE_FASTEST) {
@@ -563,6 +570,19 @@ void timing_checkpoint_cycles(void) {
     const int32_t d = cpu65_cycle_count - cycles_checkpoint_count;
     assert(d >= 0);
     cycles_count_total += d;
+#ifndef NDEBUG
+    if (UNLIKELY(cycles_count_total < cycles_checkpoint_count)) {
+        LOG("OVERFLOWED cycles_count_total...");
+    }
+#endif
     cycles_checkpoint_count = cpu65_cycle_count;
 }
+
+#ifndef NDEBUG
+void timing_testCyclesCountOverflow(void) {
+    // advance cycles count to near overflow
+    LOG("almost overflow ...");
+    cycles_count_total = ULONG_MAX - (CLK_6502_INT*10);
+}
+#endif
 
