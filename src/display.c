@@ -69,9 +69,9 @@ uint8_t video__even_colors[2] = { COLOR_LIGHT_GREEN, COLOR_LIGHT_RED };
 
 // 40col/80col/lores/hires/dhires line offsets
 unsigned short video__line_offset[TEXT_ROWS] = {
-  0x000, 0x080, 0x100, 0x180, 0x200, 0x280, 0x300, 0x380,
-  0x028, 0x0A8, 0x128, 0x1A8, 0x228, 0x2A8, 0x328, 0x3A8,
-  0x050, 0x0D0, 0x150, 0x1D0, 0x250, 0x2D0, 0x350, 0x3D0
+    0x000, 0x080, 0x100, 0x180, 0x200, 0x280, 0x300, 0x380,
+    0x028, 0x0A8, 0x128, 0x1A8, 0x228, 0x2A8, 0x328, 0x3A8,
+    0x050, 0x0D0, 0x150, 0x1D0, 0x250, 0x2D0, 0x350, 0x3D0
 };
 
 uint8_t video__dhires1[256] = {
@@ -162,7 +162,7 @@ static void _initialize_hires_values(void) {
             }
         }
     }
-
+    
     if (color_mode == COLOR_NONE) {
         for (unsigned int value = 0x00; value <= 0xFF; value++) {
             for (unsigned int b = 0, e = value * 8; b < 7; b++, e++) {
@@ -186,29 +186,29 @@ static void _initialize_hires_values(void) {
                         video__hires_even[e] = video__hires_even[e-1];
                     }
                     else if (
-                        video__hires_even[e-1] != COLOR_BLACK &&
-                        video__hires_even[e+1] != COLOR_BLACK &&
-                        video__hires_even[e-1] != COLOR_LIGHT_WHITE &&
-                        video__hires_even[e+1] == COLOR_LIGHT_WHITE)
+                             video__hires_even[e-1] != COLOR_BLACK &&
+                             video__hires_even[e+1] != COLOR_BLACK &&
+                             video__hires_even[e-1] != COLOR_LIGHT_WHITE &&
+                             video__hires_even[e+1] == COLOR_LIGHT_WHITE)
                     {
                         video__hires_even[e] = video__hires_even[e-1];
                     }
                     else if (
-                        video__hires_even[e-1] != COLOR_BLACK &&
-                        video__hires_even[e+1] != COLOR_BLACK &&
-                        video__hires_even[e-1] == COLOR_LIGHT_WHITE &&
-                        video__hires_even[e+1] != COLOR_LIGHT_WHITE)
+                             video__hires_even[e-1] != COLOR_BLACK &&
+                             video__hires_even[e+1] != COLOR_BLACK &&
+                             video__hires_even[e-1] == COLOR_LIGHT_WHITE &&
+                             video__hires_even[e+1] != COLOR_LIGHT_WHITE)
                     {
                         video__hires_even[e] = video__hires_even[e+1];
                     }
                     else if (
-                        video__hires_even[e-1] == COLOR_LIGHT_WHITE &&
-                        video__hires_even[e+1] == COLOR_LIGHT_WHITE)
+                             video__hires_even[e-1] == COLOR_LIGHT_WHITE &&
+                             video__hires_even[e+1] == COLOR_LIGHT_WHITE)
                     {
                         video__hires_even[e] = (value & 0x80) ? COLOR_LIGHT_BLUE : COLOR_LIGHT_PURPLE;
                     }
                 }
-
+                
                 if (video__hires_odd[e] == COLOR_BLACK) {
                     if (video__hires_odd[e-1] != COLOR_BLACK &&
                         video__hires_odd[e+1] != COLOR_BLACK &&
@@ -218,30 +218,30 @@ static void _initialize_hires_values(void) {
                         video__hires_odd[e] = video__hires_odd[e-1];
                     }
                     else if (
-                        video__hires_odd[e-1] != COLOR_BLACK &&
-                        video__hires_odd[e+1] != COLOR_BLACK &&
-                        video__hires_odd[e-1] != COLOR_LIGHT_WHITE &&
-                        video__hires_odd[e+1] == COLOR_LIGHT_WHITE)
+                             video__hires_odd[e-1] != COLOR_BLACK &&
+                             video__hires_odd[e+1] != COLOR_BLACK &&
+                             video__hires_odd[e-1] != COLOR_LIGHT_WHITE &&
+                             video__hires_odd[e+1] == COLOR_LIGHT_WHITE)
                     {
                         video__hires_odd[e] = video__hires_odd[e-1];
                     }
                     else if (
-                        video__hires_odd[e-1] != COLOR_BLACK &&
-                        video__hires_odd[e+1] != COLOR_BLACK &&
-                        video__hires_odd[e-1] == COLOR_LIGHT_WHITE &&
-                        video__hires_odd[e+1] != COLOR_LIGHT_WHITE)
+                             video__hires_odd[e-1] != COLOR_BLACK &&
+                             video__hires_odd[e+1] != COLOR_BLACK &&
+                             video__hires_odd[e-1] == COLOR_LIGHT_WHITE &&
+                             video__hires_odd[e+1] != COLOR_LIGHT_WHITE)
                     {
                         video__hires_odd[e] = video__hires_odd[e+1];
                     }
                     else if (
-                        video__hires_odd[e-1] == COLOR_LIGHT_WHITE &&
-                        video__hires_odd[e+1] == COLOR_LIGHT_WHITE)
+                             video__hires_odd[e-1] == COLOR_LIGHT_WHITE &&
+                             video__hires_odd[e+1] == COLOR_LIGHT_WHITE)
                     {
                         video__hires_odd[e] = (value & 0x80) ? COLOR_LIGHT_RED : COLOR_LIGHT_GREEN;
                     }
                 }
             }
-
+            
             for (unsigned int b = 0, e = value * 8; b <= 6; b += 2, e += 2) {
                 if (video__hires_even[ e ] == COLOR_BLACK) {
                     if (b > 0 && b < 6) {
@@ -253,30 +253,30 @@ static void _initialize_hires_values(void) {
                             video__hires_even[e] = video__hires_even[e-1];
                         }
                         else if (
-                            video__hires_even[e-1] != COLOR_BLACK &&
-                            video__hires_even[e+1] != COLOR_BLACK &&
-                            video__hires_even[e-1] != COLOR_LIGHT_WHITE &&
-                            video__hires_even[e+1] == COLOR_LIGHT_WHITE)
+                                 video__hires_even[e-1] != COLOR_BLACK &&
+                                 video__hires_even[e+1] != COLOR_BLACK &&
+                                 video__hires_even[e-1] != COLOR_LIGHT_WHITE &&
+                                 video__hires_even[e+1] == COLOR_LIGHT_WHITE)
                         {
                             video__hires_even[e] = video__hires_even[e-1];
                         }
                         else if (
-                            video__hires_even[e-1] != COLOR_BLACK &&
-                            video__hires_even[e+1] != COLOR_BLACK &&
-                            video__hires_even[e-1] == COLOR_LIGHT_WHITE &&
-                            video__hires_even[e+1] != COLOR_LIGHT_WHITE)
+                                 video__hires_even[e-1] != COLOR_BLACK &&
+                                 video__hires_even[e+1] != COLOR_BLACK &&
+                                 video__hires_even[e-1] == COLOR_LIGHT_WHITE &&
+                                 video__hires_even[e+1] != COLOR_LIGHT_WHITE)
                         {
                             video__hires_even[e] = video__hires_even[e+1];
                         }
                         else if (
-                            video__hires_even[e-1] == COLOR_LIGHT_WHITE &&
-                            video__hires_even[e+1] == COLOR_LIGHT_WHITE)
+                                 video__hires_even[e-1] == COLOR_LIGHT_WHITE &&
+                                 video__hires_even[e+1] == COLOR_LIGHT_WHITE)
                         {
                             video__hires_even[e] = (value & 0x80) ? COLOR_LIGHT_RED : COLOR_LIGHT_GREEN;
                         }
                     }
                 }
-
+                
                 if (video__hires_odd[e] == COLOR_BLACK) {
                     if (b > 0 && b < 6) {
                         if (video__hires_odd[e-1] != COLOR_BLACK &&
@@ -287,24 +287,24 @@ static void _initialize_hires_values(void) {
                             video__hires_odd[e] = video__hires_odd[e-1];
                         }
                         else if (
-                            video__hires_odd[e-1] != COLOR_BLACK &&
-                            video__hires_odd[e+1] != COLOR_BLACK &&
-                            video__hires_odd[e-1] != COLOR_LIGHT_WHITE &&
-                            video__hires_odd[e+1] == COLOR_LIGHT_WHITE)
+                                 video__hires_odd[e-1] != COLOR_BLACK &&
+                                 video__hires_odd[e+1] != COLOR_BLACK &&
+                                 video__hires_odd[e-1] != COLOR_LIGHT_WHITE &&
+                                 video__hires_odd[e+1] == COLOR_LIGHT_WHITE)
                         {
                             video__hires_odd[e] = video__hires_odd[e-1];
                         }
                         else if (
-                            video__hires_odd[e-1] != COLOR_BLACK &&
-                            video__hires_odd[e+1] != COLOR_BLACK &&
-                            video__hires_odd[e-1] == COLOR_LIGHT_WHITE &&
-                            video__hires_odd[e+1] != COLOR_LIGHT_WHITE)
+                                 video__hires_odd[e-1] != COLOR_BLACK &&
+                                 video__hires_odd[e+1] != COLOR_BLACK &&
+                                 video__hires_odd[e-1] == COLOR_LIGHT_WHITE &&
+                                 video__hires_odd[e+1] != COLOR_LIGHT_WHITE)
                         {
                             video__hires_odd[e] = video__hires_odd[e+1];
                         }
                         else if (
-                            video__hires_odd[e-1] == COLOR_LIGHT_WHITE &&
-                            video__hires_odd[e+1] == COLOR_LIGHT_WHITE)
+                                 video__hires_odd[e-1] == COLOR_LIGHT_WHITE &&
+                                 video__hires_odd[e+1] == COLOR_LIGHT_WHITE)
                         {
                             video__hires_odd[e] = (value & 0x80) ? COLOR_LIGHT_BLUE : COLOR_LIGHT_PURPLE;
                         }
@@ -342,7 +342,7 @@ static void _initialize_tables_video(void) {
                 cpu65_vmem_w[idx      ] = video__write_2e_text0_mixed;
                 cpu65_vmem_w[idx+0x400] = video__write_2e_text1_mixed;
             }
-
+            
             // hires/dhires pages
             for (unsigned int i = 0; i < 8; i++) {
                 idx = 0x2000 + video__line_offset[ y ] + (0x400*i) + x;
@@ -370,7 +370,7 @@ static void _initialize_tables_video(void) {
 
 static void _initialize_color() {
     unsigned char col2[ 3 ] = { 255,255,255 };
-
+    
     /* align the palette for hires graphics */
     for (unsigned int i = 0; i < 8; i++) {
         for (unsigned int j = 0; j < 3; j++) {
@@ -383,19 +383,19 @@ static void _initialize_color() {
             colormap[ j+i*3+32].blue = c;
         }
     }
-
+    
     colormap[ COLOR_FLASHING_BLACK].red = 0;
     colormap[ COLOR_FLASHING_BLACK].green = 0;
     colormap[ COLOR_FLASHING_BLACK].blue = 0;
-
+    
     colormap[ COLOR_LIGHT_WHITE].red   = 255;
     colormap[ COLOR_LIGHT_WHITE].green = 255;
     colormap[ COLOR_LIGHT_WHITE].blue  = 255;
-
+    
     colormap[ COLOR_FLASHING_WHITE].red   = 255;
     colormap[ COLOR_FLASHING_WHITE].green = 255;
     colormap[ COLOR_FLASHING_WHITE].blue  = 255;
-
+    
     colormap[0x00].red = 0; colormap[0x00].green = 0;
     colormap[0x00].blue = 0;   /* Black */
     colormap[0x10].red = 195; colormap[0x10].green = 0;
@@ -428,7 +428,7 @@ static void _initialize_color() {
     colormap[0xe0].blue = 130; /* Aqua */
     colormap[0xf0].red = 255; colormap[0xf0].green = 255;
     colormap[0xf0].blue = 255; /* White */
-
+    
     /* mirror of lores colormap optimized for dhires code */
     colormap[0x00].red = 0; colormap[0x00].green = 0;
     colormap[0x00].blue = 0;   /* Black */
@@ -462,7 +462,7 @@ static void _initialize_color() {
     colormap[0x07].blue = 130; /* Aqua */
     colormap[0x0f].red = 255; colormap[0x0f].green = 255;
     colormap[0x0f].blue = 255; /* White */
-
+    
 #if USE_RGBA4444
     for (unsigned int i=0; i<256; i++) {
         colormap[i].red   = (colormap[i].red   >>4);
@@ -495,7 +495,7 @@ void video_loadfont(int first, int quantity, const uint8_t *data, int mode) {
             bg = COLOR_BLACK;
             break;
     }
-
+    
     unsigned int i = quantity * 8;
     while (i--) {
         unsigned int j = 8;
@@ -597,11 +597,7 @@ static inline void _plot_lores40(uint8_t **d, const uint32_t val) {
     *((uint16_t *)(*d)) = (uint16_t)(val & 0xffff);
 }
 
-<<<<<<< HEAD
-static inline void _plot_dlores(uint8_t **d, const uint32_t val) {
-=======
 static inline void _plot_lores80(uint8_t **d, const uint32_t val) {
->>>>>>> mauiaaron/aaron_experimental_rebase
     *((uint32_t *)(*d)) = val;
     *d += 4;
     *((uint16_t *)(*d)) = (uint16_t)val;
@@ -615,12 +611,7 @@ static inline void _plot_lores80(uint8_t **d, const uint32_t val) {
     *((uint8_t *)(*d))  = (uint8_t)val;
 }
 
-<<<<<<< HEAD
-static inline void _plot_character(const unsigned int font_off, uint8_t *fb_ptr) {
-    video_setDirty();
-=======
 static inline void __plot_character40(const unsigned int font_off, uint8_t *fb_ptr) {
->>>>>>> mauiaaron/aaron_experimental_rebase
     uint8_t *font_ptr = video__wider_font+font_off;
     _plot_char40(/*dst*/&fb_ptr, /*src*/&font_ptr);
     _plot_char40(/*dst*/&fb_ptr, /*src*/&font_ptr);
@@ -667,7 +658,7 @@ static void _plot_character80(uint16_t off, int page, int bank) {
 static inline void __plot_block40(const uint8_t val, uint8_t *fb_ptr) {
     uint8_t color = (val & 0x0F) << 4;
     uint32_t val32 = (color << 24) | (color << 16) | (color << 8) | color;
-
+    
     _plot_lores40(/*dst*/&fb_ptr, val32);
     fb_ptr += SCANSTEP;
     _plot_lores40(/*dst*/&fb_ptr, val32);
@@ -675,11 +666,11 @@ static inline void __plot_block40(const uint8_t val, uint8_t *fb_ptr) {
     _plot_lores40(/*dst*/&fb_ptr, val32);
     fb_ptr += SCANSTEP;
     _plot_lores40(/*dst*/&fb_ptr, val32);
-
+    
     fb_ptr += SCANSTEP;
     color = val & 0xF0;
     val32 = (color << 24) | (color << 16) | (color << 8) | color;
-
+    
     _plot_lores40(/*dst*/&fb_ptr, val32);
     fb_ptr += SCANSTEP;
     _plot_lores40(/*dst*/&fb_ptr, val32);
@@ -699,7 +690,7 @@ static void _plot_block40(uint16_t off, int page, int bank) {
 static inline void __plot_block80(const uint8_t val, uint8_t *fb_ptr) {
     uint8_t color = (val & 0x0F) << 4;
     uint32_t val32 = (color << 24) | (color << 16) | (color << 8) | color;
-
+    
     _plot_lores80(/*dst*/&fb_ptr, val32);
     fb_ptr += SCANDSTEP;
     _plot_lores80(/*dst*/&fb_ptr, val32);
@@ -707,11 +698,11 @@ static inline void __plot_block80(const uint8_t val, uint8_t *fb_ptr) {
     _plot_lores80(/*dst*/&fb_ptr, val32);
     fb_ptr += SCANDSTEP;
     _plot_lores80(/*dst*/&fb_ptr, val32);
-
+    
     fb_ptr += SCANDSTEP;
     color = val & 0xF0;
     val32 = (color << 24) | (color << 16) | (color << 8) | color;
-
+    
     _plot_lores80(/*dst*/&fb_ptr, val32);
     fb_ptr += SCANDSTEP;
     _plot_lores80(/*dst*/&fb_ptr, val32);
@@ -721,55 +712,6 @@ static inline void __plot_block80(const uint8_t val, uint8_t *fb_ptr) {
     _plot_lores80(/*dst*/&fb_ptr, val32);
 }
 
-<<<<<<< HEAD
-static inline void _plot_dblock(const uint8_t val, uint8_t *fb_ptr) {
-    uint8_t color = (val & 0x0F) << 4;
-    uint32_t val32 = (color << 24) | (color << 16) | (color << 8) | color;
-
-    _plot_dlores(/*dst*/&fb_ptr, val32);
-    fb_ptr += SCANDSTEP;
-    _plot_dlores(/*dst*/&fb_ptr, val32);
-    fb_ptr += SCANDSTEP;
-    _plot_dlores(/*dst*/&fb_ptr, val32);
-    fb_ptr += SCANDSTEP;
-    _plot_dlores(/*dst*/&fb_ptr, val32);
-
-    fb_ptr += SCANDSTEP;
-    color = val & 0xF0;
-    val32 = (color << 24) | (color << 16) | (color << 8) | color;
-
-    _plot_dlores(/*dst*/&fb_ptr, val32);
-    fb_ptr += SCANDSTEP;
-    _plot_dlores(/*dst*/&fb_ptr, val32);
-    fb_ptr += SCANDSTEP;
-    _plot_dlores(/*dst*/&fb_ptr, val32);
-    fb_ptr += SCANDSTEP;
-    _plot_dlores(/*dst*/&fb_ptr, val32);
-}
-
-/* plot double-lores block first page */
-static inline void _plot_dblock0(uint16_t ea, uint8_t b, bool odd) {
-    uint8_t *fb = video__fb1+video__screen_addresses[ea-0x0400] + (odd ? 7 : 0);
-    _plot_dblock(b, fb);
-}
-
-static inline void _plot_dblock1(uint16_t ea, uint8_t b, bool odd) {
-    uint8_t *fb = video__fb2+video__screen_addresses[ea-0x0800] + (odd ? 7 : 0);
-    _plot_dblock(b, fb);
-}
-
-static inline void _draw_text(uint16_t ea, uint8_t b, int page, uint32_t sw, uint32_t flags) {
-    if (softswitches & flags) {
-        if (softswitches & SS_80COL) {
-            void (*plot80Fn)(uint16_t, uint8_t) = !page ? _plot_80character0 : _plot_80character1;
-            plot80Fn(ea,b);
-        } else if (softswitches & sw) {
-            /* ??? */
-        } else {
-            void (*plotCharFn)(uint16_t, uint8_t) = !page ? _plot_character0 : _plot_character1;
-            plotCharFn(ea, b);
-        }
-=======
 static inline uint8_t __shift_block80(uint8_t b) {
     // plot even half-block from auxmem, rotate nybbles to match color (according to UTAIIe: 8-29)
     uint8_t b0 = (b & 0x0F);
@@ -785,9 +727,9 @@ static inline uint8_t __shift_block80(uint8_t b) {
 static void _plot_block80(uint16_t off, int page, int bank) {
     uint16_t base = page ? 0x0800 : 0x0400;
     uint16_t ea = base+off;
-
+    
 #warning FIXME TODO INVESTIGATE : ... does RAMRD/80STORE/PAGE2 affect load order here?
-
+    
     // plot even half-block from auxmem, rotate nybbles to match color (according to UTAIIe)
     {
         uint8_t b = apple_ii_64k[1][ea];
@@ -795,7 +737,7 @@ static void _plot_block80(uint16_t off, int page, int bank) {
         uint8_t *fb = video__fb+video__screen_addresses[off];
         __plot_block80(b, fb);
     }
-
+    
     // plot odd half-block from main mem
     {
         uint8_t b = apple_ii_64k[0][ea];
@@ -806,10 +748,9 @@ static void _plot_block80(uint16_t off, int page, int bank) {
 
 static void (*_textpage_plotter(uint32_t currswitches, uint32_t txtflags))(uint16_t, int, int) {
     void (*plotFn)(uint16_t, int, int) = NULL;
-
+    
     if (currswitches & txtflags) {
         plotFn = (currswitches & SS_80COL) ? _plot_character80 : _plot_character40;
->>>>>>> mauiaaron/aaron_experimental_rebase
     } else {
         assert(!(currswitches & SS_HIRES) && "must be lores graphics or programmer error");
         if (!(currswitches & SS_80COL)) {
@@ -820,43 +761,6 @@ static void (*_textpage_plotter(uint32_t currswitches, uint32_t txtflags))(uint1
                 // TODO : abnormal LORES output.  See UTAIIe : 8-28
             }
         } else {
-<<<<<<< HEAD
-            if (!(softswitches & SS_80COL)) {
-                void (*plotBlockFn)(uint16_t, uint8_t) = !page ? _plot_block0 : _plot_block1;
-                if (!(softswitches & SS_DHIRES)) {
-                    // LORES40 ...
-                    plotBlockFn(ea, b);
-                } else {
-                    // TODO : abnormal LORES output.  See UTAIIe : 8-28
-                    plotBlockFn(ea, b);
-                }
-            } else {
-                if (softswitches & SS_DHIRES) {
-                    // LORES80 ...
-                    void (*plotBlockFn)(uint16_t, uint8_t, bool) = !page ? _plot_dblock0 : _plot_dblock1;
-
-                    // plot even half-block from auxmem, rotate nybbles to match color (according to UTAIIe)
-                    b = apple_ii_64k[1][ea];
-                    uint8_t b0 = (b & 0x0F);
-                    uint8_t b1 = (b & 0xF0) >> 4;
-                    uint8_t rot0 = ((b0 & 0x8) >> 3);
-                    uint8_t rot1 = ((b1 & 0x8) >> 3);
-                    b0 = (((b0<<5) | (rot0<<4)) >> 4);
-                    b1 =  ((b1<<5) | (rot1<<4));
-                    b = b0 | b1;
-                    plotBlockFn(ea, b, false);
-
-                    // plot odd half-block from main mem
-                    b = apple_ii_64k[0][ea];
-                    plotBlockFn(ea, b, true);
-
-                    video_setDirty();
-                } else {
-                    /* ??? */
-                    void (*plotBlockFn)(uint16_t, uint8_t) = !page ? _plot_block0 : _plot_block1;
-                    plotBlockFn(ea, b);
-                }
-=======
             if (currswitches & SS_DHIRES) {
                 // LORES80 ...
                 plotFn = _plot_block80;
@@ -865,60 +769,35 @@ static void (*_textpage_plotter(uint32_t currswitches, uint32_t txtflags))(uint1
                 RELEASE_LOG("!!!!!!!!!!!! what mode is this? !!!!!!!!!!!!");
                 plotFn = _plot_block40;
 #warning FIXME TODO ... verify this lores40/lores80 mode ...
->>>>>>> mauiaaron/aaron_experimental_rebase
             }
         }
     }
-
+    
     return plotFn;
 }
 
 GLUE_C_WRITE(video__write_2e_text0)
 {
     base_textwrt[ea] = b;
-<<<<<<< HEAD
-    if (!(softswitches & SS_PAGE2)) {
-        _draw_text(ea, b, 0, SS_TEXTWRT, SS_TEXT);
-    }
-=======
     video_setDirty(A2_DIRTY_FLAG);
->>>>>>> mauiaaron/aaron_experimental_rebase
 }
 
 GLUE_C_WRITE(video__write_2e_text0_mixed)
 {
     base_textwrt[ea] = b;
-<<<<<<< HEAD
-    if (!(softswitches & SS_PAGE2)) {
-        _draw_text(ea, b, 0, SS_TEXTWRT, (SS_TEXT|SS_MIXED));
-    }
-=======
     video_setDirty(A2_DIRTY_FLAG);
->>>>>>> mauiaaron/aaron_experimental_rebase
 }
 
 GLUE_C_WRITE(video__write_2e_text1)
 {
     base_ramwrt[ea] = b;
-<<<<<<< HEAD
-    if (softswitches & SS_PAGE2) {
-        _draw_text(ea, b, 1, SS_RAMWRT, SS_TEXT);
-    }
-=======
     video_setDirty(A2_DIRTY_FLAG);
->>>>>>> mauiaaron/aaron_experimental_rebase
 }
 
 GLUE_C_WRITE(video__write_2e_text1_mixed)
 {
     base_ramwrt[ea] = b;
-<<<<<<< HEAD
-    if (softswitches & SS_PAGE2) {
-        _draw_text(ea, b, 1, SS_RAMWRT, (SS_TEXT|SS_MIXED));
-    }
-=======
     video_setDirty(A2_DIRTY_FLAG);
->>>>>>> mauiaaron/aaron_experimental_rebase
 }
 
 // ----------------------------------------------------------------------------
@@ -949,68 +828,68 @@ static inline void __plot_hires80_pixels(uint8_t idx, uint8_t *fb_ptr) {
 
 static inline void __plot_hires80(uint16_t base, uint16_t ea) {
     ea &= ~0x1;
-
+    
     uint16_t memoff = ea - base;
     uint8_t *fb_ptr = video__fb+video__screen_addresses[memoff];
     uint8_t col = video__columns[memoff];
-
+    
     uint8_t b0 = 0x0;
     uint8_t b1 = 0x0;
     uint32_t b = 0x0;
-
+    
     if (col) {
         b0 = apple_ii_64k[0][ea-1];
         b1 = apple_ii_64k[1][ea];
-
+        
         b0 &= ~0x80;
         b0 = (b1<<4)|(b0>>3);
-
+        
         __plot_hires80_pixels(b0, fb_ptr-4);
     }
-
+    
     b1 = apple_ii_64k[1][ea+2];
     b = (b1<<28);
-
+    
     b0 = apple_ii_64k[0][ea+1];
     b0 &= ~0x80;
     b |= (b0<<21);
-
+    
     b1 = apple_ii_64k[1][ea+1];
     b1 &= ~0x80;
     b |= (b1<<14);
-
+    
     b0 = apple_ii_64k[0][ea];
     b0 &= ~0x80;
     b |= (b0<<7);
-
+    
     b1 = apple_ii_64k[1][ea];
     b1 &= ~0x80;
     b |= b1;
-
+    
     // 00000001 11111122 22222333 3333xxxx
-
+    
     __plot_hires80_pixels(b, fb_ptr);
-
+    
     b >>= 4;
     fb_ptr += 4;
     __plot_hires80_pixels(b, fb_ptr);
-
+    
     b >>= 4;
     fb_ptr += 4;
     __plot_hires80_pixels(b, fb_ptr);
-
+    
     b >>= 4;
     fb_ptr += 4;
     __plot_hires80_pixels(b, fb_ptr);
-
+    
     b >>= 4;
     fb_ptr += 4;
     __plot_hires80_pixels(b, fb_ptr);
-
+    
     b >>= 4;
     fb_ptr += 4;
     __plot_hires80_pixels(b, fb_ptr);
-
+    
     b >>= 4;
     fb_ptr += 4;
     __plot_hires80_pixels(b, fb_ptr);
@@ -1037,7 +916,7 @@ static inline void _calculate_interp_color(uint8_t *color_buf, const unsigned in
     if (pixL == 0x0) {
         return;
     }
-
+    
     // Calculates the color at the edge of interpolated bytes: called 4 times in little endian order (...7 0...7 0...)
     if (pixL == COLOR_LIGHT_WHITE) {
         if (pixR == COLOR_LIGHT_WHITE) {
@@ -1060,7 +939,7 @@ static inline void _plot_hires_pixels(uint8_t *dst, const uint8_t *src) {
             ++src;
             dst+=2;
         }
-
+        
         dst += (SCANWIDTH-18);
         src -= DYNAMIC_SZ-2;
     }
@@ -1070,13 +949,13 @@ static void _plot_hires40(uint16_t off, int page, int bank, bool is_even) {
     uint16_t base = page ? 0x4000 : 0x2000;
     uint16_t ea = base+off;
     uint8_t b = apple_ii_64k[bank][ea];
-
+    
     uint8_t *fb_ptr = video__fb+video__screen_addresses[off];
-
+    
     uint8_t _buf[DYNAMIC_SZ] = { 0 };
     uint8_t *color_buf = (uint8_t *)_buf; // <--- work around for -Wstrict-aliasing
     uint8_t *apple2_vmem = (uint8_t *)apple_ii_64k[bank];
-
+    
     uint8_t *hires_ptr = NULL;
     if (is_even) {
         hires_ptr = (uint8_t *)&video__hires_even[b<<3];
@@ -1087,11 +966,11 @@ static void _plot_hires40(uint16_t off, int page, int bank, bool is_even) {
     *((uint16_t *)&color_buf[6]) = *((uint16_t *)(hires_ptr+4));
     *((uint8_t  *)&color_buf[8]) = *((uint8_t  *)(hires_ptr+6));
     hires_ptr = NULL;
-
+    
     // copy adjacent pixel bytes
     *((uint16_t *)&color_buf[0]) = *((uint16_t *)(fb_ptr-3));
     *((uint16_t *)&color_buf[DYNAMIC_SZ-2]) = *((uint16_t *)(fb_ptr+15));
-
+    
     // %eax = +8
     if (color_mode != COLOR_NONE) {
         uint8_t *hires_altbase = NULL;
@@ -1100,7 +979,7 @@ static void _plot_hires40(uint16_t off, int page, int bank, bool is_even) {
         } else {
             hires_altbase = (uint8_t *)&video__hires_even[0];
         }
-
+        
         // if right-side color is not black, re-calculate edge values
         if (color_buf[DYNAMIC_SZ-2] & 0xff) {
             uint16_t pix16 = *((uint16_t *)(apple2_vmem+ea));
@@ -1112,7 +991,7 @@ static void _plot_hires40(uint16_t off, int page, int bank, bool is_even) {
                 color_buf[DYNAMIC_SZ-2] = hires_altbase[pix16<<3];
             }
         }
-
+        
         // if left-side color is not black, re-calculate edge values
         if (color_buf[1] & 0xff) {
             uint16_t pix16 = *((uint16_t *)(apple2_vmem+ea-1));
@@ -1124,7 +1003,7 @@ static void _plot_hires40(uint16_t off, int page, int bank, bool is_even) {
                 color_buf[1] = hires_altbase[(pix16<<3)+6];
             }
         }
-
+        
         if (color_mode == COLOR_INTERP) {
             uint8_t *interp_base = NULL;
             uint8_t *interp_altbase = NULL;
@@ -1135,7 +1014,7 @@ static void _plot_hires40(uint16_t off, int page, int bank, bool is_even) {
                 interp_base = (uint8_t *)&video__odd_colors[0];
                 interp_altbase = (uint8_t *)&video__even_colors[0];
             }
-
+            
             // calculate interpolated/bleed colors
             // NOTE that this doesn't check under/overflow of ea (for example at 0x2000, 0x4000, 0x3FFF, 0x5FFF)
             // ... but don't think this really matters much here =P
@@ -1145,7 +1024,7 @@ static void _plot_hires40(uint16_t off, int page, int bank, bool is_even) {
             _calculate_interp_color(color_buf, 9, interp_altbase, ea+1);
         }
     }
-
+    
     _plot_hires_pixels(fb_ptr-4, color_buf);
 }
 
@@ -1156,97 +1035,49 @@ static void (*_hirespage_plotter(uint32_t currswitches))(uint16_t, int, int, boo
 GLUE_C_WRITE(video__write_2e_even0)
 {
     base_hgrwrt[ea] = b;
-<<<<<<< HEAD
-    if (!(softswitches & SS_PAGE2)) {
-        _draw_hires_graphics(ea, b, /*even*/true, 0, SS_TEXT);
-    }
-=======
     video_setDirty(A2_DIRTY_FLAG);
->>>>>>> mauiaaron/aaron_experimental_rebase
 }
 
 GLUE_C_WRITE(video__write_2e_even0_mixed)
 {
     base_hgrwrt[ea] = b;
-<<<<<<< HEAD
-    if (!(softswitches & SS_PAGE2)) {
-        _draw_hires_graphics(ea, b, /*even*/true, 0, (SS_TEXT|SS_MIXED));
-    }
-=======
     video_setDirty(A2_DIRTY_FLAG);
->>>>>>> mauiaaron/aaron_experimental_rebase
 }
 
 GLUE_C_WRITE(video__write_2e_odd0)
 {
     base_hgrwrt[ea] = b;
-<<<<<<< HEAD
-    if (!(softswitches & SS_PAGE2)) {
-        _draw_hires_graphics(ea, b, /*even*/false, 0, SS_TEXT);
-    }
-=======
     video_setDirty(A2_DIRTY_FLAG);
->>>>>>> mauiaaron/aaron_experimental_rebase
 }
 
 GLUE_C_WRITE(video__write_2e_odd0_mixed)
 {
     base_hgrwrt[ea] = b;
-<<<<<<< HEAD
-    if (!(softswitches & SS_PAGE2)) {
-        _draw_hires_graphics(ea, b, /*even*/false, 0, (SS_TEXT|SS_MIXED));
-    }
-=======
     video_setDirty(A2_DIRTY_FLAG);
->>>>>>> mauiaaron/aaron_experimental_rebase
 }
 
 GLUE_C_WRITE(video__write_2e_even1)
 {
     base_ramwrt[ea] = b;
-<<<<<<< HEAD
-    if (softswitches & SS_PAGE2) {
-        _draw_hires_graphics(ea, b, /*even*/true, 1, SS_TEXT);
-    }
-=======
     video_setDirty(A2_DIRTY_FLAG);
->>>>>>> mauiaaron/aaron_experimental_rebase
 }
 
 GLUE_C_WRITE(video__write_2e_even1_mixed)
 {
     base_ramwrt[ea] = b;
-<<<<<<< HEAD
-    if (softswitches & SS_PAGE2) {
-        _draw_hires_graphics(ea, b, /*even*/true, 1, (SS_TEXT|SS_MIXED));
-    }
-=======
     video_setDirty(A2_DIRTY_FLAG);
->>>>>>> mauiaaron/aaron_experimental_rebase
 }
 
 GLUE_C_WRITE(video__write_2e_odd1)
 {
     base_ramwrt[ea] = b;
-<<<<<<< HEAD
-    if (softswitches & SS_PAGE2) {
-        _draw_hires_graphics(ea, b, /*even*/false, 1, SS_TEXT);
-    }
-=======
     video_setDirty(A2_DIRTY_FLAG);
->>>>>>> mauiaaron/aaron_experimental_rebase
 }
 
 GLUE_C_WRITE(video__write_2e_odd1_mixed)
 {
     base_ramwrt[ea] = b;
-<<<<<<< HEAD
-    if (softswitches & SS_PAGE2) {
-        _draw_hires_graphics(ea, b, /*even*/false, 1, (SS_TEXT|SS_MIXED));
-    }
-=======
     video_setDirty(A2_DIRTY_FLAG);
->>>>>>> mauiaaron/aaron_experimental_rebase
 }
 
 // ----------------------------------------------------------------------------
@@ -1255,11 +1086,11 @@ void video_init(void) {
     assert(pthread_self() != cpu_thread_id);
     LOG("(re)setting render_thread_id : %ld -> %ld", render_thread_id, pthread_self());
     render_thread_id = pthread_self();
-
+    
     assert(!video__fb);
     video__fb = MALLOC(SCANWIDTH*SCANHEIGHT*sizeof(uint8_t));
     video_clear();
-
+    
 #if !defined(__APPLE__)
     video_backend->init((void*)0);
 #endif
@@ -1282,35 +1113,35 @@ void video_clear(void) {
 bool video_saveState(StateHelper_s *helper) {
     bool saved = false;
     int fd = helper->fd;
-
+    
     do {
         uint8_t state = 0x0;
         if (!helper->save(fd, &state, 1)) {
             break;
         }
         LOG("SAVE (no-op) video__current_page = %02x", state);
-
+        
         saved = true;
     } while (0);
-
+    
     return saved;
 }
 
 bool video_loadState(StateHelper_s *helper) {
     bool loaded = false;
     int fd = helper->fd;
-
+    
     do {
         uint8_t state = 0x0;
-
+        
         if (!helper->load(fd, &state, 1)) {
             break;
         }
         LOG("LOAD (no-op) video__current_page = %02x", state);
-
+        
         loaded = true;
     } while (0);
-
+    
     return loaded;
 }
 
@@ -1350,7 +1181,7 @@ static inline void _currentPageAndBank(uint32_t currswitches, drawpage_mode_t mo
         }
         return;
     }
-
+    
     *page = !!(currswitches & SS_PAGE2);
     *bank = !!(currswitches & SS_RAMRD);
 }
@@ -1360,20 +1191,20 @@ uint8_t *video_currentFramebuffer(void) {
 }
 
 uint8_t *video_scan(void) {
-
+    
 #warning FIXME TODO ... this needs to scan memory in the same way as the actually //e video scanner
-
+    
     pthread_mutex_lock(&video_scan_mutex);
-
+    
     int page = 0;
     int bank = 0;
     const uint32_t mainswitches = softswitches;
-
+    
     // render main portion of screen ...
-
+    
     drawpage_mode_t mainDrawPageMode = _currentMainMode(mainswitches);
     _currentPageAndBank(mainswitches, mainDrawPageMode, &page, &bank);
-
+    
     if (mainDrawPageMode == DRAWPAGE_TEXT) {
         void (*textMainPlotFn)(uint16_t, int, int) = _textpage_plotter(mainswitches, SS_TEXT);
         for (unsigned int y=0; y < TEXT_ROWS-4; y++) {
@@ -1395,13 +1226,13 @@ uint8_t *video_scan(void) {
             }
         }
     }
-
+    
     // resample current switches ... and render mixed portion of screen
     const uint32_t mixedswitches = softswitches;
-
+    
     drawpage_mode_t mixedDrawPageMode = _currentMixedMode(mixedswitches);
     _currentPageAndBank(mixedswitches, mixedDrawPageMode, &page, &bank);
-
+    
     if (mixedDrawPageMode == DRAWPAGE_TEXT) {
         void (*textMixedPlotFn)(uint16_t, int, int) = _textpage_plotter(mixedswitches, (SS_TEXT|SS_MIXED));
         for (unsigned int y=TEXT_ROWS-4; y < TEXT_ROWS; y++) {
@@ -1424,26 +1255,26 @@ uint8_t *video_scan(void) {
             }
         }
     }
-
+    
     video_setDirty(FB_DIRTY_FLAG);
-
+    
     pthread_mutex_unlock(&video_scan_mutex);
-
+    
     return video__fb;
 }
 
 void video_flashText(void) {
     static bool normal = false;
-
+    
     normal = !normal;
-
+    
     // flash only if it's text or mixed modes.
     if (softswitches & (SS_TEXT|SS_MIXED)) {
         if (normal) {
             colormap[ COLOR_FLASHING_BLACK].red   = 0;
             colormap[ COLOR_FLASHING_BLACK].green = 0;
             colormap[ COLOR_FLASHING_BLACK].blue  = 0;
-
+            
             colormap[ COLOR_FLASHING_WHITE].red   = 0xff;
             colormap[ COLOR_FLASHING_WHITE].green = 0xff;
             colormap[ COLOR_FLASHING_WHITE].blue  = 0xff;
@@ -1451,12 +1282,12 @@ void video_flashText(void) {
             colormap[ COLOR_FLASHING_BLACK].red   = 0xff;
             colormap[ COLOR_FLASHING_BLACK].green = 0xff;
             colormap[ COLOR_FLASHING_BLACK].blue  = 0xff;
-
+            
             colormap[ COLOR_FLASHING_WHITE].red   = 0;
             colormap[ COLOR_FLASHING_WHITE].green = 0;
             colormap[ COLOR_FLASHING_WHITE].blue  = 0;
         }
-
+        
         video_setDirty(FB_DIRTY_FLAG);
     }
 }
@@ -1486,20 +1317,20 @@ uint16_t video_scanner_get_address(bool *vblBarOut) {
     const bool SW_PAGE2   = (softswitches & SS_PAGE2);
     const bool SW_80STORE = (softswitches & SS_80STORE);
     const bool SW_MIXED   = (softswitches & SS_MIXED);
-
+    
     // get video scanner position
     unsigned int nCycles = CpuGetCyclesThisVideoFrame();
-
+    
     // machine state switches
     int nHires   = (SW_HIRES && !SW_TEXT) ? 1 : 0;
     int nPage2   = SW_PAGE2 ? 1 : 0;
     int n80Store = SW_80STORE ? 1 : 0;
-
+    
     // calculate video parameters according to display standard
     int nScanLines  = bVideoScannerNTSC ? kNTSCScanLines : kPALScanLines;
     int nVSyncLine  = bVideoScannerNTSC ? kNTSCVSyncLine : kPALVSyncLine;
     int nScanCycles = nScanLines * kHClocks;
-
+    
     // calculate horizontal scanning state
     int nHClock = (nCycles + kHPEClock) % kHClocks; // which horizontal scanning clock
     int nHState = kHClock0State + nHClock; // H state bits
@@ -1513,7 +1344,7 @@ uint16_t video_scanner_get_address(bool *vblBarOut) {
     int h_3 = (nHState >> 3) & 1;
     int h_4 = (nHState >> 4) & 1;
     int h_5 = (nHState >> 5) & 1;
-
+    
     // calculate vertical scanning state
     int nVLine  = nCycles / kHClocks; // which vertical scanning line
     int nVState = kVLine0State + nVLine; // V state bits
@@ -1530,18 +1361,18 @@ uint16_t video_scanner_get_address(bool *vblBarOut) {
     int v_3 = (nVState >> 6) & 1;
     int v_4 = (nVState >> 7) & 1;
     int v_5 = (nVState >> 8) & 1;
-
+    
     // calculate scanning memory address
     if (nHires && SW_MIXED && v_4 && v_2) // HIRES TIME signal (UTAIIe:5-7,P3)
     {
         nHires = 0; // address is in text memory for mixed hires
     }
-
+    
     int nAddend0 = 0x0D; // 1            1            0            1
     int nAddend1 =              (h_5 << 2) | (h_4 << 1) | (h_3 << 0);
     int nAddend2 = (v_4 << 3) | (v_3 << 2) | (v_4 << 1) | (v_3 << 0);
     int nSum     = (nAddend0 + nAddend1 + nAddend2) & 0x0F; // SUM (UTAIIe:5-9)
-
+    
     unsigned int nAddress = 0; // build address from video scanner equations (UTAIIe:5-8,T5.1)
     nAddress |= h_0  << 0; // a0
     nAddress |= h_1  << 1; // a1
@@ -1550,10 +1381,10 @@ uint16_t video_scanner_get_address(bool *vblBarOut) {
     nAddress |= v_0  << 7; // a7
     nAddress |= v_1  << 8; // a8
     nAddress |= v_2  << 9; // a9
-
+    
     int p2a = !(nPage2 && !n80Store);
     int p2b = nPage2 && !n80Store;
-
+    
     if (nHires) // hires?
     {
         // Y: insert hires-only address bits
@@ -1568,7 +1399,7 @@ uint16_t video_scanner_get_address(bool *vblBarOut) {
         // N: insert text-only address bits
         nAddress |= p2a << 10; // a10
         nAddress |= p2b << 11; // a11
-
+        
         // Apple ][ (not //e) and HBL?
         if (false/*IS_APPLE2*/ && // Apple II only (UTAIIe:I-4,#5)
             !h_5 && (!h_4 || !h_3)) // HBL (UTAIIe:8-10,F8.5)
@@ -1576,13 +1407,13 @@ uint16_t video_scanner_get_address(bool *vblBarOut) {
             nAddress |= 1 << 12; // Y: a12 (add $1000 to address!)
         }
     }
-
+    
     // update VBL' state
     if (vblBarOut != NULL)
     {
         *vblBarOut = !v_4 || !v_3; // VBL' = (v_4 & v_3)' (UTAIIe:5-10,#3)
     }
-
+    
     return (uint16_t)nAddress;
 }
 

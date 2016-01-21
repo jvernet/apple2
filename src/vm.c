@@ -135,12 +135,7 @@ GLUE_C_READ(iie_page2_off)
         }
     }
 
-<<<<<<< HEAD
-    video_setpage(0);
-    video_redraw();
-=======
     video_setDirty(A2_DIRTY_FLAG);
->>>>>>> mauiaaron/aaron_experimental_rebase
 
     return floating_bus();
 }
@@ -164,12 +159,7 @@ GLUE_C_READ(iie_page2_on)
         }
     } else {
         softswitches |= SS_SCREEN;
-<<<<<<< HEAD
-        video_setpage(1);
-        video_redraw();
-=======
         video_setDirty(A2_DIRTY_FLAG);
->>>>>>> mauiaaron/aaron_experimental_rebase
     }
 
     return floating_bus();
