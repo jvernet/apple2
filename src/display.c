@@ -1091,7 +1091,7 @@ void video_init(void) {
     video__fb = MALLOC(SCANWIDTH*SCANHEIGHT*sizeof(uint8_t));
     video_clear();
 
-#if !defined(__APPLE__) && !defined(ANDROID)
+#if !defined(__APPLE__)
     video_backend->init((void*)0);
 #endif
 }
