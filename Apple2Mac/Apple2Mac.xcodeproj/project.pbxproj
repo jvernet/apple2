@@ -64,7 +64,6 @@
 		4AD4FEBE1A52464F00F958EC /* Basic.vsh in Resources */ = {isa = PBXBuildFile; fileRef = 779F562719E4FE9E00A6F107 /* Basic.vsh */; };
 		4AD4FEBF1A52464F00F958EC /* Basic.fsh in Resources */ = {isa = PBXBuildFile; fileRef = 779F562819E4FE9E00A6F107 /* Basic.fsh */; };
 		4AD4FECB1A52468700F958EC /* testdisk.c in Sources */ = {isa = PBXBuildFile; fileRef = 4AD4FEC91A52467D00F958EC /* testdisk.c */; };
-		4AD4FED21A524BED00F958EC /* Apple2MacTestDisk-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 4AD4FEC41A52464F00F958EC /* Apple2MacTestDisk-Info.plist */; };
 		4ADC51C219E8BD3700186B36 /* vectorUtil.c in Sources */ = {isa = PBXBuildFile; fileRef = 77E1C0A919D72700004344E0 /* vectorUtil.c */; };
 		4ADC51C319E8BD3A00186B36 /* sourceUtil.c in Sources */ = {isa = PBXBuildFile; fileRef = 77E1C0AB19D72700004344E0 /* sourceUtil.c */; };
 		4ADC51C419E8BD3D00186B36 /* modelUtil.c in Sources */ = {isa = PBXBuildFile; fileRef = 77E1C0AD19D72700004344E0 /* modelUtil.c */; };
@@ -264,7 +263,6 @@
 		935C55201C12B64A0013166D /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 935C551B1C12B6400013166D /* main.m */; };
 		935C55351C12BA5F0013166D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 935C55331C12BA5F0013166D /* Main.storyboard */; };
 		935C55371C12BA5F0013166D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 935C55361C12BA5F0013166D /* Assets.xcassets */; };
-		935C55431C12BCFD0013166D /* Apple2iOS-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 935C55421C12BCFD0013166D /* Apple2iOS-Info.plist */; };
 		935C55461C12BE110013166D /* LaunchScreen.xib in Resources */ = {isa = PBXBuildFile; fileRef = 935C55441C12BE110013166D /* LaunchScreen.xib */; };
 		935C554D1C12BE510013166D /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 935C55481C12BE510013166D /* AppDelegate.m */; };
 		935C554E1C12BE510013166D /* EAGLView.m in Sources */ = {isa = PBXBuildFile; fileRef = 935C554A1C12BE510013166D /* EAGLView.m */; };
@@ -1193,7 +1191,7 @@
 		773B3D04195688590085CE5F /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0510;
+				LastUpgradeCheck = 0720;
 				ORGANIZATIONNAME = deadc0de.org;
 				TargetAttributes = {
 					4ECFC3A91C368EAB008E2633 = {
@@ -1282,7 +1280,6 @@
 				4AD4FEB51A52464F00F958EC /* blank.dsk.gz in Resources */,
 				4AD4FEB61A52464F00F958EC /* blank.nib.gz in Resources */,
 				4AD4FEB71A52464F00F958EC /* testvm1.dsk.gz in Resources */,
-				4AD4FED21A524BED00F958EC /* Apple2MacTestDisk-Info.plist in Resources */,
 				4AD4FEB81A52464F00F958EC /* README in Resources */,
 				4AFC17161AAE9CC000B215FA /* testvm1.nib.gz in Resources */,
 				4AD4FEB91A52464F00F958EC /* MainMenu-Test.xib in Resources */,
@@ -1384,7 +1381,6 @@
 				939C95A21C3B8E2100263E41 /* SolidColor.vsh in Resources */,
 				935C55371C12BA5F0013166D /* Assets.xcassets in Resources */,
 				939C959F1C3B8E2100263E41 /* SolidColor.fsh in Resources */,
-				935C55431C12BCFD0013166D /* Apple2iOS-Info.plist in Resources */,
 				935C55461C12BE110013166D /* LaunchScreen.xib in Resources */,
 				935C55351C12BA5F0013166D /* Main.storyboard in Resources */,
 				4ECFC3A01C368620008E2633 /* NSCT.dsk in Resources */,
@@ -1963,6 +1959,7 @@
 					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
 				);
 				INFOPLIST_FILE = "$(SRCROOT)/Apple2MacTests/Apple2MacTestDisk-Info.plist";
+				PRODUCT_BUNDLE_IDENTIFIER = "org.deadc0de.${PRODUCT_NAME:rfc1034identifier}";
 				PRODUCT_NAME = Apple2MacTestDisk;
 				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/../src";
 				WRAPPER_EXTENSION = app;
@@ -1992,6 +1989,7 @@
 					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
 				);
 				INFOPLIST_FILE = "$(SRCROOT)/Apple2MacTests/Apple2MacTestDisk-Info.plist";
+				PRODUCT_BUNDLE_IDENTIFIER = "org.deadc0de.${PRODUCT_NAME:rfc1034identifier}";
 				PRODUCT_NAME = Apple2MacTestDisk;
 				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/../src";
 				WRAPPER_EXTENSION = app;
@@ -2022,6 +2020,7 @@
 					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
 				);
 				INFOPLIST_FILE = "$(SRCROOT)/Apple2MacTests/Apple2MacTestVM-Info.plist";
+				PRODUCT_BUNDLE_IDENTIFIER = "org.deadc0de.${PRODUCT_NAME:rfc1034identifier}";
 				PRODUCT_NAME = Apple2MacTestVM;
 				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/../src";
 				WRAPPER_EXTENSION = app;
@@ -2051,6 +2050,7 @@
 					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
 				);
 				INFOPLIST_FILE = "$(SRCROOT)/Apple2MacTests/Apple2MacTestVM-Info.plist";
+				PRODUCT_BUNDLE_IDENTIFIER = "org.deadc0de.${PRODUCT_NAME:rfc1034identifier}";
 				PRODUCT_NAME = Apple2MacTestVM;
 				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/../src";
 				WRAPPER_EXTENSION = app;
@@ -2115,6 +2115,7 @@
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
@@ -2172,7 +2173,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = YES;
-				ARCHS = "$(ARCHS_STANDARD)";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_OBJC_ARC = NO;
 				COMBINE_HIDPI_IMAGES = YES;
@@ -2203,7 +2203,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = YES;
-				ARCHS = "$(ARCHS_STANDARD)";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_OBJC_ARC = NO;
 				COMBINE_HIDPI_IMAGES = YES;
@@ -2252,6 +2251,7 @@
 					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
 				);
 				INFOPLIST_FILE = "Apple2MacTests/Apple2MacTestCPU-Info.plist";
+				PRODUCT_BUNDLE_IDENTIFIER = "org.deadc0de.${PRODUCT_NAME:rfc1034identifier}";
 				PRODUCT_NAME = Apple2MacTestCPU;
 				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/../src";
 				WRAPPER_EXTENSION = app;
@@ -2280,6 +2280,7 @@
 					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
 				);
 				INFOPLIST_FILE = "Apple2MacTests/Apple2MacTestCPU-Info.plist";
+				PRODUCT_BUNDLE_IDENTIFIER = "org.deadc0de.${PRODUCT_NAME:rfc1034identifier}";
 				PRODUCT_NAME = Apple2MacTestCPU;
 				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/../src";
 				WRAPPER_EXTENSION = app;
@@ -2310,6 +2311,7 @@
 					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
 				);
 				INFOPLIST_FILE = "$(SRCROOT)/Apple2MacTests/Apple2MacTestDisplay-Info.plist";
+				PRODUCT_BUNDLE_IDENTIFIER = "org.deadc0de.${PRODUCT_NAME:rfc1034identifier}";
 				PRODUCT_NAME = Apple2MacTestDisplay;
 				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/../src";
 				WRAPPER_EXTENSION = app;
@@ -2339,6 +2341,7 @@
 					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
 				);
 				INFOPLIST_FILE = "$(SRCROOT)/Apple2MacTests/Apple2MacTestDisplay-Info.plist";
+				PRODUCT_BUNDLE_IDENTIFIER = "org.deadc0de.${PRODUCT_NAME:rfc1034identifier}";
 				PRODUCT_NAME = Apple2MacTestDisplay;
 				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/../src";
 				WRAPPER_EXTENSION = app;
@@ -2349,7 +2352,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = YES;
-				ARCHS = armv7;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_OBJC_ARC = NO;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
@@ -2387,7 +2389,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = YES;
-				ARCHS = armv7;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_OBJC_ARC = NO;
 				CLANG_WARN_UNREACHABLE_CODE = YES;

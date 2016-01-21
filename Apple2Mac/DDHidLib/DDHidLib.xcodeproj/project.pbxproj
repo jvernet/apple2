@@ -85,8 +85,8 @@
 		55D5927D0BAE306E00364849 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 55D5927B0BAE306E00364849 /* InfoPlist.strings */; };
 		55D592940BAE30B600364849 /* MainMenu.nib in Resources */ = {isa = PBXBuildFile; fileRef = 55D592920BAE30B600364849 /* MainMenu.nib */; };
 		55D593290BAE3ABD00364849 /* DDHidLib.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 55193E500B93F2EE004C0C98 /* DDHidLib.framework */; };
-		55D593390BAE3ADF00364849 /* DDHidLib.framework in Copy Files to Frameworks */ = {isa = PBXBuildFile; fileRef = 55193E500B93F2EE004C0C98 /* DDHidLib.framework */; };
-		55D593660BAE3B5D00364849 /* DDHidLib.framework in Copy Files to Frameworks */ = {isa = PBXBuildFile; fileRef = 55193E500B93F2EE004C0C98 /* DDHidLib.framework */; };
+		55D593390BAE3ADF00364849 /* DDHidLib.framework in Copy Files to Frameworks */ = {isa = PBXBuildFile; fileRef = 55193E500B93F2EE004C0C98 /* DDHidLib.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		55D593660BAE3B5D00364849 /* DDHidLib.framework in Copy Files to Frameworks */ = {isa = PBXBuildFile; fileRef = 55193E500B93F2EE004C0C98 /* DDHidLib.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		55D593750BAE3B7500364849 /* DDHidLib.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 55193E500B93F2EE004C0C98 /* DDHidLib.framework */; };
 		55D5937B0BAE3B8800364849 /* DDHidKeyboard.h in Headers */ = {isa = PBXBuildFile; fileRef = 55CA60E30BA0F2530012CF7B /* DDHidKeyboard.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		55D5937C0BAE3B8800364849 /* DDHidKeyboard.m in Sources */ = {isa = PBXBuildFile; fileRef = 55CA60E40BA0F2530012CF7B /* DDHidKeyboard.m */; };
@@ -624,7 +624,7 @@
 		29B97313FDCFA39411CA2CEA /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0460;
+				LastUpgradeCheck = 0720;
 			};
 			buildConfigurationList = C01FCF4E08A954540054247B /* Build configuration list for PBXProject "DDHidLib" */;
 			compatibilityVersion = "Xcode 3.2";
@@ -873,6 +873,7 @@
 					"-framework",
 					AppKit,
 				);
+				PRODUCT_BUNDLE_IDENTIFIER = org.dribin.dave.DDHidLib;
 				PRODUCT_NAME = DDHidLib;
 				ZERO_LINK = NO;
 			};
@@ -898,6 +899,7 @@
 					"-framework",
 					AppKit,
 				);
+				PRODUCT_BUNDLE_IDENTIFIER = org.dribin.dave.DDHidLib;
 				PRODUCT_NAME = DDHidLib;
 				ZERO_LINK = NO;
 			};
@@ -923,6 +925,7 @@
 					"-framework",
 					AppKit,
 				);
+				PRODUCT_BUNDLE_IDENTIFIER = org.dribin.dave.ddhidlib.HIDDeviceTest;
 				PRODUCT_NAME = HIDDeviceTest;
 				WRAPPER_EXTENSION = app;
 			};
@@ -946,6 +949,7 @@
 					"-framework",
 					AppKit,
 				);
+				PRODUCT_BUNDLE_IDENTIFIER = org.dribin.dave.ddhidlib.HIDDeviceTest;
 				PRODUCT_NAME = HIDDeviceTest;
 				WRAPPER_EXTENSION = app;
 			};
@@ -1007,6 +1011,7 @@
 				INFOPLIST_FILE = browser/Info.plist;
 				INSTALL_PATH = "$(HOME)/Applications";
 				OTHER_LDFLAGS = "-ObjC";
+				PRODUCT_BUNDLE_IDENTIFIER = org.dribin.dave.ddhidlib.HIDBrowser;
 				PRODUCT_NAME = HIDBrowser;
 				WRAPPER_EXTENSION = app;
 				ZERO_LINK = NO;
@@ -1023,6 +1028,7 @@
 				INFOPLIST_FILE = browser/Info.plist;
 				INSTALL_PATH = "$(HOME)/Applications";
 				OTHER_LDFLAGS = "-ObjC";
+				PRODUCT_BUNDLE_IDENTIFIER = org.dribin.dave.ddhidlib.HIDBrowser;
 				PRODUCT_NAME = HIDBrowser;
 				WRAPPER_EXTENSION = app;
 				ZERO_LINK = NO;
@@ -1033,12 +1039,13 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 55D592200BAE2E4500364849 /* versions.xcconfig */;
 			buildSettings = {
-				ARCHS = "$(NATIVE_ARCH_ACTUAL)";
 				CLANG_ENABLE_OBJC_ARC = NO;
+				ENABLE_TESTABILITY = YES;
 				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 10.7;
+				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
 			};
 			name = Debug;
@@ -1047,7 +1054,6 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 55D592200BAE2E4500364849 /* versions.xcconfig */;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
 				CLANG_ENABLE_OBJC_ARC = NO;
 				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
