@@ -19,8 +19,6 @@
 bool safe_to_do_opengl_logging = false;
 bool renderer_shutting_down = false;
 
-volatile unsigned long _backend_vid_dirty = 0;
-
 static int viewportX = 0;
 static int viewportY = 0;
 static int viewportWidth = SCANWIDTH*1.5;
@@ -330,7 +328,7 @@ static void gldriver_update(int unused) {
 static void gldriver_render(void) {
     SCOPE_TRACE_VIDEO("glvideo render");
 
-    const uint8_t * const fb = video_current_framebuffer();
+    uint8_t *fb = video_currentFramebuffer();
     if (UNLIKELY(!fb)) {
         return;
     }
@@ -369,8 +367,17 @@ static void gldriver_render(void) {
     glUniformMatrix4fv(uniformMVPIdx, 1, GL_FALSE, mvpIdentity);
 #endif
 
-    unsigned long wasDirty = video_clearDirty();
+    if (!cpu_isPaused()) {
+        // check if a2 video memory is dirty
+        unsigned long wasDirty = video_clearDirty(A2_DIRTY_FLAG);
+        wasDirty = 1;
+#warning HACK FIXME TODO ... always setting A2 video memory dirty bit for now ...
+        if (wasDirty) {
+            fb = video_scan();
+        }
+    }
 
+    unsigned long wasDirty = video_clearDirty(FB_DIRTY_FLAG);
     char *pixels = (char *)crtModel->texPixels;
     if (wasDirty) {
         SCOPE_TRACE_VIDEO("pixel convert");

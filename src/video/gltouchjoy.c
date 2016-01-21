@@ -959,7 +959,6 @@ static void gltouchjoy_beginCalibration(void) {
 }
 
 static void gltouchjoy_endCalibration(void) {
-    video_redraw();
     joyglobals.isCalibrating = false;
 }
 
