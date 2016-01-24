@@ -124,11 +124,6 @@
 		4E1733E31C2C5F7600CDF9DF /* iosPrefControllerViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 4E4E62A01C2C5B56002E324F /* iosPrefControllerViewController.m */; };
 		4E1733E41C2C5F7A00CDF9DF /* AppleViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 4E1733DD1C2C5E5D00CDF9DF /* AppleViewController.m */; };
 		4EB4F8571C393F0E0072A15C /* OpenAL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4EB4F8561C393F0E0072A15C /* OpenAL.framework */; };
-		4ECBEADF1C3432010046F537 /* speedtest.dsk in Resources */ = {isa = PBXBuildFile; fileRef = 4ECBEADD1C3432010046F537 /* speedtest.dsk */; };
-		4ECBEAE01C3432010046F537 /* testvm1.dsk in Resources */ = {isa = PBXBuildFile; fileRef = 4ECBEADE1C3432010046F537 /* testvm1.dsk */; };
-		4ECFC39E1C368620008E2633 /* flapple140.po in Resources */ = {isa = PBXBuildFile; fileRef = 4ECFC39B1C368620008E2633 /* flapple140.po */; };
-		4ECFC39F1C368620008E2633 /* mystery.dsk in Resources */ = {isa = PBXBuildFile; fileRef = 4ECFC39C1C368620008E2633 /* mystery.dsk */; };
-		4ECFC3A01C368620008E2633 /* NSCT.dsk in Resources */ = {isa = PBXBuildFile; fileRef = 4ECFC39D1C368620008E2633 /* NSCT.dsk */; };
 		4ECFC3A11C368643008E2633 /* NSCT.dsk in CopyFiles */ = {isa = PBXBuildFile; fileRef = 4ECFC39D1C368620008E2633 /* NSCT.dsk */; };
 		4ECFC3A21C368645008E2633 /* flapple140.po in CopyFiles */ = {isa = PBXBuildFile; fileRef = 4ECFC39B1C368620008E2633 /* flapple140.po */; };
 		4ECFC3A31C368647008E2633 /* mystery.dsk in CopyFiles */ = {isa = PBXBuildFile; fileRef = 4ECFC39C1C368620008E2633 /* mystery.dsk */; };
@@ -1383,15 +1378,10 @@
 				939C959F1C3B8E2100263E41 /* SolidColor.fsh in Resources */,
 				935C55461C12BE110013166D /* LaunchScreen.xib in Resources */,
 				935C55351C12BA5F0013166D /* Main.storyboard in Resources */,
-				4ECFC3A01C368620008E2633 /* NSCT.dsk in Resources */,
 				935C55921C1371AD0013166D /* Basic.vsh in Resources */,
-				4ECBEAE01C3432010046F537 /* testvm1.dsk in Resources */,
 				935C55911C1371AD0013166D /* Basic.fsh in Resources */,
-				4ECFC39E1C368620008E2633 /* flapple140.po in Resources */,
-				4ECBEADF1C3432010046F537 /* speedtest.dsk in Resources */,
 				4EF7D04E1C38204C007E0ADD /* floppy.png in Resources */,
 				93206C781C14E14000668153 /* Apple2iOS.strings in Resources */,
-				4ECFC39F1C368620008E2633 /* mystery.dsk in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -2374,6 +2364,7 @@
 				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				MTL_ENABLE_DEBUG_INFO = YES;
+				ONLY_ACTIVE_ARCH = NO;
 				OTHER_LDFLAGS = "-lz";
 				PRODUCT_BUNDLE_IDENTIFIER = com.jvernet.Apple2iOS;
 				PRODUCT_NAME = "$(TARGET_NAME)";

@@ -294,10 +294,14 @@ TEST test_80col_lores() {
 
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
 <<<<<<< HEAD
+<<<<<<< HEAD
     ASSERT_SHA("93E46FFBCE7D3890419961A64BC22949C8C44121");
 =======
     ASSERT_SHA("02257E25170D8E28F607C033B9D623F55641C7BA");
 >>>>>>> mauiaaron/aaron_experimental_rebase
+=======
+    ASSERT_SHA("02257E25170D8E28F607C033B9D623F55641C7BA");
+>>>>>>> mauiaaron/develop
 
     PASS();
 }
