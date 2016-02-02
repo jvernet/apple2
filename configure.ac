@@ -123,13 +123,12 @@ AC_TRY_LINK([asm("_glibc_foobar:");], [glibc_foobar()], [
 
 dnl ---------------------------------------------------------------------------
 
+# Sometimes Flex is installed as Lex, e.g., NetBSD.
+AC_CHECK_PROG([FLEX], [flex lex], [flex])
+# Force the use of `missing' to wrap Flex invocations.
+AM_MISSING_PROG([LEX], [$FLEX])
+# Perform all the tests Automake and Autoconf need.
 AM_PROG_LEX
-
-dnl AS_IF([test "x$LEX" = "xno"], [
-dnl     AC_MSG_ERROR([Emulator needs lex/flex to build source...])
-dnl ], [
-dnl     AC_MSG_RESULT([Found lex $LEX])
-dnl ])
 
 dnl POSIX high-precision clock
 AC_SEARCH_LIBS(clock_gettime, rt, [], [
@@ -195,7 +194,7 @@ AS_IF([test "x$opengl_supported" = "xyes"], [
 ], [
     dnl OpenGL not supported
     AS_IF([test "x$opengl_selected" = "xyes"], [
-        AC_MSG_WARN([Did not find OpenGL libraries, will attempt to build legacy X11 variant ...])
+        AC_MSG_WARN([!!! DID NOT FIND OPENGL LIBRARIES !!! will attempt to build legacy X11 variant (this is OKAY but LIMITED) ...])
     ], [])
 
     AC_CHECK_HEADER(X11/XKBlib.h, [
@@ -219,12 +218,16 @@ AC_SUBST(VIDEO_O)
 dnl ---------------------------------------------------------------------------
 dnl Sound ...
 
-AC_ARG_ENABLE([audio], AS_HELP_STRING([--disable-audio], [Disable emulator audio output]), [], [
+openal_selected='yes'
+AC_ARG_ENABLE([audio], AS_HELP_STRING([--disable-audio], [Disable emulator audio output]), [
+    openal_selected='no'
+], [
     AC_CHECK_HEADER(AL/al.h, [
         AC_CHECK_HEADER(AL/alc.h, [
             AC_CHECK_HEADER(AL/alext.h, [
                 AC_SEARCH_LIBS(alcOpenDevice, openal, [
                     dnl found OpenAL ...
+                    openal_supported='yes'
                     AC_DEFINE(AUDIO_ENABLED, 1, [Enable sound module])
                     AUDIO_GLUE_C="src/audio/speaker.c src/audio/mockingboard.c src/audio/playqueue.c"
                     AUDIO_O="src/audio/soundcore.o src/audio/soundcore-openal.o src/audio/speaker.o src/audio/playqueue.o src/audio/alhelpers.o src/audio/mockingboard.o src/audio/AY8910.o"
@@ -247,9 +250,13 @@ AC_ARG_ENABLE([audio], AS_HELP_STRING([--disable-audio], [Disable emulator audio
 AC_SUBST(AUDIO_GLUE_C)
 AC_SUBST(AUDIO_O)
 
-dnl AS_IF([test "x$audio_disabled" = "xno"], [
-dnl     ...
-dnl ])
+AS_IF([test "x$openal_supported" = "xyes"], [
+], [
+    dnl OpenAL not supported
+    AS_IF([test "x$openal_selected" = "xyes"], [
+        AC_MSG_WARN([!!! DID NOT FIND OPENAL LIBRARIES !!! audio will be disabled (this is OKAY but LIMITED) ...])
+    ], [])
+])
 
 
 dnl ---------------------------------------------------------------------------

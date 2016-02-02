@@ -16,7 +16,6 @@
 #endif
 
 #define MODEL_DEPTH -1/32.f
-#define TRACKING_NONE (-1)
 
 #define AXIS_TEMPLATE_COLS 3
 #define AXIS_TEMPLATE_ROWS 3
@@ -72,26 +71,26 @@ static struct {
     // TODO FIXME : support 2-players!
 } touchport = { 0 };
 
-#define RB_CLASS(CLS, ...) \
+#define AZIMUTH_CLASS(CLS, ...) \
     MODEL_CLASS(CLS, \
         GLuint vertShader; \
         GLuint fragShader; \
         GLuint program; \
         GLint uniformMVPIdx;);
 
-RB_CLASS(GLModelRBJoystick);
+AZIMUTH_CLASS(GLModelJoystickAzimuth);
 
 // ----------------------------------------------------------------------------
 // joystick azimuth model
 
-static void _rb_destroy_model(GLModel *parent) {
+static void _azimuth_destroy_model(GLModel *parent) {
 
-    GLModelRBJoystick *azimuthJoystick = (GLModelRBJoystick *)parent->custom;
+    GLModelJoystickAzimuth *azimuthJoystick = (GLModelJoystickAzimuth *)parent->custom;
     if (!azimuthJoystick) {
         return;
     }
 
-    // detach and delete the RB shaders
+    // detach and delete the Azimuth shaders
     // 2015/11/06 NOTE : Tegra 2 for mobile has a bug whereby you cannot detach/delete shaders immediately after
     // creating the program.  So we delete them during the shutdown sequence instead.
     // https://code.google.com/p/android/issues/detail?id=61832
@@ -112,16 +111,14 @@ static void _rb_destroy_model(GLModel *parent) {
     FREE(parent->custom);
 }
 
-static void *_rb_create_model(GLModel *parent) {
+static void *_azimuth_create_model(GLModel *parent) {
 
-    parent->custom = CALLOC(sizeof(GLModelRBJoystick), 1);
-    GLModelRBJoystick *azimuthJoystick = (GLModelRBJoystick *)parent->custom;
+    parent->custom = CALLOC(sizeof(GLModelJoystickAzimuth), 1);
+    GLModelJoystickAzimuth *azimuthJoystick = (GLModelJoystickAzimuth *)parent->custom;
 
     if (!azimuthJoystick) {
         return NULL;
     }
-
-    axes.azimuthModelDirty = false;
 
     // degenerate the quad model into just a single line model ... (should not need to adjust allocated memory size
     // since we should be using less than what was originally allocated)
@@ -161,14 +158,14 @@ static void *_rb_create_model(GLModel *parent) {
 
         azimuthJoystick->uniformMVPIdx = glGetUniformLocation(azimuthJoystick->program, "modelViewProjectionMatrix");
         if (azimuthJoystick->uniformMVPIdx < 0) {
-            LOG("OOPS, no modelViewProjectionMatrix in RB shader : %d", azimuthJoystick->uniformMVPIdx);
+            LOG("OOPS, no modelViewProjectionMatrix in Azimuth shader : %d", azimuthJoystick->uniformMVPIdx);
             break;
         }
 
         err = false;
     } while (0);
 
-    GL_ERRLOG("build RB joystick");
+    GL_ERRLOG("build Aziumth joystick");
 
     if (vtxSource) {
         glshader_destroySource(vtxSource);
@@ -178,19 +175,19 @@ static void *_rb_create_model(GLModel *parent) {
     }
 
     if (err) {
-        _rb_destroy_model(parent);
+        _azimuth_destroy_model(parent);
         azimuthJoystick = NULL;
     }
 
     return azimuthJoystick;
 }
 
-static void _rb_render(void) {
+static void _azimuth_render(void) {
     if (!axes.azimuthModel) {
         return;
     }
 
-    GLModelRBJoystick *azimuthJoystick = (GLModelRBJoystick *)axes.azimuthModel->custom;
+    GLModelJoystickAzimuth *azimuthJoystick = (GLModelJoystickAzimuth *)axes.azimuthModel->custom;
 
     // use azimuth (SolidColor) program
     glUseProgram(azimuthJoystick->program);
@@ -228,7 +225,7 @@ static void _rb_render(void) {
     // back to main framebuffer/quad program
     glUseProgram(mainShaderProgram);
 
-    GL_ERRLOG("RB render");
+    GL_ERRLOG("Azimuth render");
 }
 
 // ----------------------------------------------------------------------------
@@ -397,8 +394,8 @@ static void gltouchjoy_setup(void) {
                 .tex_h = 0,
                 .texcoordUsageHint = UNINITIALIZED_GL, // no texture data
             }, (GLCustom){
-                .create = &_rb_create_model,
-                .destroy = &_rb_destroy_model,
+                .create = &_azimuth_create_model,
+                .destroy = &_azimuth_destroy_model,
             });
         if (!axes.azimuthModel) {
             LOG("gltouchjoy azimuth model initialization problem");
@@ -487,10 +484,12 @@ static void gltouchjoy_render(void) {
     glViewport(0, 0, touchport.width, touchport.height); // NOTE : show these HUD elements beyond the A2 framebuffer dimensions
 
     // draw axis
-
-    float alpha = glhud_getTimedVisibility(axes.timingBegin, joyglobals.minAlpha, 1.0);
-    if (alpha < joyglobals.minAlpha) {
-        alpha = joyglobals.minAlpha;
+    float alpha = 1.f;
+    if (axes.trackingIndex == TRACKING_NONE) {
+        alpha = glhud_getTimedVisibility(axes.timingBegin, joyglobals.minAlpha, 1.0);
+        if (alpha < joyglobals.minAlpha) {
+            alpha = joyglobals.minAlpha;
+        }
     }
     if (alpha > 0.0) {
         glUniform1f(alphaValue, alpha);
@@ -511,15 +510,18 @@ static void gltouchjoy_render(void) {
         glhud_renderDefault(axes.model);
     }
 
-    if (joyglobals.showAzimuth && axes.azimuthModelDirty) {
-        _rb_render();
+    if (joyglobals.showAzimuth && axes.trackingIndex != TRACKING_NONE) {
+        _azimuth_render();
     }
 
     // draw button(s)
 
-    alpha = glhud_getTimedVisibility(buttons.timingBegin, joyglobals.minAlpha, 1.0);
-    if (alpha < joyglobals.minAlpha) {
-        alpha = joyglobals.minAlpha;
+    alpha = 1.f;
+    if (buttons.trackingIndex == TRACKING_NONE) {
+        alpha = glhud_getTimedVisibility(buttons.timingBegin, joyglobals.minAlpha, 1.0);
+        if (alpha < joyglobals.minAlpha) {
+            alpha = joyglobals.minAlpha;
+        }
     }
     if (alpha > 0.0) {
         glUniform1f(alphaValue, alpha);
@@ -611,11 +613,11 @@ static inline void _reset_model_position(GLModel *model, float touchX, float tou
     quad[12+1] = centerY+objHalfH;
 
     if (azimuthModel) {
-        GLfloat *quadRB = (GLfloat *)(azimuthModel->positions);
-        quadRB[0 +0] = centerX;
-        quadRB[0 +1] = centerY;
-        quadRB[4 +0] = centerX;
-        quadRB[4 +1] = centerY;
+        GLfloat *quadAzimuth = (GLfloat *)(azimuthModel->positions);
+        quadAzimuth[0 +0] = centerX;
+        quadAzimuth[0 +1] = centerY;
+        quadAzimuth[4 +0] = centerX;
+        quadAzimuth[4 +1] = centerY;
     }
 }
 
@@ -647,10 +649,9 @@ static inline void _axis_move(int x, int y) {
         float centerX = 0.f;
         float centerY = 0.f;
         glhud_screenToModel(x, y, touchport.width, touchport.height, &centerX, &centerY);
-        GLfloat *quadRB = (GLfloat *)axes.azimuthModel->positions;
-        quadRB[4 +0] = centerX;
-        quadRB[4 +1] = centerY;
-        axes.azimuthModelDirty = true;
+        GLfloat *quadAzimuth = (GLfloat *)axes.azimuthModel->positions;
+        quadAzimuth[4 +0] = centerX;
+        quadAzimuth[4 +1] = centerY;
     };
 
     x -= axes.centerX;
@@ -683,7 +684,6 @@ static inline void _axis_touch_up(interface_touch_event_t action, int x, int y) 
     }
     variant.curr->axisUp(x, y);
     axes.trackingIndex = TRACKING_NONE;
-    axes.azimuthModelDirty = false;
 }
 
 static inline void _button_touch_up(interface_touch_event_t action, int x, int y) {
@@ -773,21 +773,27 @@ static int64_t gltouchjoy_onTouchEvent(interface_touch_event_t action, int point
 
         case TOUCH_UP:
         case TOUCH_POINTER_UP:
-            TOUCH_JOY_LOG("------UP:");
-            if (pointer_idx == axes.trackingIndex) {
-                int x = (int)x_coords[axes.trackingIndex];
-                int y = (int)y_coords[axes.trackingIndex];
-                _axis_touch_up(action, x, y);
-            } else if (pointer_idx == buttons.trackingIndex) {
-                int x = (int)x_coords[buttons.trackingIndex];
-                int y = (int)y_coords[buttons.trackingIndex];
-                _button_touch_up(action, x, y);
-            } else {
-                if (pointer_count == 1) {
-                    TOUCH_JOY_LOG("!!! : RESETTING TOUCH JOYSTICK STATE MACHINE");
-                    resetState();
+            {
+                TOUCH_JOY_LOG("------UP:");
+                struct timespec now;
+                clock_gettime(CLOCK_MONOTONIC, &now);
+                if (pointer_idx == axes.trackingIndex) {
+                    axes.timingBegin = now;
+                    int x = (int)x_coords[axes.trackingIndex];
+                    int y = (int)y_coords[axes.trackingIndex];
+                    _axis_touch_up(action, x, y);
+                } else if (pointer_idx == buttons.trackingIndex) {
+                    buttons.timingBegin = now;
+                    int x = (int)x_coords[buttons.trackingIndex];
+                    int y = (int)y_coords[buttons.trackingIndex];
+                    _button_touch_up(action, x, y);
                 } else {
-                    TOUCH_JOY_LOG("!!! : IGNORING OTHER TOUCH UP %d", pointer_idx);
+                    if (pointer_count == 1) {
+                        TOUCH_JOY_LOG("!!! : RESETTING TOUCH JOYSTICK STATE MACHINE");
+                        resetState();
+                    } else {
+                        TOUCH_JOY_LOG("!!! : IGNORING OTHER TOUCH UP %d", pointer_idx);
+                    }
                 }
             }
             break;
@@ -800,15 +806,6 @@ static int64_t gltouchjoy_onTouchEvent(interface_touch_event_t action, int point
         default:
             LOG("!!! UNKNOWN TOUCH EVENT : %d", action);
             break;
-    }
-
-    struct timespec now;
-    clock_gettime(CLOCK_MONOTONIC, &now);
-    if (axisConsumed) {
-        axes.timingBegin = now;
-    }
-    if (buttonConsumed) {
-        buttons.timingBegin = now;
     }
 
     return TOUCH_FLAGS_HANDLED | TOUCH_FLAGS_JOY;
