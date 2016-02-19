@@ -13,12 +13,6 @@
 
 #include <regex.h>
 
-<<<<<<< HEAD
-bool safe_to_do_opengl_logging = false;
-bool renderer_shutting_down = false;
-
-=======
->>>>>>> mauiaaron/develop
 static int viewportX = 0;
 static int viewportY = 0;
 static int viewportWidth = SCANWIDTH*1.5;
@@ -315,11 +309,6 @@ static void glvideo_render(void) {
     if (!cpu_isPaused()) {
         // check if a2 video memory is dirty
         unsigned long wasDirty = video_clearDirty(A2_DIRTY_FLAG);
-<<<<<<< HEAD
-        wasDirty = 1;
-#warning HACK FIXME TODO ... always setting A2 video memory dirty bit for now ...
-=======
->>>>>>> mauiaaron/develop
         if (wasDirty) {
             fb = video_scan();
         }

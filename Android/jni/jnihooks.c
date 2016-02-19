@@ -196,11 +196,6 @@ void Java_org_deadc0de_apple2ix_Apple2View_nativeGraphicsChanged(JNIEnv *env, jc
 
 void Java_org_deadc0de_apple2ix_Apple2View_nativeGraphicsInitialized(JNIEnv *env, jclass cls, jint width, jint height, jboolean landscape) {
     // WARNING : this needs to happen on the GL thread only
-<<<<<<< HEAD
-    LOG("width:%d height:%d", width, height);
-    video_shutdown();
-    video_backend->reshape(width, height);
-=======
     LOG("width:%d height:%d landscape:%d", width, height, landscape);
     _video_setRenderThread(pthread_self()); // Assume Android knows what it's doing ;-P
 
@@ -210,7 +205,6 @@ void Java_org_deadc0de_apple2ix_Apple2View_nativeGraphicsInitialized(JNIEnv *env
 
     video_shutdown(false);
     video_reshape(width, height, landscape);
->>>>>>> mauiaaron/develop
     video_init();
 }
 

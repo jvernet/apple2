@@ -84,13 +84,7 @@
         // start emulator from paused state
         cpu_pause();
         emulator_start();
-<<<<<<< HEAD
-        video_backend->init(0);
-        keydriver_setGlyphScale(1);
-        interface_setGlyphScale(1);
-=======
         video_init();
->>>>>>> mauiaaron/develop
         
         _animating = NO;
         _renderFrameInterval = 1;
@@ -128,7 +122,6 @@
     [_context release];
     _context = nil;
     
-    [_MainToolBar release];
     [super dealloc];
 }
 
@@ -247,9 +240,7 @@ static inline void _handleTouch(EAGLView *self, SEL _cmd, UITouch *touch, interf
         if ((flags & TOUCH_FLAGS_REQUEST_HOST_MENU) != 0)
         {
             // requested host menu
-            //[[A2IXPopupChoreographer sharedInstance] showMainMenuFromView:self];
-            if(self.MainToolBar.hidden) self.MainToolBar.hidden=FALSE;
-                else self.MainToolBar.hidden=TRUE;
+            [[A2IXPopupChoreographer sharedInstance] showMainMenuFromView:self];
         }
         
         if ((flags & TOUCH_FLAGS_KEY_TAP) != 0)

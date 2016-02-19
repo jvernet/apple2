@@ -159,10 +159,6 @@ GLUE_C_READ(iie_page2_on)
         }
     } else {
         softswitches |= SS_SCREEN;
-<<<<<<< HEAD
-        video_setDirty(A2_DIRTY_FLAG);
-=======
->>>>>>> mauiaaron/develop
     }
 
     video_setDirty(A2_DIRTY_FLAG);
@@ -179,10 +175,7 @@ GLUE_C_READ(read_switch_graphics)
 {
     if (softswitches & SS_TEXT) {
         softswitches &= ~SS_TEXT;
-<<<<<<< HEAD
-=======
         video_setDirty(A2_DIRTY_FLAG);
->>>>>>> mauiaaron/develop
     }
     return floating_bus();
 }
@@ -191,10 +184,7 @@ GLUE_C_READ(read_switch_text)
 {
     if (!(softswitches & SS_TEXT)) {
         softswitches |= SS_TEXT;
-<<<<<<< HEAD
-=======
         video_setDirty(A2_DIRTY_FLAG);
->>>>>>> mauiaaron/develop
     }
     return floating_bus();
 }
@@ -208,10 +198,7 @@ GLUE_C_READ(read_switch_no_mixed)
 {
     if (softswitches & SS_MIXED) {
         softswitches &= ~SS_MIXED;
-<<<<<<< HEAD
-=======
         video_setDirty(A2_DIRTY_FLAG);
->>>>>>> mauiaaron/develop
     }
     return floating_bus();
 }
@@ -220,10 +207,7 @@ GLUE_C_READ(read_switch_mixed)
 {
     if (!(softswitches & SS_MIXED)) {
         softswitches |= SS_MIXED;
-<<<<<<< HEAD
-=======
         video_setDirty(A2_DIRTY_FLAG);
->>>>>>> mauiaaron/develop
     }
     return floating_bus();
 }
@@ -261,11 +245,8 @@ GLUE_C_READ(iie_hires_off)
         softswitches |= SS_HGRWRT;
     }
 
-<<<<<<< HEAD
-=======
     video_setDirty(A2_DIRTY_FLAG);
 
->>>>>>> mauiaaron/develop
     return floating_bus();
 }
 
@@ -289,11 +270,8 @@ GLUE_C_READ(iie_hires_on)
         }
     }
 
-<<<<<<< HEAD
-=======
     video_setDirty(A2_DIRTY_FLAG);
 
->>>>>>> mauiaaron/develop
     return floating_bus();
 }
 
@@ -567,10 +545,7 @@ GLUE_C_READ(iie_80store_off)
 
     if (softswitches & SS_PAGE2) {
         softswitches |= SS_SCREEN;
-<<<<<<< HEAD
         video_setDirty(A2_DIRTY_FLAG);
-=======
->>>>>>> mauiaaron/develop
     }
 
     video_setDirty(A2_DIRTY_FLAG);
@@ -773,10 +748,7 @@ GLUE_C_READ(iie_80col_off)
     }
 
     softswitches &= ~SS_80COL;
-<<<<<<< HEAD
-=======
     video_setDirty(A2_DIRTY_FLAG);
->>>>>>> mauiaaron/develop
 
     return floating_bus();
 }
@@ -788,11 +760,8 @@ GLUE_C_READ(iie_80col_on)
     }
 
     softswitches |= SS_80COL;
-<<<<<<< HEAD
-=======
     video_setDirty(A2_DIRTY_FLAG);
->>>>>>> mauiaaron/develop
-
+    
     return floating_bus();
 }
 
@@ -806,10 +775,7 @@ GLUE_C_READ(iie_altchar_off)
     if (softswitches & SS_ALTCHAR) {
         softswitches &= ~SS_ALTCHAR;
         video_loadfont(0x40,0x40,ucase_glyphs,3);
-<<<<<<< HEAD
-=======
         video_setDirty(A2_DIRTY_FLAG);
->>>>>>> mauiaaron/develop
     }
     return floating_bus();
 }
@@ -820,10 +786,7 @@ GLUE_C_READ(iie_altchar_on)
         softswitches |= SS_ALTCHAR;
         video_loadfont(0x40,0x20,mousetext_glyphs,1);
         video_loadfont(0x60,0x20,lcase_glyphs,2);
-<<<<<<< HEAD
-=======
         video_setDirty(A2_DIRTY_FLAG);
->>>>>>> mauiaaron/develop
     }
     return floating_bus();
 }
@@ -855,10 +818,7 @@ GLUE_C_READ(iie_dhires_on)
 {
     if (!(softswitches & SS_DHIRES)) {
         softswitches |= SS_DHIRES;
-<<<<<<< HEAD
-=======
         video_setDirty(A2_DIRTY_FLAG);
->>>>>>> mauiaaron/develop
     }
     return floating_bus();
 }
@@ -867,10 +827,7 @@ GLUE_C_READ(iie_dhires_off)
 {
     if (softswitches & SS_DHIRES) {
         softswitches &= ~SS_DHIRES;
-<<<<<<< HEAD
-=======
         video_setDirty(A2_DIRTY_FLAG);
->>>>>>> mauiaaron/develop
     }
     return floating_bus();
 }

@@ -232,12 +232,8 @@ void emulator_start(void) {
     load_settings(); // user prefs
     c_keys_set_key(kF8); // show credits before emulation start
 #endif
-<<<<<<< HEAD
-#if !defined(ANDROID)
-=======
 
 #if !defined(__APPLE__) && !defined(ANDROID)
->>>>>>> mauiaaron/develop
     video_init();
 #endif
     timing_startCPU();
