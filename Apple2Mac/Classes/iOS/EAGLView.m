@@ -84,9 +84,13 @@
         // start emulator from paused state
         cpu_pause();
         emulator_start();
+<<<<<<< HEAD
         video_backend->init(0);
         keydriver_setGlyphScale(1);
         interface_setGlyphScale(1);
+=======
+        video_init();
+>>>>>>> mauiaaron/develop
         
         _animating = NO;
         _renderFrameInterval = 1;
@@ -139,11 +143,11 @@
 }
 
 - (void)drawView:(id)sender
-{   
+{
     [EAGLContext setCurrentContext:_context];
     
     glBindFramebuffer(GL_FRAMEBUFFER, _defaultFBOName);
-    video_backend->render();
+    video_render();
     glBindRenderbuffer(GL_RENDERBUFFER, _colorRenderbuffer);
     
     [_context presentRenderbuffer:GL_RENDERBUFFER];
@@ -161,7 +165,7 @@
     glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_WIDTH, &backingWidth);
     glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_HEIGHT, &backingHeight);
     
-    video_backend->reshape((int)backingWidth, (int)backingHeight);
+    video_reshape((int)backingWidth, (int)backingHeight, /*landscape:*/true); // TODO : portrait is possible
     
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
     {
@@ -266,21 +270,21 @@ static inline void _handleTouch(EAGLView *self, SEL _cmd, UITouch *touch, interf
             {
                 keydriver_setTouchKeyboardOwnsScreen(true);
                 joydriver_setTouchJoystickOwnsScreen(false);
-                video_backend->animation_showTouchKeyboard();
+                video_animations->animation_showTouchKeyboard();
             }
             else if ((flags & TOUCH_FLAGS_JOY) != 0)
             {
                 keydriver_setTouchKeyboardOwnsScreen(false);
                 joydriver_setTouchJoystickOwnsScreen(true);
                 joydriver_setTouchVariant(EMULATED_JOYSTICK);
-                video_backend->animation_showTouchJoystick();
+                video_animations->animation_showTouchJoystick();
             }
             else if ((flags & TOUCH_FLAGS_JOY_KPAD) != 0)
             {
                 keydriver_setTouchKeyboardOwnsScreen(false);
                 joydriver_setTouchJoystickOwnsScreen(true);
                 joydriver_setTouchVariant(EMULATED_KEYPAD);
-                video_backend->animation_showTouchJoystick();
+                video_animations->animation_showTouchJoystick();
             }
             else
             {

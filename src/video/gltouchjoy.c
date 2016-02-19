@@ -68,6 +68,9 @@ static struct {
     int buttonY;
     int buttonYMax;
 
+    // Are we in landscape mode
+    bool landscape;
+
     // TODO FIXME : support 2-players!
 } touchport = { 0 };
 
@@ -543,41 +546,29 @@ static void gltouchjoy_render(void) {
     }
 }
 
-static void gltouchjoy_reshape(int w, int h) {
-    LOG("gltouchjoy_reshape(%d, %d)", w, h);
+static void gltouchjoy_reshape(int w, int h, bool landscape) {
+    LOG("w:%d h:%d landscape:%d", w, h, landscape);
+
+    touchport.landscape = landscape;
+    swizzleDimensions(&w, &h, landscape);
+    touchport.width = w;
+    touchport.height = h;
+
+    touchport.axisY = 0;
+    touchport.axisYMax = h;
+    touchport.buttonY = 0;
+    touchport.buttonYMax = h;
 
     if (joyglobals.axisIsOnLeft) {
         touchport.axisX = 0;
-        touchport.axisY = 0;
-        touchport.buttonY = 0;
-
-        if (w >= touchport.width) {
-            touchport.width = w;
-            touchport.axisXMax = (w * joyglobals.screenDivider);
-            touchport.buttonX = (w * joyglobals.screenDivider);
-            touchport.buttonXMax = w;
-        }
-        if (h >= touchport.height) {
-            touchport.height = h;
-            touchport.axisYMax = h;
-            touchport.buttonYMax = h;
-        }
+        touchport.axisXMax = (w * joyglobals.screenDivider);
+        touchport.buttonX = (w * joyglobals.screenDivider);
+        touchport.buttonXMax = w;
     } else {
         touchport.buttonX = 0;
-        touchport.buttonY = 0;
-        touchport.axisY = 0;
-
-        if (w >= touchport.width) {
-            touchport.width = w;
-            touchport.buttonXMax = (w * joyglobals.screenDivider);
-            touchport.axisX = (w * joyglobals.screenDivider);
-            touchport.axisXMax = w;
-        }
-        if (h >= touchport.height) {
-            touchport.height = h;
-            touchport.buttonYMax = h;
-            touchport.axisYMax = h;
-        }
+        touchport.buttonXMax = (w * joyglobals.screenDivider);
+        touchport.axisX = (w * joyglobals.screenDivider);
+        touchport.axisXMax = w;
     }
 }
 
@@ -941,17 +932,16 @@ static void gltouchjoy_setTouchAxisTypes(uint8_t rosetteChars[(ROSETTE_ROWS * RO
 static void gltouchjoy_setScreenDivision(float screenDivider) {
     joyglobals.screenDivider = screenDivider;
     // force reshape here to apply changes ...
-    gltouchjoy_reshape(touchport.width, touchport.height);
+    gltouchjoy_reshape(touchport.width, touchport.height, touchport.landscape);
 }
 
 static void gltouchjoy_setAxisOnLeft(bool axisIsOnLeft) {
     joyglobals.axisIsOnLeft = axisIsOnLeft;
     // force reshape here to apply changes ...
-    gltouchjoy_reshape(touchport.width, touchport.height);
+    gltouchjoy_reshape(touchport.width, touchport.height, touchport.landscape);
 }
 
 static void gltouchjoy_beginCalibration(void) {
-    video_clear();
     joyglobals.isCalibrating = true;
 }
 
@@ -1016,8 +1006,8 @@ static void _init_gltouchjoy(void) {
     joyglobals.axisIsOnLeft = true;
     joyglobals.switchThreshold = BUTTON_SWITCH_THRESHOLD_DEFAULT;
 
-    video_backend->animation_showTouchJoystick = &_animation_showTouchJoystick;
-    video_backend->animation_hideTouchJoystick = &_animation_hideTouchJoystick;
+    video_animations->animation_showTouchJoystick = &_animation_showTouchJoystick;
+    video_animations->animation_hideTouchJoystick = &_animation_hideTouchJoystick;
 
     joydriver_isTouchJoystickAvailable = &gltouchjoy_isTouchJoystickAvailable;
     joydriver_setTouchJoystickEnabled = &gltouchjoy_setTouchJoystickEnabled;
@@ -1038,11 +1028,13 @@ static void _init_gltouchjoy(void) {
     joydriver_isCalibrating = &gltouchjoy_isCalibrating;
 
     glnode_registerNode(RENDER_LOW, (GLNode){
+        .type = TOUCH_DEVICE_JOYSTICK,
         .setup = &gltouchjoy_setup,
         .shutdown = &gltouchjoy_shutdown,
         .render = &gltouchjoy_render,
         .reshape = &gltouchjoy_reshape,
         .onTouchEvent = &gltouchjoy_onTouchEvent,
+        .setData = NULL,
     });
 }
 

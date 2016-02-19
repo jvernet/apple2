@@ -81,20 +81,20 @@ void Java_org_deadc0de_apple2ix_Apple2Preferences_nativeSetCurrentTouchDevice(JN
             keydriver_setTouchKeyboardOwnsScreen(false);
             joydriver_setTouchJoystickOwnsScreen(true);
             joydriver_setTouchVariant(EMULATED_JOYSTICK);
-            video_backend->animation_showTouchJoystick();
+            video_animations->animation_showTouchJoystick();
             break;
 
         case TOUCH_DEVICE_JOYSTICK_KEYPAD:
             keydriver_setTouchKeyboardOwnsScreen(false);
             joydriver_setTouchJoystickOwnsScreen(true);
             joydriver_setTouchVariant(EMULATED_KEYPAD);
-            video_backend->animation_showTouchJoystick();
+            video_animations->animation_showTouchJoystick();
             break;
 
         case TOUCH_DEVICE_KEYBOARD:
             keydriver_setTouchKeyboardOwnsScreen(true);
             joydriver_setTouchJoystickOwnsScreen(false);
-            video_backend->animation_showTouchKeyboard();
+            video_animations->animation_showTouchKeyboard();
             break;
 
         case TOUCH_DEVICE_NONE:
@@ -135,8 +135,8 @@ void Java_org_deadc0de_apple2ix_Apple2Preferences_nativeSetTouchMenuEnabled(JNIE
 
 void Java_org_deadc0de_apple2ix_Apple2Preferences_nativeSetShowDiskOperationAnimation(JNIEnv *env, jclass cls, jboolean enabled) {
     LOG("enabled : %d", enabled);
-    if (video_backend && video_backend->animation_setEnableShowTrackSector) {
-        video_backend->animation_setEnableShowTrackSector(enabled);
+    if (video_animations && video_animations->animation_setEnableShowTrackSector) {
+        video_animations->animation_setEnableShowTrackSector(enabled);
     }
 }
 
@@ -303,8 +303,8 @@ void Java_org_deadc0de_apple2ix_Apple2Preferences_nativeSetCPUSpeed(JNIEnv *env,
         cpu_scale_factor = CPU_SCALE_SLOWEST;
     }
 
-    if (video_backend->animation_showCPUSpeed) {
-        video_backend->animation_showCPUSpeed();
+    if (video_animations->animation_showCPUSpeed) {
+        video_animations->animation_showCPUSpeed();
     }
 
     timing_initialize();
@@ -320,5 +320,15 @@ void Java_org_deadc0de_apple2ix_Apple2Preferences_nativeLoadTouchKeyboardJSON(JN
     LOG("jsonPath: %s", jsonPath);
     keydriver_loadAltKbd(jsonPath);
     (*env)->ReleaseStringUTFChars(env, j_jsonPath, jsonPath);
+}
+
+void Java_org_deadc0de_apple2ix_Apple2Preferences_nativeSetTouchModelPreferences(JNIEnv *env, jclass cls, jint modelType, jstring j_jsonString) {
+    const char *jsonString = (*env)->GetStringUTFChars(env, j_jsonString, 0);
+    LOG("model: %d", modelType);
+
+    void (*setData)(const char *) = interface_getModelDataSetter((interface_device_t)modelType);
+    setData(jsonString);
+
+    (*env)->ReleaseStringUTFChars(env, j_jsonString, jsonString);
 }
 

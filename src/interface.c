@@ -22,6 +22,7 @@ bool (*interface_isTouchMenuAvailable)(void) = NULL;
 void (*interface_setTouchMenuEnabled)(bool enabled) = NULL;
 void (*interface_setTouchMenuVisibility)(float inactiveAlpha, float activeAlpha) = NULL;
 void (*interface_setGlyphScale)(int glyphScale) = NULL;
+void (*(*interface_getModelDataSetter)(interface_device_t device))(const char *jsonData) = NULL;
 #endif
 
 // 2015/04/12 : This was legacy code for rendering the menu interfaces on desktop Linux. Portions here are resurrected
@@ -587,8 +588,8 @@ void c_interface_select_diskette( int drive )
                         }
                         else
                         {
-                            if (video_backend->animation_showDiskChosen) {
-                                video_backend->animation_showDiskChosen(drive);
+                            if (video_animations->animation_showDiskChosen) {
+                                video_animations->animation_showDiskChosen(drive);
                             }
                         }
 
@@ -655,8 +656,8 @@ void c_interface_select_diskette( int drive )
                 }
                 else
                 {
-                    if (video_backend->animation_showDiskChosen) {
-                        video_backend->animation_showDiskChosen(drive);
+                    if (video_animations->animation_showDiskChosen) {
+                        video_animations->animation_showDiskChosen(drive);
                     }
                 }
 
@@ -1276,7 +1277,7 @@ void c_interface_parameters()
 #ifdef __linux__
                         LOG("Back to Linux, w00t!\n");
 #endif
-                        video_shutdown();
+                        video_shutdown(false); // soft quit video_main_loop()
                         c_interface_exit(ch);
                         return;
                     }

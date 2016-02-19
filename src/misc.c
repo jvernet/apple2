@@ -133,6 +133,8 @@ bool emulator_loadState(const char * const path) {
 
     assert(cpu_isPaused() && "should be paused to load state");
 
+    video_setDirty(A2_DIRTY_FLAG);
+
     do {
         TEMP_FAILURE_RETRY(fd = open(path, O_RDONLY));
         if (fd < 0) {
@@ -230,7 +232,12 @@ void emulator_start(void) {
     load_settings(); // user prefs
     c_keys_set_key(kF8); // show credits before emulation start
 #endif
+<<<<<<< HEAD
 #if !defined(ANDROID)
+=======
+
+#if !defined(__APPLE__) && !defined(ANDROID)
+>>>>>>> mauiaaron/develop
     video_init();
 #endif
     timing_startCPU();
@@ -240,7 +247,7 @@ void emulator_start(void) {
 void emulator_shutdown(void) {
     disk6_eject(0);
     disk6_eject(1);
-    video_shutdown();
+    video_shutdown(/*emulatorShuttingDown:*/true);
     timing_stopCPU();
     _shutdown_threads();
 }

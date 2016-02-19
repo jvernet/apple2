@@ -9,12 +9,13 @@
  *
  */
 
-#include "common.h"
-#include "video/glvideo.h"
 #include "video/glhudmodel.h"
 #include "video/glnode.h"
 
 #define MODEL_DEPTH -0.0625
+
+#define ALERT_MODEL_W 0.7
+#define ALERT_MODEL_H 0.7
 
 static bool isEnabled = true;
 static pthread_mutex_t messageMutex = PTHREAD_MUTEX_INITIALIZER;
@@ -23,6 +24,7 @@ static unsigned int nextMessageCols = 0;
 static unsigned int nextMessageRows = 0;
 static struct timespec messageTimingBegin = { 0 };
 static GLModel *messageModel = NULL;
+static GLfloat landscapeScale = 1.f;
 
 // ----------------------------------------------------------------------------
 
@@ -60,12 +62,13 @@ static void _alertToModel(char *message, unsigned int messageCols, unsigned int 
         const unsigned int fbWidth = (messageCols * FONT80_WIDTH_PIXELS);
         const unsigned int fbHeight = (messageRows * FONT_HEIGHT_PIXELS);
 
+        GLfloat modelHeight = (ALERT_MODEL_H * landscapeScale);
         messageModel = mdlCreateQuad((GLModelParams_s){
-                .skew_x = -0.3,
-                .skew_y = -0.3,
+                .skew_x = -1.0 + ALERT_MODEL_W,
+                .skew_y = 1.0 - modelHeight,
                 .z = MODEL_DEPTH,
-                .obj_w = 0.7,
-                .obj_h = 0.7,
+                .obj_w = ALERT_MODEL_W,
+                .obj_h = (ALERT_MODEL_H * landscapeScale),
                 .positionUsageHint = GL_STATIC_DRAW, // positions don't change
                 .tex_w = fbWidth,
                 .tex_h = fbHeight,
@@ -198,13 +201,14 @@ static void alert_render(void) {
     glhud_renderDefault(messageModel);
 }
 
-static void alert_reshape(int w, int h) {
-    // no-op
+static void alert_reshape(int w, int h, bool landscape) {
+    swizzleDimensions(&w, &h, landscape);
+    landscapeScale = landscape ? 1.f : ((GLfloat)w/h);
 }
 
 #if INTERFACE_TOUCH
 static int64_t alert_onTouchEvent(interface_touch_event_t action, int pointer_count, int pointer_idx, float *x_coords, float *y_coords) {
-    return false; // non-interactive element ...
+    return 0x0; // non-interactive element ...
 }
 #endif
 
@@ -359,9 +363,9 @@ static void _animation_showTrackSector(int drive, int track, int sect) {
 
 static void _animation_setEnableShowTrackSector(bool enabled) {
     if (enabled) {
-        video_backend->animation_showTrackSector = &_animation_showTrackSector;
+        video_animations->animation_showTrackSector = &_animation_showTrackSector;
     } else {
-        video_backend->animation_showTrackSector = NULL;
+        video_animations->animation_showTrackSector = NULL;
     }
 }
 
@@ -369,12 +373,12 @@ __attribute__((constructor(CTOR_PRIORITY_LATE)))
 static void _init_glalert(void) {
     LOG("Initializing message animation subsystem");
 
-    video_backend->animation_showMessage = &_animation_showMessage;
-    video_backend->animation_showPaused = &_animation_showPaused;
-    video_backend->animation_showCPUSpeed = &_animation_showCPUSpeed;
-    video_backend->animation_showDiskChosen = &_animation_showDiskChosen;
-    video_backend->animation_showTrackSector = &_animation_showTrackSector;
-    video_backend->animation_setEnableShowTrackSector = &_animation_setEnableShowTrackSector;
+    video_animations->animation_showMessage = &_animation_showMessage;
+    video_animations->animation_showPaused = &_animation_showPaused;
+    video_animations->animation_showCPUSpeed = &_animation_showCPUSpeed;
+    video_animations->animation_showDiskChosen = &_animation_showDiskChosen;
+    video_animations->animation_showTrackSector = &_animation_showTrackSector;
+    video_animations->animation_setEnableShowTrackSector = &_animation_setEnableShowTrackSector;
 
     glnode_registerNode(RENDER_MIDDLE, (GLNode){
         .setup = &alert_init,
@@ -382,7 +386,9 @@ static void _init_glalert(void) {
         .render = &alert_render,
         .reshape = &alert_reshape,
 #if INTERFACE_TOUCH
+        .type = TOUCH_DEVICE_ALERT,
         .onTouchEvent = &alert_onTouchEvent,
+        .setData = NULL,
 #endif
     });
 }

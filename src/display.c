@@ -14,6 +14,7 @@
  */
 
 #include "common.h"
+#include "video/video.h"
 
 #define SCANSTEP (SCANWIDTH-12)
 #define SCANDSTEP (SCANWIDTH-6)
@@ -29,8 +30,13 @@ typedef enum drawpage_mode_t {
 static uint8_t *video__fb = NULL;
 
 A2Color_s colormap[256] = { { 0 } };
+video_animation_s *video_animations = NULL;
 video_backend_s *video_backend = NULL;
+<<<<<<< HEAD
 pthread_t render_thread_id = 0;
+=======
+static pthread_t render_thread_id = 0;
+>>>>>>> mauiaaron/develop
 static pthread_mutex_t video_scan_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static uint8_t video__wider_font[0x8000] = { 0 };
@@ -658,7 +664,11 @@ static void _plot_character80(uint16_t off, int page, int bank) {
 static inline void __plot_block40(const uint8_t val, uint8_t *fb_ptr) {
     uint8_t color = (val & 0x0F) << 4;
     uint32_t val32 = (color << 24) | (color << 16) | (color << 8) | color;
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> mauiaaron/develop
     _plot_lores40(/*dst*/&fb_ptr, val32);
     fb_ptr += SCANSTEP;
     _plot_lores40(/*dst*/&fb_ptr, val32);
@@ -666,11 +676,19 @@ static inline void __plot_block40(const uint8_t val, uint8_t *fb_ptr) {
     _plot_lores40(/*dst*/&fb_ptr, val32);
     fb_ptr += SCANSTEP;
     _plot_lores40(/*dst*/&fb_ptr, val32);
+<<<<<<< HEAD
     
     fb_ptr += SCANSTEP;
     color = val & 0xF0;
     val32 = (color << 24) | (color << 16) | (color << 8) | color;
     
+=======
+
+    fb_ptr += SCANSTEP;
+    color = val & 0xF0;
+    val32 = (color << 24) | (color << 16) | (color << 8) | color;
+
+>>>>>>> mauiaaron/develop
     _plot_lores40(/*dst*/&fb_ptr, val32);
     fb_ptr += SCANSTEP;
     _plot_lores40(/*dst*/&fb_ptr, val32);
@@ -690,7 +708,11 @@ static void _plot_block40(uint16_t off, int page, int bank) {
 static inline void __plot_block80(const uint8_t val, uint8_t *fb_ptr) {
     uint8_t color = (val & 0x0F) << 4;
     uint32_t val32 = (color << 24) | (color << 16) | (color << 8) | color;
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> mauiaaron/develop
     _plot_lores80(/*dst*/&fb_ptr, val32);
     fb_ptr += SCANDSTEP;
     _plot_lores80(/*dst*/&fb_ptr, val32);
@@ -698,11 +720,19 @@ static inline void __plot_block80(const uint8_t val, uint8_t *fb_ptr) {
     _plot_lores80(/*dst*/&fb_ptr, val32);
     fb_ptr += SCANDSTEP;
     _plot_lores80(/*dst*/&fb_ptr, val32);
+<<<<<<< HEAD
     
     fb_ptr += SCANDSTEP;
     color = val & 0xF0;
     val32 = (color << 24) | (color << 16) | (color << 8) | color;
     
+=======
+
+    fb_ptr += SCANDSTEP;
+    color = val & 0xF0;
+    val32 = (color << 24) | (color << 16) | (color << 8) | color;
+
+>>>>>>> mauiaaron/develop
     _plot_lores80(/*dst*/&fb_ptr, val32);
     fb_ptr += SCANDSTEP;
     _plot_lores80(/*dst*/&fb_ptr, val32);
@@ -727,9 +757,15 @@ static inline uint8_t __shift_block80(uint8_t b) {
 static void _plot_block80(uint16_t off, int page, int bank) {
     uint16_t base = page ? 0x0800 : 0x0400;
     uint16_t ea = base+off;
+<<<<<<< HEAD
     
 #warning FIXME TODO INVESTIGATE : ... does RAMRD/80STORE/PAGE2 affect load order here?
     
+=======
+
+#warning FIXME TODO INVESTIGATE : ... does RAMRD/80STORE/PAGE2 affect load order here?
+
+>>>>>>> mauiaaron/develop
     // plot even half-block from auxmem, rotate nybbles to match color (according to UTAIIe)
     {
         uint8_t b = apple_ii_64k[1][ea];
@@ -737,7 +773,11 @@ static void _plot_block80(uint16_t off, int page, int bank) {
         uint8_t *fb = video__fb+video__screen_addresses[off];
         __plot_block80(b, fb);
     }
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> mauiaaron/develop
     // plot odd half-block from main mem
     {
         uint8_t b = apple_ii_64k[0][ea];
@@ -748,7 +788,11 @@ static void _plot_block80(uint16_t off, int page, int bank) {
 
 static void (*_textpage_plotter(uint32_t currswitches, uint32_t txtflags))(uint16_t, int, int) {
     void (*plotFn)(uint16_t, int, int) = NULL;
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> mauiaaron/develop
     if (currswitches & txtflags) {
         plotFn = (currswitches & SS_80COL) ? _plot_character80 : _plot_character40;
     } else {
@@ -772,32 +816,101 @@ static void (*_textpage_plotter(uint32_t currswitches, uint32_t txtflags))(uint1
             }
         }
     }
+<<<<<<< HEAD
     
     return plotFn;
+=======
+
+    return plotFn;
+}
+
+static inline drawpage_mode_t _currentMainMode(uint32_t currswitches) {
+    if (currswitches & SS_TEXT) {
+        return DRAWPAGE_TEXT;
+    } else  {
+        if (currswitches & SS_HIRES) {
+            return DRAWPAGE_HIRES;
+        } else {
+            return DRAWPAGE_TEXT; // (LORES)
+        }
+    }
+}
+
+static inline drawpage_mode_t _currentMixedMode(uint32_t currswitches) {
+    if (currswitches & (SS_TEXT|SS_MIXED)) {
+        return DRAWPAGE_TEXT;
+    } else {
+        if (currswitches & SS_HIRES) {
+            return DRAWPAGE_HIRES;
+        } else {
+            return DRAWPAGE_TEXT; // (LORES)
+        }
+    }
+>>>>>>> mauiaaron/develop
 }
 
 GLUE_C_WRITE(video__write_2e_text0)
 {
     base_textwrt[ea] = b;
+<<<<<<< HEAD
     video_setDirty(A2_DIRTY_FLAG);
+=======
+    drawpage_mode_t mode = _currentMainMode(softswitches);
+    if (mode == DRAWPAGE_HIRES) {
+        return;
+    }
+    if (!(softswitches & SS_PAGE2)) {
+        video_setDirty(A2_DIRTY_FLAG);
+    }
+>>>>>>> mauiaaron/develop
 }
 
 GLUE_C_WRITE(video__write_2e_text0_mixed)
 {
     base_textwrt[ea] = b;
+<<<<<<< HEAD
     video_setDirty(A2_DIRTY_FLAG);
+=======
+    drawpage_mode_t mode = _currentMixedMode(softswitches);
+    if (mode == DRAWPAGE_HIRES) {
+        return;
+    }
+    if (!(softswitches & SS_PAGE2)) {
+        video_setDirty(A2_DIRTY_FLAG);
+    }
+>>>>>>> mauiaaron/develop
 }
 
 GLUE_C_WRITE(video__write_2e_text1)
 {
     base_ramwrt[ea] = b;
+<<<<<<< HEAD
     video_setDirty(A2_DIRTY_FLAG);
+=======
+    drawpage_mode_t mode = _currentMainMode(softswitches);
+    if (mode == DRAWPAGE_HIRES) {
+        return;
+    }
+    if (softswitches & SS_PAGE2) {
+        video_setDirty(A2_DIRTY_FLAG);
+    }
+>>>>>>> mauiaaron/develop
 }
 
 GLUE_C_WRITE(video__write_2e_text1_mixed)
 {
     base_ramwrt[ea] = b;
+<<<<<<< HEAD
     video_setDirty(A2_DIRTY_FLAG);
+=======
+    drawpage_mode_t mode = _currentMixedMode(softswitches);
+    if (mode == DRAWPAGE_HIRES) {
+        return;
+    }
+    if (softswitches & SS_PAGE2) {
+        video_setDirty(A2_DIRTY_FLAG);
+    }
+>>>>>>> mauiaaron/develop
 }
 
 // ----------------------------------------------------------------------------
@@ -843,7 +956,11 @@ static inline void __plot_hires80(uint16_t base, uint16_t ea) {
         
         b0 &= ~0x80;
         b0 = (b1<<4)|(b0>>3);
+<<<<<<< HEAD
         
+=======
+
+>>>>>>> mauiaaron/develop
         __plot_hires80_pixels(b0, fb_ptr-4);
     }
     
@@ -867,6 +984,7 @@ static inline void __plot_hires80(uint16_t base, uint16_t ea) {
     b |= b1;
     
     // 00000001 11111122 22222333 3333xxxx
+<<<<<<< HEAD
     
     __plot_hires80_pixels(b, fb_ptr);
     
@@ -890,6 +1008,31 @@ static inline void __plot_hires80(uint16_t base, uint16_t ea) {
     fb_ptr += 4;
     __plot_hires80_pixels(b, fb_ptr);
     
+=======
+
+    __plot_hires80_pixels(b, fb_ptr);
+
+    b >>= 4;
+    fb_ptr += 4;
+    __plot_hires80_pixels(b, fb_ptr);
+
+    b >>= 4;
+    fb_ptr += 4;
+    __plot_hires80_pixels(b, fb_ptr);
+
+    b >>= 4;
+    fb_ptr += 4;
+    __plot_hires80_pixels(b, fb_ptr);
+
+    b >>= 4;
+    fb_ptr += 4;
+    __plot_hires80_pixels(b, fb_ptr);
+
+    b >>= 4;
+    fb_ptr += 4;
+    __plot_hires80_pixels(b, fb_ptr);
+
+>>>>>>> mauiaaron/develop
     b >>= 4;
     fb_ptr += 4;
     __plot_hires80_pixels(b, fb_ptr);
@@ -949,6 +1092,7 @@ static void _plot_hires40(uint16_t off, int page, int bank, bool is_even) {
     uint16_t base = page ? 0x4000 : 0x2000;
     uint16_t ea = base+off;
     uint8_t b = apple_ii_64k[bank][ea];
+<<<<<<< HEAD
     
     uint8_t *fb_ptr = video__fb+video__screen_addresses[off];
     
@@ -956,6 +1100,15 @@ static void _plot_hires40(uint16_t off, int page, int bank, bool is_even) {
     uint8_t *color_buf = (uint8_t *)_buf; // <--- work around for -Wstrict-aliasing
     uint8_t *apple2_vmem = (uint8_t *)apple_ii_64k[bank];
     
+=======
+
+    uint8_t *fb_ptr = video__fb+video__screen_addresses[off];
+
+    uint8_t _buf[DYNAMIC_SZ] = { 0 };
+    uint8_t *color_buf = (uint8_t *)_buf; // <--- work around for -Wstrict-aliasing
+    uint8_t *apple2_vmem = (uint8_t *)apple_ii_64k[bank];
+
+>>>>>>> mauiaaron/develop
     uint8_t *hires_ptr = NULL;
     if (is_even) {
         hires_ptr = (uint8_t *)&video__hires_even[b<<3];
@@ -1035,49 +1188,129 @@ static void (*_hirespage_plotter(uint32_t currswitches))(uint16_t, int, int, boo
 GLUE_C_WRITE(video__write_2e_even0)
 {
     base_hgrwrt[ea] = b;
+<<<<<<< HEAD
     video_setDirty(A2_DIRTY_FLAG);
+=======
+    drawpage_mode_t mode = _currentMainMode(softswitches);
+    if (mode == DRAWPAGE_TEXT) {
+        return;
+    }
+    if (!(softswitches & SS_PAGE2)) {
+        video_setDirty(A2_DIRTY_FLAG);
+    }
+>>>>>>> mauiaaron/develop
 }
 
 GLUE_C_WRITE(video__write_2e_even0_mixed)
 {
     base_hgrwrt[ea] = b;
+<<<<<<< HEAD
     video_setDirty(A2_DIRTY_FLAG);
+=======
+    drawpage_mode_t mode = _currentMixedMode(softswitches);
+    if (mode == DRAWPAGE_TEXT) {
+        return;
+    }
+    if (!(softswitches & SS_PAGE2)) {
+        video_setDirty(A2_DIRTY_FLAG);
+    }
+>>>>>>> mauiaaron/develop
 }
 
 GLUE_C_WRITE(video__write_2e_odd0)
 {
     base_hgrwrt[ea] = b;
+<<<<<<< HEAD
     video_setDirty(A2_DIRTY_FLAG);
+=======
+    drawpage_mode_t mode = _currentMainMode(softswitches);
+    if (mode == DRAWPAGE_TEXT) {
+        return;
+    }
+    if (!(softswitches & SS_PAGE2)) {
+        video_setDirty(A2_DIRTY_FLAG);
+    }
+>>>>>>> mauiaaron/develop
 }
 
 GLUE_C_WRITE(video__write_2e_odd0_mixed)
 {
     base_hgrwrt[ea] = b;
+<<<<<<< HEAD
     video_setDirty(A2_DIRTY_FLAG);
+=======
+    drawpage_mode_t mode = _currentMixedMode(softswitches);
+    if (mode == DRAWPAGE_TEXT) {
+        return;
+    }
+    if (!(softswitches & SS_PAGE2)) {
+        video_setDirty(A2_DIRTY_FLAG);
+    }
+>>>>>>> mauiaaron/develop
 }
 
 GLUE_C_WRITE(video__write_2e_even1)
 {
     base_ramwrt[ea] = b;
+<<<<<<< HEAD
     video_setDirty(A2_DIRTY_FLAG);
+=======
+    drawpage_mode_t mode = _currentMainMode(softswitches);
+    if (mode == DRAWPAGE_TEXT) {
+        return;
+    }
+    if (softswitches & SS_PAGE2) {
+        video_setDirty(A2_DIRTY_FLAG);
+    }
+>>>>>>> mauiaaron/develop
 }
 
 GLUE_C_WRITE(video__write_2e_even1_mixed)
 {
     base_ramwrt[ea] = b;
+<<<<<<< HEAD
     video_setDirty(A2_DIRTY_FLAG);
+=======
+    drawpage_mode_t mode = _currentMixedMode(softswitches);
+    if (mode == DRAWPAGE_TEXT) {
+        return;
+    }
+    if (softswitches & SS_PAGE2) {
+        video_setDirty(A2_DIRTY_FLAG);
+    }
+>>>>>>> mauiaaron/develop
 }
 
 GLUE_C_WRITE(video__write_2e_odd1)
 {
     base_ramwrt[ea] = b;
+<<<<<<< HEAD
     video_setDirty(A2_DIRTY_FLAG);
+=======
+    drawpage_mode_t mode = _currentMainMode(softswitches);
+    if (mode == DRAWPAGE_TEXT) {
+        return;
+    }
+    if (softswitches & SS_PAGE2) {
+        video_setDirty(A2_DIRTY_FLAG);
+    }
+>>>>>>> mauiaaron/develop
 }
 
 GLUE_C_WRITE(video__write_2e_odd1_mixed)
 {
     base_ramwrt[ea] = b;
+<<<<<<< HEAD
     video_setDirty(A2_DIRTY_FLAG);
+=======
+    drawpage_mode_t mode = _currentMixedMode(softswitches);
+    if (mode == DRAWPAGE_TEXT) {
+        return;
+    }
+    if (softswitches & SS_PAGE2) {
+        video_setDirty(A2_DIRTY_FLAG);
+    }
+>>>>>>> mauiaaron/develop
 }
 
 // ----------------------------------------------------------------------------
@@ -1086,25 +1319,63 @@ void video_init(void) {
     assert(pthread_self() != cpu_thread_id);
     LOG("(re)setting render_thread_id : %ld -> %ld", render_thread_id, pthread_self());
     render_thread_id = pthread_self();
+<<<<<<< HEAD
     
     assert(!video__fb);
     video__fb = MALLOC(SCANWIDTH*SCANHEIGHT*sizeof(uint8_t));
     video_clear();
     
 #if !defined(__APPLE__)
+=======
+
+    assert(!video__fb);
+    video__fb = MALLOC(SCANWIDTH*SCANHEIGHT*sizeof(uint8_t));
+    video_clear();
+
+>>>>>>> mauiaaron/develop
     video_backend->init((void*)0);
-#endif
 }
 
+<<<<<<< HEAD
 void video_shutdown(void) {
     video_backend->shutdown();
     FREE(video__fb);
+=======
+void _video_setRenderThread(pthread_t id) {
+    LOG("setting render_thread_id : %ld -> %ld", render_thread_id, id);
+    render_thread_id = id;
+>>>>>>> mauiaaron/develop
+}
+
+void video_shutdown(bool emulatorShuttingDown) {
+
+#if MOBILE_DEVICE
+    // WARNING : shutdown should occur on the render thread.  Platform code (iOS, Android) should ensure this is called
+    // from within a render pass...
+    assert(pthread_self() == render_thread_id);
+#endif
+
+    video_backend->shutdown(emulatorShuttingDown);
+    render_thread_id = 0;
+    FREE(video__fb);
+}
+
+<<<<<<< HEAD
+=======
+void video_reshape(int w, int h, bool landscape) {
+    video_backend->reshape(w, h, landscape);
+}
+
+void video_render(void) {
+    assert(pthread_self() == render_thread_id);
+    video_backend->render();
 }
 
 void video_main_loop(void) {
     video_backend->main_loop();
 }
 
+>>>>>>> mauiaaron/develop
 void video_clear(void) {
     memset(video__fb, 0x0, sizeof(uint8_t)*SCANWIDTH*SCANHEIGHT);
     video_setDirty(A2_DIRTY_FLAG);
@@ -1120,7 +1391,11 @@ bool video_saveState(StateHelper_s *helper) {
             break;
         }
         LOG("SAVE (no-op) video__current_page = %02x", state);
+<<<<<<< HEAD
         
+=======
+
+>>>>>>> mauiaaron/develop
         saved = true;
     } while (0);
     
@@ -1138,13 +1413,18 @@ bool video_loadState(StateHelper_s *helper) {
             break;
         }
         LOG("LOAD (no-op) video__current_page = %02x", state);
+<<<<<<< HEAD
         
+=======
+
+>>>>>>> mauiaaron/develop
         loaded = true;
     } while (0);
     
     return loaded;
 }
 
+<<<<<<< HEAD
 // ----------------------------------------------------------------------------
 
 static inline drawpage_mode_t _currentMainMode(uint32_t currswitches) {
@@ -1170,17 +1450,29 @@ static inline drawpage_mode_t _currentMixedMode(uint32_t currswitches) {
         }
     }
 }
+=======
+    return loaded;
+}
+
+// ----------------------------------------------------------------------------
+>>>>>>> mauiaaron/develop
 
 static inline void _currentPageAndBank(uint32_t currswitches, drawpage_mode_t mode, OUTPARM int *page, OUTPARM int *bank) {
     // UTAIIe : 5-25
     if (currswitches & SS_80STORE) {
         *page = 0;
+<<<<<<< HEAD
         *bank = !!(currswitches & SS_PAGE2);
+=======
+        //*bank = !!(currswitches & SS_PAGE2);
+        *bank = 0;
+>>>>>>> mauiaaron/develop
         if (mode != DRAWPAGE_TEXT) {
             assert(currswitches & SS_HIRES);
         }
         return;
     }
+<<<<<<< HEAD
     
     *page = !!(currswitches & SS_PAGE2);
     *bank = !!(currswitches & SS_RAMRD);
@@ -1205,12 +1497,52 @@ uint8_t *video_scan(void) {
     drawpage_mode_t mainDrawPageMode = _currentMainMode(mainswitches);
     _currentPageAndBank(mainswitches, mainDrawPageMode, &page, &bank);
     
+=======
+
+    *page = !!(currswitches & SS_PAGE2);
+    //*bank = !!(currswitches & SS_RAMRD);
+    *bank = 0;
+}
+
+uint8_t *video_currentFramebuffer(void) {
+    return video__fb;
+}
+
+uint8_t *video_scan(void) {
+
+#warning FIXME TODO ... this needs to scan memory in the same way as the actually //e video scanner
+
+    pthread_mutex_lock(&video_scan_mutex);
+
+    int page = 0;
+    int bank = 0;
+    const uint32_t mainswitches = softswitches;
+
+    // render main portion of screen ...
+
+    drawpage_mode_t mainDrawPageMode = _currentMainMode(mainswitches);
+    _currentPageAndBank(mainswitches, mainDrawPageMode, &page, &bank);
+
+>>>>>>> mauiaaron/develop
     if (mainDrawPageMode == DRAWPAGE_TEXT) {
         void (*textMainPlotFn)(uint16_t, int, int) = _textpage_plotter(mainswitches, SS_TEXT);
         for (unsigned int y=0; y < TEXT_ROWS-4; y++) {
             for (unsigned int x=0; x < TEXT_COLS; x++) {
                 uint16_t off = video__line_offset[y] + x;
                 textMainPlotFn(off, page, bank);
+<<<<<<< HEAD
+            }
+        }
+    } else {
+        assert(!(mainswitches & SS_TEXT) && "TEXT should not be set");
+        assert((mainswitches & SS_HIRES) && "HIRES should be set");
+        void (*hiresMainPlotFn)(uint16_t, int, int, bool) = _hirespage_plotter(mainswitches);
+        for (unsigned int y=0; y < TEXT_ROWS-4; y++) {
+            for (unsigned int x=0; x < TEXT_COLS; x++) {
+                for (unsigned int i = 0; i < 8; i++) {
+                    uint16_t off = video__line_offset[y] + (0x400*i) + x;
+                    hiresMainPlotFn(off, page, bank, /*even*/!(x & 1));
+=======
             }
         }
     } else {
@@ -1226,6 +1558,37 @@ uint8_t *video_scan(void) {
             }
         }
     }
+
+    // resample current switches ... and render mixed portion of screen
+    const uint32_t mixedswitches = softswitches;
+
+    drawpage_mode_t mixedDrawPageMode = _currentMixedMode(mixedswitches);
+    _currentPageAndBank(mixedswitches, mixedDrawPageMode, &page, &bank);
+
+    if (mixedDrawPageMode == DRAWPAGE_TEXT) {
+        void (*textMixedPlotFn)(uint16_t, int, int) = _textpage_plotter(mixedswitches, (SS_TEXT|SS_MIXED));
+        for (unsigned int y=TEXT_ROWS-4; y < TEXT_ROWS; y++) {
+            for (unsigned int x=0; x < TEXT_COLS; x++) {
+                uint16_t off = video__line_offset[y] + x;
+                textMixedPlotFn(off, page, bank);
+            }
+        }
+    } else {
+        //assert(!(mixedswitches & SS_TEXT) && "TEXT should not be set"); // TEXT may have been reset from last sample?
+        assert(!(mixedswitches & SS_MIXED) && "MIXED should not be set");
+        assert((mixedswitches & SS_HIRES) && "HIRES should be set");
+        void (*hiresMixedPlotFn)(uint16_t, int, int, bool) = _hirespage_plotter(mixedswitches);
+        for (unsigned int y=TEXT_ROWS-4; y < TEXT_ROWS; y++) {
+            for (unsigned int x=0; x < TEXT_COLS; x++) {
+                for (unsigned int i = 0; i < 8; i++) {
+                    uint16_t off = video__line_offset[y] + (0x400*i) + x;
+                    hiresMixedPlotFn(off, page, bank, /*even*/!(x & 1));
+>>>>>>> mauiaaron/develop
+                }
+            }
+        }
+    }
+<<<<<<< HEAD
     
     // resample current switches ... and render mixed portion of screen
     const uint32_t mixedswitches = softswitches;
@@ -1260,6 +1623,13 @@ uint8_t *video_scan(void) {
     
     pthread_mutex_unlock(&video_scan_mutex);
     
+=======
+
+    video_setDirty(FB_DIRTY_FLAG);
+
+    pthread_mutex_unlock(&video_scan_mutex);
+
+>>>>>>> mauiaaron/develop
     return video__fb;
 }
 
@@ -1287,7 +1657,11 @@ void video_flashText(void) {
             colormap[ COLOR_FLASHING_WHITE].green = 0;
             colormap[ COLOR_FLASHING_WHITE].blue  = 0;
         }
+<<<<<<< HEAD
         
+=======
+
+>>>>>>> mauiaaron/develop
         video_setDirty(FB_DIRTY_FLAG);
     }
 }

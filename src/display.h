@@ -5,50 +5,40 @@
  * version 3 or later (your choice) as published by the Free Software
  * Foundation.
  *
- * Copyright 1994 Alexander Jean-Claude Bottema
- * Copyright 1995 Stephen Lee
- * Copyright 1997, 1998 Aaron Culliney
- * Copyright 1998, 1999, 2000 Michael Deutschmann
- * Copyright 2013-2015 Aaron Culliney
+ * Copyright 2016 Aaron Culliney
  *
  */
 
-#ifndef A2_VIDEO_H
-#define A2_VIDEO_H
+#ifndef _DISPLAY_H_
+#define _DISPLAY_H_
 
-typedef struct video_backend_s {
-    void (*init)(void *context);
-    void (*main_loop)(void);
-    void (*reshape)(int width, int height, bool landscape);
-    void (*render)(void);
-    void (*shutdown)(bool emulatorShuttingDown);
-} video_backend_s;
+typedef struct video_animation_s {
 
-/*
- * The registered video backend (renderer).
- */
-extern video_backend_s *video_backend;
+#if INTERFACE_TOUCH
+    // touch HUD functions
+    void (*animation_showTouchKeyboard)(void);
+    void (*animation_hideTouchKeyboard)(void);
+    void (*animation_showTouchJoystick)(void);
+    void (*animation_hideTouchJoystick)(void);
+    void (*animation_showTouchMenu)(void);
+    void (*animation_hideTouchMenu)(void);
+#endif
 
-/*
- * ID of render thread.
- */
-extern READONLY pthread_t render_thread_id;
+    // misc animations
+    void (*animation_showMessage)(char *message, unsigned int cols, unsigned int rows);
+    void (*animation_showPaused)(void);
+    void (*animation_showCPUSpeed)(void);
+    void (*animation_showDiskChosen)(int drive);
+    void (*animation_showTrackSector)(int drive, int track, int sect);
+    void (*animation_setEnableShowTrackSector)(bool enabled);
 
-/*
- * Color structure
- */
-typedef struct A2Color_s {
-    uint8_t red;
-    uint8_t green;
-    uint8_t blue;
-} A2Color_s;
+} video_animation_s;
 
 /*
- * Reference to the internal 8bit-indexed color format
+ * The registered video animations.
  */
-extern A2Color_s colormap[];
+extern video_animation_s *video_animations;
 
-<<<<<<< HEAD
 /*
  * Prepare the video system, converting console to graphics mode, or
  * opening X window, or whatever.  This is called only once when the
@@ -57,15 +47,31 @@ extern A2Color_s colormap[];
 void video_init(void);
 
 /*
- * Enters main video loop (returns on emulator shutdown request).
+ * Enters emulator-managed main video loop--if backend rendering system requires it.  Currently only used by desktop X11
+ * and desktop OpenGL/GLUT.
  */
 void video_main_loop(void);
 
 /*
- * Begins video subsystem shutdown.  Because this process is multithreaded, this really just gives notice that a
- * shutdown has been requested, and so various threads should begin their own shutdown process.
+ * Shutdown video system.  Should only be called on the render thread (unless render thread is in emulator-managed main
+ * video loop).
  */
-void video_shutdown(void);
+void video_shutdown(bool emulatorShuttingDown);
+
+/*
+ * Begin a render pass (only for non-emulator-managed main video).  This should only be called on the render thread.
+ */
+void video_render(void);
+
+/*
+ * Set the render thread ID.  Use with caution.
+ */
+void _video_setRenderThread(pthread_t id);
+
+/*
+ * Reshape the display to particular dimensions.
+ */
+void video_reshape(int w, int h, bool landscape);
 
 /*
  * Setup the display. This may be called multiple times in a run, and is
@@ -263,7 +269,5 @@ extern const unsigned char lcase_glyphs[0x100];
 extern const unsigned char mousetext_glyphs[0x100];
 extern const unsigned char interface_glyphs[88];
 
-=======
->>>>>>> mauiaaron/develop
-#endif /* !A2_VIDEO_H */
+#endif // whole file
 

@@ -9,8 +9,6 @@
  *
  */
 
-#include "common.h"
-#include "video/glvideo.h"
 #include "video/glhudmodel.h"
 #include "video/glnode.h"
 
@@ -27,7 +25,8 @@
 #define MENU_FB_HEIGHT (MENU_TEMPLATE_ROWS * FONT_HEIGHT_PIXELS)
 
 #define MENU_OBJ_W 2.0
-#define MENU_OBJ_H 0.5 // NOTE : intent is to complement touch keyboard height
+#define MENU_OBJ_H_LANDSCAPE (2.0/4.0) // NOTE : intent is to match touch keyboard height in landscape mode
+#define MENU_OBJ_H_PORTRAIT (1.0/4.0)
 
 static bool isAvailable = false; // Were there any OpenGL/memory errors on initialization?
 static bool isEnabled = true;    // Does player want this enabled?
@@ -60,6 +59,7 @@ static struct {
     int topRightYHalf;
     int topRightYMax;
 
+    GLfloat modelHeight;
 } touchport = { 0 };
 
 // touch menu variables
@@ -167,6 +167,8 @@ static inline void _screen_to_menu(float x, float y, OUTPARM int *col, OUTPARM i
     *row = y / keyH;
     if (*row < 0) {
         *row = 0;
+    } else if (*row >= hudMenu->tplHeight) {
+        *row = hudMenu->tplWidth-1;
     }
 
     //LOG("SCREEN TO MENU : menuX:%d menuXMax:%d menuW:%d keyW:%d ... scrn:(%f,%f)->kybd:(%d,%d)", touchport.topLeftX, touchport.topLeftXMax, touchport.width, keyW, x, y, *col, *row);
@@ -362,10 +364,10 @@ static void gltouchmenu_setup(void) {
 
     menu.model = mdlCreateQuad((GLModelParams_s){
             .skew_x = -1.0,
-            .skew_y = 1.0-MENU_OBJ_H,
+            .skew_y = 1.0-touchport.modelHeight,
             .z = MODEL_DEPTH,
             .obj_w = MENU_OBJ_W,
-            .obj_h = MENU_OBJ_H,
+            .obj_h = touchport.modelHeight,
             .positionUsageHint = GL_STATIC_DRAW, // positions don't change
             .tex_w = MENU_FB_WIDTH * menu.glyphMultiplier,
             .tex_h = MENU_FB_HEIGHT * menu.glyphMultiplier,
@@ -430,30 +432,31 @@ static void gltouchmenu_render(void) {
     GL_ERRLOG("gltouchmenu_render");
 }
 
-static void gltouchmenu_reshape(int w, int h) {
-    LOG("gltouchmenu_reshape(%d, %d)", w, h);
+static void gltouchmenu_reshape(int w, int h, bool landscape) {
+    LOG("w:%d h:%d landscape:%d", w, h, landscape);
 
     touchport.topLeftX = 0;
     touchport.topLeftY = 0;
     touchport.topRightY = 0;
 
-    if (w > touchport.width) {
-        touchport.width         = w;
-        const unsigned int keyW = touchport.width / MENU_TEMPLATE_COLS;
-        touchport.topLeftXHalf  = keyW;
-        touchport.topLeftXMax   = keyW*2;
-        touchport.topRightX     = w - (keyW*2);
-        touchport.topRightXHalf = w - keyW;
-        touchport.topRightXMax  = w;
-    }
-    if (h > touchport.height) {
-        touchport.height        = h;
-        const unsigned int menuH = h * (MENU_OBJ_H/2.0);
-        touchport.topLeftYHalf  = menuH/2;
-        touchport.topLeftYMax   = menuH;
-        touchport.topRightYHalf = menuH/2;
-        touchport.topRightYMax  = menuH;
-    }
+    swizzleDimensions(&w, &h, landscape);
+    touchport.width = w;
+    touchport.height = h;
+
+    touchport.modelHeight = landscape ? MENU_OBJ_H_LANDSCAPE : MENU_OBJ_H_PORTRAIT;;
+
+    const unsigned int keyW = touchport.width / MENU_TEMPLATE_COLS;
+    touchport.topLeftXHalf  = keyW;
+    touchport.topLeftXMax   = keyW*2;
+    touchport.topRightX     = w - (keyW*2);
+    touchport.topRightXHalf = w - keyW;
+    touchport.topRightXMax  = w;
+
+    const unsigned int menuH = h * (touchport.modelHeight/2.0);
+    touchport.topLeftYHalf  = menuH/2;
+    touchport.topLeftYMax   = menuH;
+    touchport.topRightYHalf = menuH/2;
+    touchport.topRightYMax  = menuH;
 }
 
 static int64_t gltouchmenu_onTouchEvent(interface_touch_event_t action, int pointer_count, int pointer_idx, float *x_coords, float *y_coords) {
@@ -554,8 +557,8 @@ __attribute__((constructor(CTOR_PRIORITY_LATE)))
 static void _init_gltouchmenu(void) {
     LOG("Registering OpenGL software touch menu");
 
-    video_backend->animation_showTouchMenu = &_animation_showTouchMenu;
-    video_backend->animation_hideTouchMenu = &_animation_hideTouchMenu;
+    video_animations->animation_showTouchMenu = &_animation_showTouchMenu;
+    video_animations->animation_hideTouchMenu = &_animation_hideTouchMenu;
 
     interface_isTouchMenuAvailable = &gltouchmenu_isTouchMenuAvailable;
     interface_setTouchMenuEnabled = &gltouchmenu_setTouchMenuEnabled;
@@ -567,11 +570,13 @@ static void _init_gltouchmenu(void) {
     menu.maxAlpha = 1.f;
 
     glnode_registerNode(RENDER_TOP, (GLNode){
+        .type = TOUCH_DEVICE_TOPMENU,
         .setup = &gltouchmenu_setup,
         .shutdown = &gltouchmenu_shutdown,
         .render = &gltouchmenu_render,
         .reshape = &gltouchmenu_reshape,
         .onTouchEvent = &gltouchmenu_onTouchEvent,
+        .setData = NULL,
     });
 }
 

@@ -14,6 +14,7 @@
  */
 
 #include "common.h"
+#include "video/video.h"
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
@@ -498,7 +499,7 @@ static void _destroy_image() {
         // Detach from X server
         if (!XShmDetach(display, &xshminfo))
         {
-            fprintf(stderr,"XShmDetach() failed in video_shutdown()\n");
+            fprintf(stderr,"XShmDetach() failed\n");
         }
 
         XDestroyImage(image);
@@ -861,7 +862,7 @@ static void xdriver_init(void *context) {
 #endif
 }
 
-static void xdriver_shutdown(void) {
+static void xdriver_shutdown(bool emulatorShuttingDown) {
     _destroy_image();
 }
 

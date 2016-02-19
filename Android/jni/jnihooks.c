@@ -188,17 +188,29 @@ void Java_org_deadc0de_apple2ix_Apple2Activity_nativeOnCreate(JNIEnv *env, jclas
 #endif
 }
 
-void Java_org_deadc0de_apple2ix_Apple2View_nativeGraphicsChanged(JNIEnv *env, jclass cls, jint width, jint height) {
+void Java_org_deadc0de_apple2ix_Apple2View_nativeGraphicsChanged(JNIEnv *env, jclass cls, jint width, jint height, jboolean landscape) {
     // WARNING : this can happen on non-GL thread
-    LOG("...");
-    video_backend->reshape(width, height);
+    LOG("width:%d height:%d landscape:%d", width, height, landscape);
+    video_reshape(width, height, landscape);
 }
 
-void Java_org_deadc0de_apple2ix_Apple2View_nativeGraphicsInitialized(JNIEnv *env, jclass cls, jint width, jint height) {
+void Java_org_deadc0de_apple2ix_Apple2View_nativeGraphicsInitialized(JNIEnv *env, jclass cls, jint width, jint height, jboolean landscape) {
     // WARNING : this needs to happen on the GL thread only
+<<<<<<< HEAD
     LOG("width:%d height:%d", width, height);
     video_shutdown();
     video_backend->reshape(width, height);
+=======
+    LOG("width:%d height:%d landscape:%d", width, height, landscape);
+    _video_setRenderThread(pthread_self()); // Assume Android knows what it's doing ;-P
+
+#if !TESTING
+    assert(cpu_isPaused());
+#endif
+
+    video_shutdown(false);
+    video_reshape(width, height, landscape);
+>>>>>>> mauiaaron/develop
     video_init();
 }
 
@@ -254,6 +266,7 @@ void Java_org_deadc0de_apple2ix_Apple2View_nativeRender(JNIEnv *env, jclass cls)
         return;
     }
 
+//#define FPS_LOG 1
 #if FPS_LOG
     static uint32_t prevCount = 0;
     static uint32_t idleCount = 0;
@@ -271,7 +284,7 @@ void Java_org_deadc0de_apple2ix_Apple2View_nativeRender(JNIEnv *env, jclass cls)
     }
 #endif
 
-    video_backend->render();
+    video_render();
 }
 
 void Java_org_deadc0de_apple2ix_Apple2Activity_nativeReboot(JNIEnv *env, jclass cls) {
@@ -355,13 +368,13 @@ void Java_org_deadc0de_apple2ix_Apple2Activity_nativeChooseDisk(JNIEnv *env, jcl
         if (disk6_insert(drive, gzPath, ro)) {
             char *diskImageUnreadable = "Disk Image Unreadable";
             unsigned int cols = strlen(diskImageUnreadable);
-            video_backend->animation_showMessage(diskImageUnreadable, cols, 1);
+            video_animations->animation_showMessage(diskImageUnreadable, cols, 1);
         } else {
-            video_backend->animation_showDiskChosen(drive);
+            video_animations->animation_showDiskChosen(drive);
         }
         ASPRINTF_FREE(gzPath);
     } else {
-        video_backend->animation_showDiskChosen(drive);
+        video_animations->animation_showDiskChosen(drive);
     }
     (*env)->ReleaseStringUTFChars(env, jPath, path);
 }

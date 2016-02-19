@@ -66,10 +66,11 @@
 #include <sys/stat.h>
 
 #include "misc.h"
+#include "json_parse.h"
 #include "vm.h"
 #include "timing.h"
 #include "cpu.h"
-#include "video/video.h"
+#include "display.h"
 #include "disk.h"
 #include "interface.h"
 #include "keys.h"
