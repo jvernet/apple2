@@ -21,7 +21,7 @@ typedef struct video_backend_s {
     void (*main_loop)(void);
     void (*reshape)(int width, int height, bool landscape);
     void (*render)(void);
-    void (*shutdown)(bool emulatorShuttingDown);
+    void (*shutdown)(void);
 } video_backend_s;
 
 /*
@@ -42,6 +42,18 @@ typedef struct A2Color_s {
  * Reference to the internal 8bit-indexed color format
  */
 extern A2Color_s colormap[];
+
+#if !VIDEO_OPENGL
+// X11 scaling ...
+typedef enum a2_video_mode_t {
+    VIDEO_FULLSCREEN = 0,
+    VIDEO_1X,
+    VIDEO_2X,
+    NUM_VIDOPTS
+} a2_video_mode_t;
+
+extern a2_video_mode_t a2_video_mode;
+#endif
 
 #endif /* !A2_VIDEO_H */
 

@@ -78,7 +78,6 @@ static uint8_t translate_table_6[0x40] = {
 
 static uint8_t rev_translate_table_6[0x80] = { 0x01 };
 
-__attribute__((constructor(CTOR_PRIORITY_LATE)))
 static void _init_disk6(void) {
     LOG("Disk ][ emulation module early setup");
     memset(&disk6, 0x0, sizeof(disk6));
@@ -90,6 +89,10 @@ static void _init_disk6(void) {
     for (unsigned int i=0; i<0x40; i++) {
         rev_translate_table_6[translate_table_6[i]-0x80] = i << 2;
     }
+}
+
+static __attribute__((constructor)) void __init_disk6(void) {
+    emulator_registerStartupCallback(CTOR_PRIORITY_LATE, &_init_disk6);
 }
 
 static inline bool is_nib(const char * const name) {
@@ -732,8 +735,7 @@ const char *disk6_eject(int drive) {
 
     const char *err = NULL;
 
-    if (disk6.disk[drive].fd >= 0) {
-        assert(disk6.disk[drive].fd != 0);
+    if (disk6.disk[drive].fd > 0) {
         disk6_flush(drive);
 
         int ret = -1;
@@ -767,7 +769,7 @@ const char *disk6_eject(int drive) {
 #endif
     }
 
-    STRDUP_FREE(disk6.disk[drive].file_name);
+    FREE(disk6.disk[drive].file_name);
 
     disk6.disk[drive].fd = -1;
     disk6.disk[drive].mmap_image = MAP_FAILED;
@@ -796,7 +798,7 @@ const char *disk6_insert(int drive, const char * const raw_file_name, int readon
 
     disk6_eject(drive);
 
-    disk6.disk[drive].file_name = strdup(raw_file_name);
+    disk6.disk[drive].file_name = STRDUP(raw_file_name);
 
     int expected = NIB_SIZE;
     disk6.disk[drive].nibblized = true;
@@ -855,6 +857,7 @@ const char *disk6_insert(int drive, const char * const raw_file_name, int readon
             err = ERR_CANNOT_OPEN;
             break;
         }
+        assert(disk6.disk[drive].fd > 0);
 
         // mmap image file
         TEMP_FAILURE_RETRY(disk6.disk[drive].mmap_image = mmap(NULL, disk6.disk[drive].whole_len, (readonly ? PROT_READ : PROT_READ|PROT_WRITE), MAP_SHARED|MAP_FILE, disk6.disk[drive].fd, /*offset:*/0));

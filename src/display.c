@@ -39,6 +39,8 @@ static uint8_t video__wider_font[0x8000] = { 0 };
 static uint8_t video__font[0x4000] = { 0 };
 static uint8_t video__int_font[3][0x4000] = { { 0 } }; // interface font
 
+static color_mode_t color_mode = COLOR_NONE;
+
 // Precalculated framebuffer offsets given VM addr
 unsigned int video__screen_addresses[8192] = { INT_MIN };
 uint8_t video__columns[8192] = { 0 };
@@ -472,6 +474,19 @@ static void _initialize_color() {
         colormap[i].blue  = (colormap[i].blue  >>4);
     }
 #endif
+}
+
+static void video_prefsChanged(const char *domain) {
+    long val = COLOR_INTERP;
+    prefs_parseLongValue(domain, PREF_COLOR_MODE, &val, /*base:*/10);
+    if (val < 0) {
+        val = COLOR_INTERP;
+    }
+    if (val >= NUM_COLOROPTS) {
+        val = COLOR_INTERP;
+    }
+    color_mode = (color_mode_t)val;
+    video_reset();
 }
 
 void video_reset(void) {
@@ -1197,21 +1212,23 @@ void _video_setRenderThread(pthread_t id) {
     render_thread_id = id;
 }
 
-void video_shutdown(bool emulatorShuttingDown) {
+bool video_isRenderThread(void) {
+    return (pthread_self() == render_thread_id);
+}
+
+void video_shutdown(void) {
 
 #if MOBILE_DEVICE
     // WARNING : shutdown should occur on the render thread.  Platform code (iOS, Android) should ensure this is called
     // from within a render pass...
-    assert(pthread_self() == render_thread_id);
+    assert(!render_thread_id || pthread_self() == render_thread_id);
 #endif
 
-    video_backend->shutdown(emulatorShuttingDown);
-    render_thread_id = 0;
-    FREE(video__fb);
-}
+    video_backend->shutdown();
 
-void video_reshape(int w, int h, bool landscape) {
-    video_backend->reshape(w, h, landscape);
+    if (pthread_self() == render_thread_id) {
+        FREE(video__fb);
+    }
 }
 
 void video_render(void) {
@@ -1524,7 +1541,6 @@ uint8_t floating_bus_hibit(const bool hibit) {
     return (b & ~0x80) | (hibit ? 0x80 : 0);
 }
 
-__attribute__((constructor(CTOR_PRIORITY_LATE)))
 static void _init_interface(void) {
     LOG("Initializing display subsystem");
     _initialize_interface_fonts();
@@ -1532,5 +1548,11 @@ static void _init_interface(void) {
     _initialize_row_col_tables();
     _initialize_dhires_values();
     _initialize_color();
+
+    prefs_registerListener(PREF_DOMAIN_VIDEO, &video_prefsChanged);
+}
+
+static __attribute__((constructor)) void __init_interface(void) {
+    emulator_registerStartupCallback(CTOR_PRIORITY_LATE, &_init_interface);
 }
 

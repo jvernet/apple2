@@ -20,44 +20,12 @@ static char input_str[TESTBUF_SZ]; // ASCII
 static unsigned int input_length = 0;
 static unsigned int input_counter = 0;
 
-static struct timespec t0 = { 0 };
-static struct timespec ti = { 0 };
-
-#if defined(ANDROID)
-// We basically compile everything including audio into the Android build, even for testing =)
-#else
-// ----------------------------------------------------------------------------
-// Stub functions because I've reached diminishing returns with the build system ...
-//
-// NOTE: You'd think the commandline CFLAGS set specifically for this test program would pass down to the sources in
-// subdirectories, but it apparently isn't.  GNU buildsystem bug?  Also see HACK FIXME TODO NOTE in Makefile.am
-//
-
-uint8_t c_MB_Read(uint16_t addr) {
-    return 0x0;
-}
-
-void c_MB_Write(uint16_t addr, uint8_t byte) {
-}
-
-uint8_t c_PhasorIO(uint16_t addr) {
-    return 0x0;
-}
-
-void c_speaker_toggle(void) {
-}
-
-void c_interface_print(int x, int y, const int cs, const char *s) {
-}
-#endif
-
 // ----------------------------------------------------------------------------
 
 void test_common_setup() {
     input_counter = 0;
     input_length = 0;
     input_str[0] = '\0';
-    clock_gettime(CLOCK_MONOTONIC, &t0);
 }
 
 // ----------------------------------------------------------------------------
@@ -109,13 +77,23 @@ void test_breakpoint(void *arg) {
 void test_common_init() {
     GREATEST_SET_BREAKPOINT_CB(test_breakpoint, NULL);
 
-    //do_logging = false;// silence regular emulator logging
-    caps_lock = true;
+    do_logging = false;// silence regular emulator logging
 
-    // kludgey set max CPU speed... 
-    cpu_scale_factor = CPU_SCALE_FASTEST;
-    cpu_altscale_factor = CPU_SCALE_FASTEST;
-    timing_initialize();
+    extern void emulator_ctors(void);
+    emulator_ctors();
+
+    char *envvar = NULL;
+    ASPRINTF(&envvar, "APPLE2IX_JSON=%s/.apple2.test.json", getenv("HOME"));
+    assert(envvar);
+    putenv(envvar);
+    LEAK(envvar);
+
+    prefs_load();
+    prefs_setLongValue(PREF_DOMAIN_VIDEO, PREF_COLOR_MODE, COLOR);
+    prefs_setBoolValue(PREF_DOMAIN_KEYBOARD, PREF_KEYBOARD_CAPS, true);
+    prefs_setFloatValue(PREF_DOMAIN_VM, PREF_CPU_SCALE, CPU_SCALE_FASTEST);
+    prefs_setFloatValue(PREF_DOMAIN_VM, PREF_CPU_SCALE_ALT, CPU_SCALE_FASTEST);
+    prefs_save();
 
     c_debugger_set_watchpoint(WATCHPOINT_ADDR);
     if (0) {
@@ -150,7 +128,7 @@ int test_setup_boot_disk(const char *fileName, int readonly) {
         NULL,
         NULL,
     };
-    asprintf(&paths[0], "%s", disk0);
+    ASPRINTF(&paths[0], "%s", disk0);
     FREE(disk0);
 #else
     char *paths[] = {
@@ -159,9 +137,9 @@ int test_setup_boot_disk(const char *fileName, int readonly) {
         NULL,
         NULL,
     };
-    asprintf(&paths[0], "%s/disks/%s", data_dir, fileName);
-    asprintf(&paths[1], "%s/disks/demo/%s", data_dir, fileName);
-    asprintf(&paths[2], "%s/disks/blanks/%s", data_dir, fileName);
+    ASPRINTF(&paths[0], "%s/disks/%s", data_dir, fileName);
+    ASPRINTF(&paths[1], "%s/disks/demo/%s", data_dir, fileName);
+    ASPRINTF(&paths[2], "%s/disks/blanks/%s", data_dir, fileName);
 #endif
 
     path = &paths[0];
@@ -186,7 +164,7 @@ int test_setup_boot_disk(const char *fileName, int readonly) {
     while (*path) {
         char *disk = *path;
         ++path;
-        ASPRINTF_FREE(disk);
+        FREE(disk);
     }
 
     return err;

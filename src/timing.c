@@ -84,13 +84,6 @@ pthread_cond_t cpu_thread_cond = PTHREAD_COND_INITIALIZER;
 
 // -----------------------------------------------------------------------------
 
-__attribute__((constructor(CTOR_PRIORITY_LATE)))
-static void _init_timing(void) {
-    pthread_mutexattr_t attr;
-    pthread_mutexattr_init(&attr);
-    pthread_mutex_init(&interface_mutex, &attr);
-}
-
 struct timespec timespec_diff(struct timespec start, struct timespec end, bool *negative) {
     struct timespec t;
 
@@ -139,7 +132,7 @@ struct timespec timespec_add(struct timespec start, unsigned long nsecs) {
 }
 
 static void _timing_initialize(double scale) {
-    is_fullspeed = (scale >= CPU_SCALE_FASTEST);
+    is_fullspeed = (scale > CPU_SCALE_FASTEST_PIVOT);
     if (!is_fullspeed) {
         cycles_persec_target = CLK_6502 * scale;
     }
@@ -195,7 +188,9 @@ void timing_toggleCPUSpeed(void) {
 void timing_reinitializeAudio(void) {
     SPINLOCK_ACQUIRE(&_pause_spinLock);
     assert(pthread_self() != cpu_thread_id);
+#if !TESTING
     assert(cpu_isPaused());
+#endif
     emul_reinitialize_audio = true;
     emul_pause_audio = false;
     emul_resume_audio = false;
@@ -254,7 +249,7 @@ bool cpu_isPaused(void) {
 #if !MOBILE_DEVICE
 bool timing_shouldAutoAdjustSpeed(void) {
     double speed = alt_speed_enabled ? cpu_altscale_factor : cpu_scale_factor;
-    return auto_adjust_speed && (speed < CPU_SCALE_FASTEST);
+    return auto_adjust_speed && (speed <= CPU_SCALE_FASTEST_PIVOT);
 }
 #endif
 
@@ -510,7 +505,7 @@ static void *cpu_thread(void *dummyptr) {
                             video_isDirty(A2_DIRTY_FLAG) || (disk6.motor_off && (disk_motor_time.tv_sec || disk_motor_time.tv_nsec > DISK_MOTOR_QUIET_NSECS))) )
                 {
                     double speed = alt_speed_enabled ? cpu_altscale_factor : cpu_scale_factor;
-                    if (speed < CPU_SCALE_FASTEST) {
+                    if (speed <= CPU_SCALE_FASTEST_PIVOT) {
                         TIMING_LOG("auto switching to configured speed");
                         _timing_initialize(speed);
                     }
@@ -592,4 +587,52 @@ void timing_testCyclesCountOverflow(void) {
     cycles_count_total = ULONG_MAX - (CLK_6502_INT*10);
 }
 #endif
+
+// ----------------------------------------------------------------------------
+
+static void vm_prefsChanged(const char *domain) {
+    (void)domain;
+
+    float fVal = 1.0;
+
+    cpu_scale_factor = prefs_parseFloatValue(PREF_DOMAIN_VM, PREF_CPU_SCALE, &fVal) ?  fVal / 100.f : 1.f;
+    if (cpu_scale_factor < CPU_SCALE_SLOWEST) {
+        cpu_scale_factor = CPU_SCALE_SLOWEST;
+    }
+    if (cpu_scale_factor > CPU_SCALE_FASTEST_PIVOT) {
+        cpu_scale_factor = CPU_SCALE_FASTEST;
+    }
+    cpu_altscale_factor = prefs_parseFloatValue(PREF_DOMAIN_VM, PREF_CPU_SCALE_ALT, &fVal) ?  fVal / 100.f : 1.f;
+    if (cpu_altscale_factor < CPU_SCALE_SLOWEST) {
+        cpu_altscale_factor = CPU_SCALE_SLOWEST;
+    }
+    if (cpu_altscale_factor > CPU_SCALE_FASTEST_PIVOT) {
+        cpu_altscale_factor = CPU_SCALE_FASTEST;
+    }
+#ifdef AUDIO_ENABLED
+
+    static float audioLatency = 0.f;
+    float latency = prefs_parseFloatValue(PREF_DOMAIN_AUDIO, PREF_AUDIO_LATENCY, &fVal) ? fVal : 0.25f;
+#define SMALL_EPSILON (1.f/1024.f)
+    if (fabsf(audioLatency - latency) > SMALL_EPSILON) {
+        audioLatency = latency;
+        audio_setLatency(latency);
+        timing_reinitializeAudio();
+    }
+
+    static bool mbEnabled = false;
+    bool bVal = false;
+    bool enabled = prefs_parseBoolValue(PREF_DOMAIN_AUDIO, PREF_MOCKINGBOARD_ENABLED, &bVal) ? bVal : true;
+    if (enabled != mbEnabled) {
+        mbEnabled = enabled;
+        MB_SetEnabled(enabled);
+        timing_reinitializeAudio();
+    }
+#endif
+}
+
+static __attribute__((constructor)) void _init_vm(void) {
+    prefs_registerListener(PREF_DOMAIN_VM, &vm_prefsChanged);
+    prefs_registerListener(PREF_DOMAIN_AUDIO, &vm_prefsChanged);
+}
 

@@ -89,12 +89,14 @@ fi
 
 if test "$(basename $0)" = "testcpu" ; then
     ln -s testcpu.mk Android.mk
-elif test "$(basename $0)" = "testvm" ; then
-    ln -s testvm.mk Android.mk
-elif test "$(basename $0)" = "testdisplay" ; then
-    ln -s testdisplay.mk Android.mk
 elif test "$(basename $0)" = "testdisk" ; then
     ln -s testdisk.mk Android.mk
+elif test "$(basename $0)" = "testdisplay" ; then
+    ln -s testdisplay.mk Android.mk
+elif test "$(basename $0)" = "testprefs" ; then
+    ln -s testprefs.mk Android.mk
+elif test "$(basename $0)" = "testvm" ; then
+    ln -s testvm.mk Android.mk
 else
     ln -s apple2ix.mk Android.mk
 fi
@@ -139,7 +141,7 @@ if test "x$do_build" = "x1" -o "x$do_release" = "x1" ; then
     # Symbolicate and move symbols file into location to be deployed on device
 
     SYMFILE=libapple2ix.so.sym
-    ARCHES_TO_SYMBOLICATE='armeabi armeabi-v7a x86'
+    ARCHES_TO_SYMBOLICATE='armeabi armeabi-v7a x86 x86_64'
 
     for arch in $ARCHES_TO_SYMBOLICATE ; do
         SYMDIR=../assets/symbols/$arch/libapple2ix.so

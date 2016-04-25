@@ -329,6 +329,8 @@ TEST test_80col_hires() {
 // Test Suite
 
 GREATEST_SUITE(test_suite_display) {
+    test_thread_running = true;
+
     pthread_mutex_lock(&interface_mutex);
 
     GREATEST_SET_SETUP_CB(testdisplay_setup, NULL);
@@ -336,7 +338,6 @@ GREATEST_SUITE(test_suite_display) {
     GREATEST_SET_BREAKPOINT_CB(test_breakpoint, NULL);
 
     // TESTS --------------------------
-    test_thread_running = true;
 
     RUN_TESTp(test_boot_disk);
 
@@ -464,9 +465,9 @@ static void *test_thread(void *dummyptr) {
     return NULL;
 }
 
-void test_display(int argc, char **argv) {
-    test_argc = argc;
-    test_argv = argv;
+void test_display(int _argc, char **_argv) {
+    test_argc = _argc;
+    test_argv = _argv;
 
     srandom(time(NULL));
 
@@ -474,17 +475,10 @@ void test_display(int argc, char **argv) {
 
     pthread_t p;
     pthread_create(&p, NULL, (void *)&test_thread, (void *)NULL);
-
     while (!test_thread_running) {
         struct timespec ts = { .tv_sec=0, .tv_nsec=33333333 };
         nanosleep(&ts, NULL);
     }
-    emulator_start();
-    //pthread_join(p, NULL);
+    pthread_detach(p);
 }
 
-#if !defined(__APPLE__) && !defined(ANDROID)
-int main(int argc, char **argv) {
-    test_display(argc, argv);
-}
-#endif

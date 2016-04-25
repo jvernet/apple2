@@ -18,12 +18,9 @@
 #if INTERFACE_TOUCH
 // touch interface managed elsewhere
 int64_t (*interface_onTouchEvent)(interface_touch_event_t action, int pointer_count, int pointer_idx, float *x_coords, float *y_coords) = NULL;
-bool (*interface_isTouchMenuAvailable)(void) = NULL;
-void (*interface_setTouchMenuEnabled)(bool enabled) = NULL;
-void (*interface_setTouchMenuVisibility)(float inactiveAlpha, float activeAlpha) = NULL;
-void (*interface_setGlyphScale)(int glyphScale) = NULL;
-void (*(*interface_getModelDataSetter)(interface_device_t device))(const char *jsonData) = NULL;
 #endif
+
+static char disk_path[PATH_MAX] = { 0 };
 
 // 2015/04/12 : This was legacy code for rendering the menu interfaces on desktop Linux. Portions here are resurrected
 // to render HUD messages on desktop and mobile.  Nothing special or pretty here, but has "just worked" for 20+ years ;-)
@@ -420,7 +417,7 @@ void c_interface_select_diskette( int drive )
             curpos = entries - 1;
         }
 
-        char temp[PATH_MAX];
+        char temp[PATH_MAX] = { 0 };
         for (;;)
         {
             for (i = 0; i < 18; i++)
@@ -635,6 +632,8 @@ void c_interface_select_diskette( int drive )
                         snprintf(disk_path + len, MIN(ent_len, PATH_MAX-(len+ent_len)), "/%s", namelist[curpos]->d_name);
                     }
 
+                    prefs_setStringValue(PREF_DOMAIN_INTERFACE, PREF_DISK_PATH, disk_path);
+
                     nextdir = true;
                     break;
                 }
@@ -754,6 +753,16 @@ void c_interface_parameters()
     int ch;
     static interface_enum_t option = OPT_CPU;
     static int cur_y = 0, cur_off = 0, cur_x = 0, cur_pos = 0;
+    long val = 0;
+
+    prefs_parseLongValue(PREF_DOMAIN_VIDEO, PREF_COLOR_MODE, &val, /*base:*/10);
+    color_mode_t color_mode = (color_mode_t)val;
+
+    prefs_parseLongValue(PREF_DOMAIN_JOYSTICK, PREF_JOYSTICK_MODE, &val, /*base:*/10);
+    /* extern */joy_mode = (joystick_mode_t)val;
+
+    prefs_parseLongValue(PREF_DOMAIN_AUDIO, PREF_SPEAKER_VOLUME, &val, /*base:*/10);
+    long speaker_volume = val;
 
     /* reset the x position, so we don't lose our cursor if path changes */
     cur_x = 0;
@@ -765,7 +774,8 @@ void c_interface_parameters()
     c_interface_print_screen( screen );
 
 #define TEMPSIZE 1024
-    char temp[TEMPSIZE];
+    char temp[TEMPSIZE] = { 0 };
+    bool shutdown = false;
     for (;;)
     {
         for (i = 0; (i < PARAMS_H) && (i < NUM_OPTIONS); i++)
@@ -786,24 +796,18 @@ void c_interface_parameters()
             switch (i + cur_off)
             {
             case OPT_CPU:
-                if (cpu_scale_factor >= CPU_SCALE_FASTEST)
-                {
+                if (cpu_scale_factor > CPU_SCALE_FASTEST_PIVOT) {
                     snprintf(temp, TEMPSIZE, "Fastest");
-                }
-                else
-                {
-                    snprintf(temp, TEMPSIZE, "%d%%", (int)(cpu_scale_factor * 100.0));
+                } else {
+                    snprintf(temp, TEMPSIZE, "%d%%", (int)roundf((cpu_scale_factor * 100.0)));
                 }
                 break;
 
             case OPT_ALTCPU:
-                if (cpu_altscale_factor >= CPU_SCALE_FASTEST)
-                {
+                if (cpu_altscale_factor > CPU_SCALE_FASTEST_PIVOT) {
                     snprintf(temp, TEMPSIZE, "Fastest");
-                }
-                else
-                {
-                    snprintf(temp, TEMPSIZE, "%d%%", (int)(cpu_altscale_factor * 100.0));
+                } else {
+                    snprintf(temp, TEMPSIZE, "%d%%", (int)roundf((cpu_altscale_factor * 100.0)));
                 }
                 break;
 
@@ -828,13 +832,13 @@ void c_interface_parameters()
                 break;
 
             case OPT_VOLUME:
-                if (sound_volume == 0)
+                if (speaker_volume == 0)
                 {
                     snprintf(temp, TEMPSIZE, "%s", "Off       ");
                 }
                 else
                 {
-                    snprintf(temp, TEMPSIZE, "%d", sound_volume);
+                    snprintf(temp, TEMPSIZE, "%ld", speaker_volume);
                 }
                 break;
 
@@ -956,19 +960,27 @@ void c_interface_parameters()
             switch (option)
             {
             case OPT_CPU:
-                cpu_scale_factor -= (cpu_scale_factor <= 1.0) ? CPU_SCALE_STEP_DIV : CPU_SCALE_STEP;
-                if (cpu_scale_factor < CPU_SCALE_SLOWEST)
-                {
-                    cpu_scale_factor = CPU_SCALE_SLOWEST;
+                if (cpu_scale_factor > CPU_SCALE_FASTEST_PIVOT) {
+                    cpu_scale_factor = CPU_SCALE_FASTEST_PIVOT;
+                } else {
+                    cpu_scale_factor = roundf((cpu_scale_factor - ((cpu_scale_factor <= 1.0) ? CPU_SCALE_STEP_DIV : CPU_SCALE_STEP)) * 100.f) / 100.f;
+                    if (cpu_scale_factor < CPU_SCALE_SLOWEST) {
+                        cpu_scale_factor = CPU_SCALE_SLOWEST;
+                    }
                 }
+                prefs_setFloatValue(PREF_DOMAIN_VM, PREF_CPU_SCALE, roundf(cpu_scale_factor * 100.f));
                 break;
 
             case OPT_ALTCPU:
-                cpu_altscale_factor -= (cpu_altscale_factor <= 1.0) ? CPU_SCALE_STEP_DIV : CPU_SCALE_STEP;
-                if (cpu_altscale_factor < CPU_SCALE_SLOWEST)
-                {
-                    cpu_altscale_factor = CPU_SCALE_SLOWEST;
+                if (cpu_altscale_factor > CPU_SCALE_FASTEST_PIVOT) {
+                    cpu_altscale_factor = CPU_SCALE_FASTEST_PIVOT;
+                } else {
+                    cpu_altscale_factor = roundf((cpu_altscale_factor - ((cpu_altscale_factor <= 1.0) ? CPU_SCALE_STEP_DIV : CPU_SCALE_STEP)) * 100.f) / 100.f;
+                    if (cpu_altscale_factor < CPU_SCALE_SLOWEST) {
+                        cpu_altscale_factor = CPU_SCALE_SLOWEST;
+                    }
                 }
+                prefs_setFloatValue(PREF_DOMAIN_VM, PREF_CPU_SCALE_ALT, roundf(cpu_altscale_factor * 100.f));
                 break;
 
             case OPT_PATH:
@@ -983,14 +995,8 @@ void c_interface_parameters()
                 break;
 
             case OPT_COLOR:
-                if (color_mode == 0)
-                {
-                    color_mode = NUM_COLOROPTS-1;
-                }
-                else
-                {
-                    --color_mode;
-                }
+                color_mode = (color_mode == 0) ? NUM_COLOROPTS-1 : color_mode-1;
+                prefs_setLongValue(PREF_DOMAIN_VIDEO, PREF_COLOR_MODE, color_mode);
                 break;
 
 #if !VIDEO_OPENGL
@@ -1009,27 +1015,22 @@ void c_interface_parameters()
 #endif
 
             case OPT_VOLUME:
-                if (sound_volume > 0)
+                if (speaker_volume > 0)
                 {
-                    --sound_volume;
+                    --speaker_volume;
                 }
+                prefs_setLongValue(PREF_DOMAIN_AUDIO, PREF_SPEAKER_VOLUME, speaker_volume);
                 break;
 
             case OPT_CAPS:
-                if (caps_lock) {
-                    caps_lock = false;
-                }
+                caps_lock = false;
+                use_system_caps_lock = true;
+                prefs_setBoolValue(PREF_DOMAIN_KEYBOARD, PREF_KEYBOARD_CAPS, caps_lock);
                 break;
 
             case OPT_JOYSTICK:
-                if (joy_mode == 0)
-                {
-                    joy_mode = NUM_JOYOPTS-1;
-                }
-                else
-                {
-                    --joy_mode;
-                }
+                joy_mode = (joy_mode == 0) ? NUM_JOYOPTS-1 : joy_mode-1;
+                prefs_setLongValue(PREF_DOMAIN_JOYSTICK, PREF_JOYSTICK_MODE, joy_mode);
                 break;
 
             case OPT_CALIBRATE:
@@ -1050,19 +1051,19 @@ void c_interface_parameters()
             switch (option)
             {
             case OPT_CPU:
-                cpu_scale_factor += (cpu_scale_factor < 1.0) ? CPU_SCALE_STEP_DIV : CPU_SCALE_STEP;
-                if (cpu_scale_factor >= CPU_SCALE_FASTEST)
-                {
+                cpu_scale_factor = roundf((cpu_scale_factor + ((cpu_scale_factor < 1.0) ? CPU_SCALE_STEP_DIV : CPU_SCALE_STEP)) * 100.f) / 100.f;
+                if (cpu_scale_factor > CPU_SCALE_FASTEST_PIVOT) {
                     cpu_scale_factor = CPU_SCALE_FASTEST;
                 }
+                prefs_setFloatValue(PREF_DOMAIN_VM, PREF_CPU_SCALE, roundf(cpu_scale_factor * 100.f));
                 break;
 
             case OPT_ALTCPU:
-                cpu_altscale_factor += (cpu_altscale_factor < 1.0) ? CPU_SCALE_STEP_DIV : CPU_SCALE_STEP;
-                if (cpu_altscale_factor >= CPU_SCALE_FASTEST)
-                {
+                cpu_altscale_factor = roundf((cpu_altscale_factor + ((cpu_altscale_factor < 1.0) ? CPU_SCALE_STEP_DIV : CPU_SCALE_STEP)) * 100.f) / 100.f;
+                if (cpu_altscale_factor > CPU_SCALE_FASTEST_PIVOT) {
                     cpu_altscale_factor = CPU_SCALE_FASTEST;
                 }
+                prefs_setFloatValue(PREF_DOMAIN_VM, PREF_CPU_SCALE_ALT, roundf(cpu_altscale_factor * 100.f));
                 break;
 
             case OPT_PATH:
@@ -1080,14 +1081,8 @@ void c_interface_parameters()
                 break;
 
             case OPT_COLOR:
-                if (color_mode == NUM_COLOROPTS-1)
-                {
-                    color_mode = 0;
-                }
-                else
-                {
-                    ++color_mode;
-                }
+                color_mode = (color_mode >= NUM_COLOROPTS-1) ? 0 : color_mode+1;
+                prefs_setLongValue(PREF_DOMAIN_VIDEO, PREF_COLOR_MODE, color_mode);
                 break;
 
 #if !VIDEO_OPENGL
@@ -1106,28 +1101,23 @@ void c_interface_parameters()
 #endif
 
             case OPT_VOLUME:
-                sound_volume++;
-                if (sound_volume > 10)
+                speaker_volume++;
+                if (speaker_volume > 10)
                 {
-                    sound_volume = 10;
+                    speaker_volume = 10;
                 }
+                prefs_setLongValue(PREF_DOMAIN_AUDIO, PREF_SPEAKER_VOLUME, speaker_volume);
                 break;
 
             case OPT_CAPS:
-                if (!caps_lock) {
-                    caps_lock = true;
-                }
+                caps_lock = true;
+                use_system_caps_lock = false;
+                prefs_setBoolValue(PREF_DOMAIN_KEYBOARD, PREF_KEYBOARD_CAPS, caps_lock);
                 break;
 
             case OPT_JOYSTICK:
-                if (joy_mode == NUM_JOYOPTS-1)
-                {
-                    joy_mode = 0;
-                }
-                else
-                {
-                    ++joy_mode;
-                }
+                joy_mode = (joy_mode == NUM_JOYOPTS-1) ? 0 : joy_mode+1;
+                prefs_setLongValue(PREF_DOMAIN_JOYSTICK, PREF_JOYSTICK_MODE, joy_mode);
                 break;
 
             case OPT_CALIBRATE:
@@ -1149,8 +1139,11 @@ void c_interface_parameters()
             video_reset();
             vm_reinitializeAudio();
             c_joystick_reset();
+#if !TESTING
+            prefs_save();
+#endif
             c_interface_exit(ch);
-            return;
+            break;
         }
         else if ((ch == '?') && (option != OPT_PATH))
         {
@@ -1194,14 +1187,14 @@ void c_interface_parameters()
             {
                 int i;
 
-                strncpy(temp, disk_path, TEMPSIZE);
+                strncpy(temp, disk_path, TEMPSIZE-1);
                 for (i = strlen(temp); i >= cur_pos + cur_x; i--)
                 {
                     temp[ i + 1 ] = temp[ i ];
                 }
 
                 temp[ cur_pos + cur_x ] = ch;
-                strncpy(disk_path, temp, PATH_MAX);
+                strncpy(disk_path, temp, PATH_MAX-1);
                 if (cur_x < INTERFACE_PATH_MAX-1)
                 {
                     cur_x++;
@@ -1210,6 +1203,8 @@ void c_interface_parameters()
                 {
                     cur_pos++;
                 }
+
+                prefs_setStringValue(PREF_DOMAIN_INTERFACE, PREF_DISK_PATH, disk_path);
             }
 
             /* Backspace or delete setting path */
@@ -1230,6 +1225,8 @@ void c_interface_parameters()
                 {
                     cur_pos--;
                 }
+
+                prefs_setStringValue(PREF_DOMAIN_INTERFACE, PREF_DISK_PATH, disk_path);
             }
 
             /* calibrate joystick */
@@ -1269,7 +1266,9 @@ void c_interface_parameters()
                     ch = toupper(ch);
                     if (ch == 'Y')
                     {
-                        save_settings();
+#if !TESTING
+                        prefs_save();
+#endif
                         disk6_eject(0);
                         c_interface_print_screen( screen );
                         disk6_eject(1);
@@ -1277,9 +1276,9 @@ void c_interface_parameters()
 #ifdef __linux__
                         LOG("Back to Linux, w00t!\n");
 #endif
-                        video_shutdown(false); // soft quit video_main_loop()
+                        shutdown = true;
                         c_interface_exit(ch);
-                        return;
+                        break;
                     }
                 }
 
@@ -1299,13 +1298,19 @@ void c_interface_parameters()
                         c_joystick_reset();
                         cpu65_reboot();
                         c_interface_exit(ch);
-                        return;
+                        break;
                     }
                 }
 
                 c_interface_print_screen( screen );
             }
         }
+    }
+
+    if (shutdown) {
+        video_shutdown(); // soft quit video_main_loop()
+    } else {
+        prefs_sync(NULL);
     }
 }
 
@@ -1536,6 +1541,15 @@ static void *interface_thread(void *current_key)
     interface_thread_id = pthread_self();
 
     cpu_pause();
+
+    char *path = NULL;
+    prefs_copyStringValue(PREF_DOMAIN_INTERFACE, PREF_DISK_PATH, &path);
+    if (!path) {
+        ASPRINTF(&path, "%s", getenv("HOME"));
+    }
+    strncpy(disk_path, path, PATH_MAX-1);
+    disk_path[PATH_MAX-1] = '\0';
+    FREE(path);
 
     switch ((__SWORD_TYPE)current_key) {
     case kF1:

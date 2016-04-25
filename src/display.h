@@ -12,6 +12,15 @@
 #ifndef _DISPLAY_H_
 #define _DISPLAY_H_
 
+typedef enum color_mode_t {
+    COLOR_NONE = 0,
+    /*LAZY_COLOR, deprecated*/
+    COLOR,
+    /*LAZY_INTERP, deprecated*/
+    COLOR_INTERP,
+    NUM_COLOROPTS
+} color_mode_t;
+
 typedef struct video_animation_s {
 
 #if INTERFACE_TOUCH
@@ -30,7 +39,6 @@ typedef struct video_animation_s {
     void (*animation_showCPUSpeed)(void);
     void (*animation_showDiskChosen)(int drive);
     void (*animation_showTrackSector)(int drive, int track, int sect);
-    void (*animation_setEnableShowTrackSector)(bool enabled);
 
 } video_animation_s;
 
@@ -56,7 +64,7 @@ void video_main_loop(void);
  * Shutdown video system.  Should only be called on the render thread (unless render thread is in emulator-managed main
  * video loop).
  */
-void video_shutdown(bool emulatorShuttingDown);
+void video_shutdown(void);
 
 /*
  * Begin a render pass (only for non-emulator-managed main video).  This should only be called on the render thread.
@@ -69,9 +77,9 @@ void video_render(void);
 void _video_setRenderThread(pthread_t id);
 
 /*
- * Reshape the display to particular dimensions.
+ * Check if running on render thread.
  */
-void video_reshape(int w, int h, bool landscape);
+bool video_isRenderThread(void);
 
 /*
  * Setup the display. This may be called multiple times in a run, and is

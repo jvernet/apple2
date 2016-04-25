@@ -116,7 +116,10 @@ static void _glnode_initGLUTPre(void) {
 }
 
 static void _glnode_reshapeGLUT(int w, int h) {
-    video_reshape(w, h, /*landscape:*/true);
+    prefs_setLongValue(PREF_DOMAIN_INTERFACE, PREF_DEVICE_WIDTH, w);
+    prefs_setLongValue(PREF_DOMAIN_INTERFACE, PREF_DEVICE_HEIGHT, h);
+    prefs_setLongValue(PREF_DOMAIN_INTERFACE, PREF_DEVICE_LANDSCAPE, true);
+    prefs_sync(PREF_DOMAIN_INTERFACE);
 }
 
 static void _glnode_initGLUTPost(void) {
@@ -132,6 +135,7 @@ static void _glnode_initGLUTPost(void) {
     glutSpecialUpFunc(gldriver_on_key_special_up);
     //glutMouseFunc(gldriver_mouse);
     //glutMotionFunc(gldriver_mouse_drag);
+    c_joystick_reset();
 #endif
 }
 #endif
@@ -157,12 +161,12 @@ static void glnode_setupNodes(void *ctx) {
     LOG("END glnode_setupNodes ...");
 }
 
-static void glnode_shutdownNodes(bool emulatorShuttingDown) {
+static void glnode_shutdownNodes(void) {
     LOG("BEGIN glnode_shutdownNodes ...");
 
 #if USE_GLUT
     if (glut_in_main_loop) {
-        assert(!emulatorShuttingDown);
+        assert(!emulator_isShuttingDown());
         glutLeaveMainLoop();
         return;
     }
@@ -174,7 +178,7 @@ static void glnode_shutdownNodes(bool emulatorShuttingDown) {
         p = p->last;
     }
 
-    if (emulatorShuttingDown) {
+    if (emulator_isShuttingDown()) {
         // clean up to make Valgrind happy ...
         p = head;
         while (p) {
@@ -205,14 +209,6 @@ static void glnode_renderNodes(void) {
 #endif
 }
 
-static void glnode_reshapeNodes(int w, int h, bool landscape) {
-    glnode_array_node_s *p = head;
-    while (p) {
-        p->node.reshape(w, h, landscape);
-        p = p->next;
-    }
-}
-
 #if INTERFACE_TOUCH
 static int64_t glnode_onTouchEvent(interface_touch_event_t action, int pointer_count, int pointer_idx, float *x_coords, float *y_coords) {
     SCOPE_TRACE_TOUCH("glnode onTouchEvent");
@@ -226,17 +222,6 @@ static int64_t glnode_onTouchEvent(interface_touch_event_t action, int pointer_c
         p = p->last;
     }
     return flags;
-}
-
-void (*glnode_getModelDataSetter(interface_device_t type))(const char *jsonData) {
-    glnode_array_node_s *p = head;
-    while (p) {
-        if (p->node.type == type) {
-            return p->node.setData;
-        }
-        p = p->next;
-    }
-    return NULL;
 }
 #endif
 
@@ -252,7 +237,6 @@ static void glnode_mainLoop(void) {
 
 //----------------------------------------------------------------------------
 
-__attribute__((constructor(CTOR_PRIORITY_EARLY)))
 static void _init_glnode_manager(void) {
     LOG("Initializing GLNode manager subsystem");
 
@@ -261,7 +245,6 @@ static void _init_glnode_manager(void) {
 
     glnode_backend.init      = &glnode_setupNodes;
     glnode_backend.main_loop = &glnode_mainLoop;
-    glnode_backend.reshape   = &glnode_reshapeNodes;
     glnode_backend.render    = &glnode_renderNodes;
     glnode_backend.shutdown  = &glnode_shutdownNodes;
 
@@ -270,6 +253,14 @@ static void _init_glnode_manager(void) {
 
 #if INTERFACE_TOUCH
     interface_onTouchEvent = &glnode_onTouchEvent;
-    interface_getModelDataSetter = &glnode_getModelDataSetter;
+#endif
+
+#if USE_GLUT
+    joydriver_resetJoystick = &_glutJoystickReset;
 #endif
 }
+
+static __attribute__((constructor)) void __init_glnode_manager(void) {
+    emulator_registerStartupCallback(CTOR_PRIORITY_EARLY, &_init_glnode_manager);
+}
+
