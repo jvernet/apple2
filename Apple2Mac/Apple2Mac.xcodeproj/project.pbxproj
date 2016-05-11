@@ -2206,11 +2206,7 @@
 				INFOPLIST_FILE = "Apple2Mac/Apple2Mac-Info.plist";
 				MACOSX_DEPLOYMENT_TARGET = 10.8;
 				OTHER_LDFLAGS = "-lz";
-<<<<<<< HEAD
-				PRODUCT_BUNDLE_IDENTIFIER = bxo.Apple2ix;
-=======
 				PRODUCT_BUNDLE_IDENTIFIER = org.deadc0de.Apple2Mac;
->>>>>>> mauiaaron/develop
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/../src";
 				WRAPPER_EXTENSION = app;
@@ -2241,11 +2237,7 @@
 				INFOPLIST_FILE = "Apple2Mac/Apple2Mac-Info.plist";
 				MACOSX_DEPLOYMENT_TARGET = 10.8;
 				OTHER_LDFLAGS = "-lz";
-<<<<<<< HEAD
-				PRODUCT_BUNDLE_IDENTIFIER = bxo.Apple2ix;
-=======
 				PRODUCT_BUNDLE_IDENTIFIER = org.deadc0de.Apple2Mac;
->>>>>>> mauiaaron/develop
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/../src";
 				WRAPPER_EXTENSION = app;

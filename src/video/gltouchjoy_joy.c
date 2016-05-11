@@ -92,8 +92,8 @@ static void *_button_tap_delayed_thread(void *dummyptr) {
             break;
         }
 
-<<<<<<< HEAD
-        struct timespec wait;
+/*
+ struct timespec wait;
         clock_gettime(CLOCK_MONOTONIC, &wait); // should use CLOCK_MONOTONIC ?
 //        clock_gettime(CLOCK_REALTIME, &wait);
         wait = timespec_add(wait, joys.tapDelayNanos);
@@ -122,7 +122,8 @@ static void *_button_tap_delayed_thread(void *dummyptr) {
                     joys.currJoyButtonValue1 = currJoyButtonValue1;
                     joys.currButtonDisplayChar = currButtonDisplayChar;
                 }
-=======
+*/
+        
         if (timedOut) {
             // reset state and deep sleep waiting for touch down
             _reset_buttons_state();
@@ -136,7 +137,6 @@ static void *_button_tap_delayed_thread(void *dummyptr) {
             if (timedOut) {
                 // reset state and go into deep sleep
                 continue;
->>>>>>> mauiaaron/develop
             }
             _reset_buttons_state();
         }
