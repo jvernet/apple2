@@ -25,6 +25,8 @@ import android.widget.ProgressBar;
 
 import org.deadc0de.apple2ix.basic.BuildConfig;
 import org.deadc0de.apple2ix.basic.R;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -126,6 +128,18 @@ public class Apple2CrashHandler {
             @Override
             public final String getTitle(Apple2Activity activity) {
                 return activity.getResources().getString(R.string.crash_stackbuf_overflow);
+            }
+        },
+        SIGABRT {
+            @Override
+            public final String getTitle(Apple2Activity activity) {
+                return activity.getResources().getString(R.string.crash_sigabrt);
+            }
+        },
+        SIGFPE {
+            @Override
+            public final String getTitle(Apple2Activity activity) {
+                return activity.getResources().getString(R.string.crash_sigfpe);
             }
         };
 
@@ -415,6 +429,22 @@ public class Apple2CrashHandler {
                                 }
                             }
                         });
+
+                        StringBuilder jsonData = new StringBuilder();
+                        if (Apple2Utils.readEntireFile(new File(homeDir, Apple2Preferences.PREFS_FILE), jsonData)) {
+                            JSONObject obj = null;
+                            try {
+                                obj = new JSONObject(jsonData.toString());
+                            } catch (JSONException e) {
+                                Log.e(TAG, "Error reading preferences : " + e);
+                            }
+                            if (obj != null) {
+                                summary.append("PREFS:\n");
+                                summary.append(obj.toString());
+                                allCrashData.append(">>>>>>> PREFS\n");
+                                allCrashData.append(obj.toString());
+                            }
+                        }
 
                         Apple2Utils.unexposeSymbols(activity);
                         activity.runOnUiThread(new Runnable() {
