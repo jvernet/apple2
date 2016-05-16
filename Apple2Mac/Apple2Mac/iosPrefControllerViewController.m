@@ -10,6 +10,7 @@
 
 
 #import "common.h"
+#import "display.h"
 #import "modelUtil.h"
 
 
@@ -76,8 +77,8 @@
     {
         mode = COLOR_NONE;
     }
-    //[self.videoModePicker d:mode];
-   // color_mode = (color_mode_t)mode;
+    [self.videoModePicker d:mode];
+    color_mode = (color_mode_t)mode;
 
     mode = [defaults integerForKey:kApple2JoystickConfig];
     if (! ((mode >= JOY_PCJOY) && (mode < NUM_JOYOPTS)) )
