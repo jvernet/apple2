@@ -1736,20 +1736,20 @@ TEST test_json_array() {
 
 TEST test_json_unescaping() {
     JSON_ref jsonRef = NULL;
-    int errCount = json_createFromString("\"http:\\/\\/deadc0de.org\\/apple2ix\\/android\\/\"", &jsonRef);
+    int errCount = json_createFromString("\"https:\\/\\/deadc0de.org\\/apple2ix\\/android\\/\"", &jsonRef);
     ASSERT(errCount == 1);
     ASSERT(jsonRef);
 
     JSON_s parsedData = *((JSON_s *)jsonRef);
-    ASSERT(strcmp(parsedData.jsonString, "\"http:\\/\\/deadc0de.org\\/apple2ix\\/android\\/\"") == 0);
+    ASSERT(strcmp(parsedData.jsonString, "\"https:\\/\\/deadc0de.org\\/apple2ix\\/android\\/\"") == 0);
     ASSERT(parsedData.jsonLen == strlen(parsedData.jsonString));
 
     bool ok = json_unescapeSlashes(&parsedData.jsonString);
     ASSERT(ok);
-    ASSERT(strcmp(parsedData.jsonString, "\"http://deadc0de.org/apple2ix/android/\"") == 0);
+    ASSERT(strcmp(parsedData.jsonString, "\"https://deadc0de.org/apple2ix/android/\"") == 0);
     size_t newLen = strlen(parsedData.jsonString);
     ASSERT(parsedData.jsonLen != newLen);
-    ASSERT(newLen == 39);
+    ASSERT(newLen == 40);
 
     json_destroy(&jsonRef);
 
@@ -1990,10 +1990,10 @@ TEST test_prefs_load_and_save() {
 // Test Suite
 
 GREATEST_SUITE(test_suite_prefs) {
-    test_thread_running = true;
-
     pthread_mutex_lock(&interface_mutex);
 
+    test_thread_running = true;
+    
     GREATEST_SET_SETUP_CB(testprefs_setup, NULL);
     GREATEST_SET_TEARDOWN_CB(testprefs_teardown, NULL);
     //GREATEST_SET_BREAKPOINT_CB(test_breakpoint, NULL);
