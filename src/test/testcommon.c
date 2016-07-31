@@ -11,57 +11,24 @@
 
 #include "testcommon.h"
 
-#define TESTBUF_SZ 1024
-
 bool test_do_reboot = true;
 char mdstr[(SHA_DIGEST_LENGTH*2)+1];
 
-static char input_str[TESTBUF_SZ]; // ASCII
-static unsigned int input_length = 0;
-static unsigned int input_counter = 0;
+void (*testing_cyclesOverflow)(void) = NULL;
+unsigned long (*testing_getCyclesCount)(void) = NULL;
 
 // ----------------------------------------------------------------------------
 
-void test_common_setup() {
-    input_counter = 0;
-    input_length = 0;
-    input_str[0] = '\0';
-}
-
-// ----------------------------------------------------------------------------
-// test video functions and stubs
-
-void testing_video_sync() {
-
-    if (!input_length) {
-        input_length = strlen(input_str);
-    }
-
-    if (input_counter >= input_length) {
-        return;
-    }
-
-    uint8_t ch = (uint8_t)input_str[input_counter];
-    if (ch == '\n') {
-        ch = '\r';
-    }
-
-    if ( (apple_ii_64k[0][0xC000] & 0x80) || (apple_ii_64k[1][0xC000] & 0x80) ) {
-        // last character typed not processed by emulator...
-        return;
-    }
-
-    apple_ii_64k[0][0xC000] = ch | 0x80;
-    apple_ii_64k[1][0xC000] = ch | 0x80;
-
-    ++input_counter;
+void test_common_setup(void) {
 }
 
 void test_type_input(const char *input) {
-    strcat(input_str, input);
+    debugger_setInputText(input, false);
 }
 
-// ----------------------------------------------------------------------------
+void test_type_input_deterministically(const char *input) {
+    debugger_setInputText(input, true);
+}
 
 void test_breakpoint(void *arg) {
     fprintf(GREATEST_STDOUT, "DISPLAY NOTE: busy-spinning in test_breakpoint(), needs gdb/lldb intervention to continue...\n");
@@ -72,9 +39,7 @@ void test_breakpoint(void *arg) {
     }
 }
 
-// ----------------------------------------------------------------------------
-
-void test_common_init() {
+void test_common_init(void) {
     GREATEST_SET_BREAKPOINT_CB(test_breakpoint, NULL);
 
     do_logging = false;// silence regular emulator logging
@@ -83,7 +48,7 @@ void test_common_init() {
     emulator_ctors();
 
     char *envvar = NULL;
-    ASPRINTF(&envvar, "APPLE2IX_JSON=%s/.apple2.test.json", getenv("HOME"));
+    ASPRINTF(&envvar, "APPLE2IX_JSON=%s/.apple2.test.json", HOMEDIR);
     assert(envvar);
     putenv(envvar);
     LEAK(envvar);
@@ -108,56 +73,80 @@ void test_common_init() {
 int test_setup_boot_disk(const char *fileName, int readonly) {
     int err = 0;
     char **path = NULL;
+    const unsigned int pathsCount = 3;
+    char *paths[pathsCount + 1] = {
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+    };
+    const char *fmts[pathsCount + 1] = {
+        "%s%sdisks/%s",
+        "%s%sdisks/demo/%s",
+        "%s%sdisks/blanks/%s",
+        NULL,
+    };
 
 #if defined(__APPLE__)
-    CFBundleRef mainBundle = CFBundleGetMainBundle();
-    CFStringRef fileString = CFStringCreateWithCString(/*allocator*/NULL, fileName, CFStringGetSystemEncoding());
-    CFURLRef fileURL = CFBundleCopyResourceURL(mainBundle, fileString, NULL, NULL);
-    
-    if (!fileURL) {
-        CFRELEASE(fileString);
-        char *fileName2 = NULL;
-        ASPRINTF(&fileName2, "disks/demo/%s", fileName);
-        fileString = CFStringCreateWithCString(/*allocator*/NULL, fileName2, CFStringGetSystemEncoding());
-        FREE(fileName2);
-        fileURL = CFBundleCopyResourceURL(mainBundle, fileString, NULL, NULL);
-        if (!fileURL) {
-            CFRELEASE(fileString);
-            ASPRINTF(&fileName2, "disks/blanks/%s", fileName);
-            fileString = CFStringCreateWithCString(/*allocator*/NULL, fileName2, CFStringGetSystemEncoding());
-            FREE(fileName2);
-            fileURL = CFBundleCopyResourceURL(mainBundle, fileString, NULL, NULL);
-        }
-        assert(fileURL);
-    }
-    
-    CFStringRef filePath = CFURLCopyFileSystemPath(fileURL, kCFURLPOSIXPathStyle);
-    CFRELEASE(fileString);
-    CFRELEASE(fileURL);
-    CFIndex length = CFStringGetLength(filePath);
-    CFIndex maxSize = CFStringGetMaximumSizeForEncoding(length, kCFStringEncodingUTF8);
-    char *disk0 = (char *)MALLOC(maxSize);
-    if (!CFStringGetCString(filePath, disk0, maxSize, kCFStringEncodingUTF8)) {
-        FREE(disk0);
-    }
-    CFRELEASE(filePath);
+#   if TARGET_OS_SIMULATOR || !TARGET_OS_EMBEDDED
+    const char *prefixPath = "";
+    const char *sep = "";
+#   else // TARGET_OS_EMBEDDED
+    const char *prefixPath = data_dir;
+    const char *sep = "/";
+#   endif
 
-    char *paths[] = {
-        NULL,
-        NULL,
-    };
-    ASPRINTF(&paths[0], "%s", disk0);
-    FREE(disk0);
-#else
-    char *paths[] = {
-        NULL,
-        NULL,
-        NULL,
-        NULL,
-    };
-    ASPRINTF(&paths[0], "%s/disks/%s", data_dir, fileName);
-    ASPRINTF(&paths[1], "%s/disks/demo/%s", data_dir, fileName);
-    ASPRINTF(&paths[2], "%s/disks/blanks/%s", data_dir, fileName);
+    do {
+        
+        const char **fmtPtr = &fmts[0];
+        unsigned int idx = 0;
+        while (*fmtPtr) {
+            const char *fmt = *fmtPtr;
+            
+            char *diskFile = NULL;
+            CFStringRef fileString = NULL;
+            CFURLRef fileURL = NULL;
+            
+            ASPRINTF(&diskFile, fmt, prefixPath, sep, fileName);
+            assert(diskFile);
+            fileString = CFStringCreateWithCString(kCFAllocatorDefault, diskFile, kCFStringEncodingUTF8);
+            assert(fileString);
+            
+#   if TARGET_OS_SIMULATOR || !TARGET_OS_EMBEDDED
+            // Use disks directly out of bundle ... is this OKAY?
+            fileURL = CFBundleCopyResourceURL(CFBundleGetMainBundle(), fileString, NULL, NULL);
+#   else
+            // AppDelegate should have copied disks to a R/W location
+            fileURL = CFURLCreateWithFileSystemPath(kCFAllocatorDefault, fileString, kCFURLPOSIXPathStyle, /*isDirectory*/false);
+#   endif
+            if (fileURL) {
+                CFStringRef filePath = CFURLCopyFileSystemPath(fileURL, kCFURLPOSIXPathStyle);
+                assert(filePath);
+                CFIndex length = CFStringGetLength(filePath);
+                CFIndex maxSize = CFStringGetMaximumSizeForEncoding(length, kCFStringEncodingUTF8);
+                char *disk0 = (char *)MALLOC(maxSize);
+                if (CFStringGetCString(filePath, disk0, maxSize, kCFStringEncodingUTF8)) {
+                    paths[idx++] = disk0;
+                }
+                CFRELEASE(filePath);
+                CFRELEASE(fileURL);
+            }
+            
+            FREE(diskFile);
+            CFRELEASE(fileString);
+            
+            ++fmtPtr;
+        }
+    } while (0);
+#else // !__APPLE__
+    do {
+        const char **fmtPtr = &fmts[0];
+        unsigned int idx = 0;
+        while (*fmtPtr) {
+            const char *fmt = *fmtPtr++;
+            ASPRINTF(&paths[idx++], fmt, data_dir, "/", fileName);
+        }
+    } while (0);
 #endif
 
     path = &paths[0];

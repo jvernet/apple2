@@ -32,6 +32,9 @@
 
 const struct opcode_struct *opcodes;
 
+static char input_str[1024] = { 0 }; // ASCII values
+static bool input_deterministically = false; // slows down testing ...
+
 static stepping_struct_t stepping_struct = { 0 };
 static unsigned int stepping_timeout = 0;
 
@@ -1124,15 +1127,13 @@ static int begin_cpu_stepping() {
     cpu_altscale_factor = CPU_SCALE_FASTEST;
     timing_initialize();
 
-    unsigned int idx = 0;
-    size_t textlen = 0;
-    if (stepping_struct.step_text) {
-        textlen = strlen(stepping_struct.step_text);
+    if (stepping_struct.step_text && stepping_struct.step_text[0] == '\0') {
+        stepping_struct.step_text = NULL;
     }
 
     do {
-        if (textlen && !((apple_ii_64k[0][0xC000] & 0x80) || (apple_ii_64k[1][0xC000] & 0x80)) ) {
-            uint8_t text_ch = (uint8_t)stepping_struct.step_text[idx];
+        if (stepping_struct.step_text && !((apple_ii_64k[0][0xC000] & 0x80) || (apple_ii_64k[1][0xC000] & 0x80)) ) {
+            uint8_t text_ch = (uint8_t)stepping_struct.step_text[0];
             if (text_ch == '\n') {
                 text_ch = '\r';
             }
@@ -1140,9 +1141,9 @@ static int begin_cpu_stepping() {
             apple_ii_64k[0][0xC000] = text_ch | 0x80;
             apple_ii_64k[1][0xC000] = text_ch | 0x80;
 
-            ++idx;
-            if (idx >= textlen) {
-                textlen = 0;
+            ++stepping_struct.step_text;
+            if (stepping_struct.step_text[0] == '\0') {
+                stepping_struct.step_text = NULL;
             }
         }
 
@@ -1153,16 +1154,12 @@ static int begin_cpu_stepping() {
             ERRLOG("pthread_cond_wait : %d", err);
         }
 
-#if TESTING
-#warning FIXME TODO : this is mis-named now ... GLVideo pushes sync state so we do not need to force poll ... but we need this to type the testing strings ... should refactor to leverage a common codepath, preferablly using the 'typing' mechanism here...
-        extern void testing_video_sync();
-        testing_video_sync();
-#elif defined(INTERFACE_CLASSIC)
+#if defined(INTERFACE_CLASSIC)
         if ((ch = c_mygetch(0)) != -1) {
             break;
         }
 #endif
-        if ( (stepping_struct.step_type != TYPING) && (idx > textlen) ) {
+        if ( (stepping_struct.step_type == TYPING) && (!stepping_struct.step_text || stepping_struct.step_text[0] == '\0') ) {
             break; // finished typing
         }
         if (stepping_timeout && (stepping_struct.timeout < time(NULL))) {
@@ -1192,6 +1189,7 @@ bool c_debugger_should_break() {
         RELEASE_BREAK();
     }
 
+    bool break_stepping = false;
     if (at_haltpt()) {
         stepping_struct.should_break = true;
     } else {
@@ -1251,12 +1249,17 @@ bool c_debugger_should_break() {
 
             case GOING:
             case TYPING:
+            // basically force CPU thread to execute one instruction at a time so we can feed characters to the emulator
+            // in a deterministic way
+            break_stepping = (stepping_struct.step_deterministically && stepping_struct.step_text && stepping_struct.step_text[0] != '\0');
+            break;
+
             case LOADING:
             break;
         }
     }
 
-    return stepping_struct.should_break;
+    return break_stepping ?: stepping_struct.should_break;
 }
 
 /* -------------------------------------------------------------------------
@@ -1495,9 +1498,23 @@ void c_interface_debugging() {
 /* -------------------------------------------------------------------------
     debugger testing-driven API
    ------------------------------------------------------------------------- */
+void debugger_setInputText(const char *text, const bool deterministically) {
+    strcat(input_str, text);
+    input_deterministically = deterministically;
+}
 
-void c_debugger_go() {
+void c_debugger_go(void) {
+    void *buf = NULL;
+    if (strlen(input_str)) {
+        buf = STRDUP(input_str);
+        input_str[0] = '\0';
+    }
+    bool deterministically = input_deterministically;
+    input_deterministically = false;
+
     stepping_struct_t s = (stepping_struct_t){
+        .step_deterministically = deterministically,
+        .step_text = buf,
         .step_type = GOING,
         .timeout = time(NULL) + stepping_timeout
     };
@@ -1506,6 +1523,8 @@ void c_debugger_go() {
     is_debugging = true;
 
     debugger_go(s);
+
+    FREE(buf);
 
     is_debugging = false;
     num_buffer_lines = 0;

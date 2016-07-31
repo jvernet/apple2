@@ -873,14 +873,15 @@ GLUE_C_READ(iie_cxrom_peripheral)
 {
     softswitches &= ~SS_CXROM;
     base_cxrom = apple_ii_64k[0];
-#ifdef AUDIO_ENABLED
+// FIXME TODO : implement pluggable peripheral API
+//if (mockingboard_inserted) {
     extern VMFunc MB_Read;
     base_c4rom = (void*)MB_Read;
     base_c5rom = (void*)MB_Read;
-#else
-    base_c4rom = (void*)ram_nop;
-    base_c5rom = (void*)ram_nop;
-#endif
+//} else {
+//    base_c4rom = (void*)ram_nop;
+//    base_c5rom = (void*)ram_nop;
+//}
     if (!(softswitches & SS_C3ROM)) {
         base_c3rom = apple_ii_64k[0];
     }
@@ -1195,9 +1196,10 @@ static void _initialize_tables(void) {
 
     // HACK TODO FIXME : this needs to be tied to the UI/configuration system (once we have more/conflicting options)
 
-#ifdef AUDIO_ENABLED
+// FIXME TODO : implement pluggable peripheral API
+//if (mockingboard_inserted) {
     mb_io_initialize(4, 5); /* Mockingboard(s) and/or Phasor in slots 4 & 5 */
-#endif
+//}
 }
 
 // ----------------------------------------------------------------------------
@@ -1214,12 +1216,7 @@ void vm_initialize(void) {
 
 void vm_reinitializeAudio(void) {
     for (unsigned int i = 0xC030; i < 0xC040; i++) {
-        cpu65_vmem_r[i] = cpu65_vmem_w[i] =
-#ifdef AUDIO_ENABLED
-            speaker_toggle;
-#else
-            ram_nop;
-#endif
+        cpu65_vmem_r[i] = cpu65_vmem_w[i] = speaker_toggle;
     }
 #warning TODO FIXME ... should unset MB/Phasor hooks if volume is zero ...
 }
@@ -1493,14 +1490,15 @@ bool vm_loadState(StateHelper_s *helper) {
         LOG("LOAD base_cxrom = %d", state);
         if (state == 0) {
             base_cxrom = apple_ii_64k[0];
-#ifdef AUDIO_ENABLED
+// FIXME TODO : implement pluggable peripheral API
+//if (mockingboard_inserted) {
             extern VMFunc MB_Read;
             base_c4rom = (void *)MB_Read;
             base_c5rom = (void *)MB_Read;
-#else
-            base_c4rom = (void *)ram_nop;
-            base_c5rom = (void *)ram_nop;
-#endif
+//} else {
+//            base_c4rom = (void *)ram_nop;
+//            base_c5rom = (void *)ram_nop;
+//}
         } else {
             base_cxrom = apple_ii_64k[1];
             base_c4rom = apple_ii_64k[1];

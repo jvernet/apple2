@@ -76,7 +76,7 @@ src/rom.c: genrom
 	./genrom src/rom/apple_IIe.rom src/rom/slot6.rom > $@
 
 src/x86/glue.S: src/cpu-supp.c src/disk.c src/display.c src/vm.c @AUDIO_GLUE_C@
-	./src/x86/genglue $^ > $@
+	TARGET_ARCH=x86 ./src/genglue.sh $^ > $@
 
 ###############################################################################
 # Testing
@@ -102,7 +102,7 @@ EXTRA_testcpu_SOURCES = $(ASM_SRC_x86) $(VIDEO_SRC) $(AUDIO_SRC) $(META_SRC)
 #######################################
 
 testdisk_SOURCES = src/test/testdisk.c $(A2_TEST_SOURCES)
-testdisk_CFLAGS = $(A2_TEST_CFLAGS) -DTEST_DISK=1 -DCPU_TRACING=1 -DDISK_TRACING=1 -DVM_TRACING=1
+testdisk_CFLAGS = $(A2_TEST_CFLAGS) -DTEST_DISK=1 -DDISK_TRACING=1
 testdisk_CCASFLAGS = $(testdisk_CFLAGS)
 testdisk_LDFLAGS = $(apple2ix_LDFLAGS)
 testdisk_LDADD = @testdisk_ASM_O@ @testdisk_VIDEO_O@ @testdisk_AUDIO_O@ @testdisk_META_O@ @X_LIBS@
@@ -132,7 +132,7 @@ EXTRA_testprefs_SOURCES = $(ASM_SRC_x86) $(VIDEO_SRC) $(AUDIO_SRC) $(META_SRC)
 #######################################
 
 testtrace_SOURCES = src/test/testtrace.c $(A2_TEST_SOURCES)
-testtrace_CFLAGS = $(A2_TEST_CFLAGS) -DTEST_TRACE=1 -DCPU_TRACING=1 -DDISK_TRACING=1 -DVM_TRACING=1
+testtrace_CFLAGS = $(A2_TEST_CFLAGS) -DTEST_TRACE=1 -DCPU_TRACING=1 -DDISK_TRACING=1 -DVM_TRACING=1 -DSPEAKER_TRACING=1
 testtrace_CCASFLAGS = $(testtrace_CFLAGS)
 testtrace_LDFLAGS = $(apple2ix_LDFLAGS)
 testtrace_LDADD = @testtrace_ASM_O@ @testtrace_VIDEO_O@ @testtrace_AUDIO_O@ @testtrace_META_O@ @X_LIBS@
@@ -175,7 +175,7 @@ EXTRA_DIST = reconf.sh configure README.debugger PROBLEMS .apple2 \
 	$(man_MANS) \
 	\
 	src/font.txt \
-	src/x86/genglue \
+	src/genglue.sh \
 	\
 	$(shaders_DATA)
 

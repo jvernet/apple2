@@ -12,7 +12,6 @@
 #include "testcommon.h"
 
 #define ABUSIVE_TESTS 1
-#define FINICKY_TESTS 1
 
 #define TESTING_DISK "testvm1.dsk.gz"
 #define BLANK_DSK "blank.dsk.gz"
@@ -39,17 +38,99 @@ static void testtrace_teardown(void *arg) {
 }
 
 // ----------------------------------------------------------------------------
-// Disk TESTS ...
+// Cycles counter overflow test
+
+extern unsigned long (*testing_getCyclesCount)(void);
+extern void (*testing_cyclesOverflow)(void);
+static bool cycles_overflowed = false;
+
+static unsigned long testspeaker_getCyclesCount(void) {
+    // advance cycles count to near overflow
+    return ULONG_MAX - (CLK_6502_INT);
+}
+
+static void testspeaker_cyclesOverflow(void) {
+    cycles_overflowed = true;
+}
+
+TEST test_timing_overflow() {
+
+    // force an almost overflow
+
+    testing_getCyclesCount = &testspeaker_getCyclesCount;
+    testing_cyclesOverflow = &testspeaker_cyclesOverflow;
+
+    ASSERT(!cycles_overflowed);
+    test_setup_boot_disk(BLANK_DSK, /*readonly:*/1);
+    BOOT_TO_DOS();
+    ASSERT(cycles_overflowed);
+
+    // appears emulator handled cycle count overflow gracefully ...
+    testing_getCyclesCount = NULL;
+    testing_cyclesOverflow = NULL;
+
+    PASS();
+}
+
+// ----------------------------------------------------------------------------
+// Tracing TESTS ...
+
+#define EXPECTED_BEEP_TRACE_FILE_SIZE 770
+#define EXPECTED_BEEP_TRACE_SHA "69C728A65B5933D73F91D77694BEE7F674C9EDF7"
+TEST test_boot_sound() {
+
+    const char *homedir = HOMEDIR;
+    char *testout = NULL;
+    ASPRINTF(&testout, "%s/a2_speaker_beep_test.txt", homedir);
+    if (testout) {
+        unlink(testout);
+        speaker_traceBegin(testout);
+    }
+
+    test_setup_boot_disk(BLANK_DSK, /*readonly:*/1);
+    BOOT_TO_DOS();
+
+    speaker_traceEnd();
+    disk6_eject(0);
+
+    do {
+        uint8_t md[SHA_DIGEST_LENGTH];
+        char mdstr0[(SHA_DIGEST_LENGTH*2)+1];
+
+        FILE *fp = fopen(testout, "r");
+
+        fseek(fp, 0, SEEK_END);
+        long expectedSize = ftell(fp);
+        ASSERT(expectedSize == EXPECTED_BEEP_TRACE_FILE_SIZE);
+        fseek(fp, 0, SEEK_SET);
+
+        unsigned char *buf = MALLOC(EXPECTED_BEEP_TRACE_FILE_SIZE);
+        if (fread(buf, 1, EXPECTED_BEEP_TRACE_FILE_SIZE, fp) != EXPECTED_BEEP_TRACE_FILE_SIZE) {
+            ASSERT(false);
+        }
+        fclose(fp); fp = NULL;
+        SHA1(buf, EXPECTED_BEEP_TRACE_FILE_SIZE, md);
+        FREE(buf);
+
+        sha1_to_str(md, mdstr0);
+        ASSERT(strcmp(mdstr0, EXPECTED_BEEP_TRACE_SHA) == 0);
+    } while(0);
+
+    unlink(testout);
+    FREE(testout);
+
+    PASS();
+}
 
 // This test is majorly abusive ... it creates an ~800MB file in $HOME
 // ... but if it's correct, you're fairly assured the cpu/vm is working =)
 #if ABUSIVE_TESTS
-#define EXPECTED_CPU_TRACE_FILE_SIZE 809430487
-#define EXPECTED_CPU_TRACE_SHA "4DB0C2547A0F02450A0E5E663C5BE8EA776C7A41"
+#define EXPECTED_CPU_TRACE_FILE_SIZE 889495849
+#define EXPECTED_CPU_TRACE_SHA "5D16B61156B82960E668A8FA2C5DB931471524FE"
 TEST test_boot_disk_cputrace() {
     const char *homedir = HOMEDIR;
     char *output = NULL;
-    asprintf(&output, "%s/a2_cputrace.txt", homedir);
+    ASPRINTF(&output, "%s/a2_cputrace.txt", homedir);
     if (output) {
         unlink(output);
         cpu65_trace_begin(output);
@@ -89,8 +170,8 @@ TEST test_boot_disk_cputrace() {
 }
 #endif
 
-#define EXPECTED_CPUTRACE_HELLO_FILE_SIZE 118664420
-#define EXPECTED_CPUTRACE_HELLO_SHA "C01DDA6AE63A2FEA0CE8DA3A3B258F96AE8BA79B"
+#define EXPECTED_CPUTRACE_HELLO_FILE_SIZE 118170553
+#define EXPECTED_CPUTRACE_HELLO_SHA "3BE4CFC3CFDBFED83FAF29EB0C8A004D20964461"
 TEST test_cputrace_hello_dsk() {
     test_setup_boot_disk(BLANK_DSK, 0);
 
@@ -98,7 +179,7 @@ TEST test_cputrace_hello_dsk() {
 
     const char *homedir = HOMEDIR;
     char *output = NULL;
-    asprintf(&output, "%s/a2_cputrace_hello_dsk.txt", homedir);
+    ASPRINTF(&output, "%s/a2_cputrace_hello_dsk.txt", homedir);
     if (output) {
         unlink(output);
         cpu65_trace_begin(output);
@@ -106,7 +187,7 @@ TEST test_cputrace_hello_dsk() {
 
     srandom(0);
     apple_ii_64k[0][WATCHPOINT_ADDR] = 0x00;
-    test_type_input("RUN HELLO\r");
+    test_type_input_deterministically("RUN HELLO\r");
     c_debugger_go();
 
     cpu65_trace_end();
@@ -139,8 +220,8 @@ TEST test_cputrace_hello_dsk() {
     PASS();
 }
 
-#define EXPECTED_CPUTRACE_HELLO_NIB_FILE_SIZE 14612543
-#define EXPECTED_CPUTRACE_HELLO_NIB_SHA "2D494B4302CC6E3753D7AB50B587C03C7E05C93A"
+#define EXPECTED_CPUTRACE_HELLO_NIB_FILE_SIZE 14153921
+#define EXPECTED_CPUTRACE_HELLO_NIB_SHA "AC3787B7AE7422DD88AA414989B059F13BBF1674"
 TEST test_cputrace_hello_nib() {
     test_setup_boot_disk(BLANK_NIB, 0);
 
@@ -148,7 +229,7 @@ TEST test_cputrace_hello_nib() {
 
     const char *homedir = HOMEDIR;
     char *output = NULL;
-    asprintf(&output, "%s/a2_cputrace_hello_nib.txt", homedir);
+    ASPRINTF(&output, "%s/a2_cputrace_hello_nib.txt", homedir);
     if (output) {
         unlink(output);
         cpu65_trace_begin(output);
@@ -156,7 +237,7 @@ TEST test_cputrace_hello_nib() {
 
     srandom(0);
     apple_ii_64k[0][WATCHPOINT_ADDR] = 0x00;
-    test_type_input("RUN HELLO\r");
+    test_type_input_deterministically("RUN HELLO\r");
     c_debugger_go();
 
     cpu65_trace_end();
@@ -189,8 +270,8 @@ TEST test_cputrace_hello_nib() {
     PASS();
 }
 
-#define EXPECTED_CPUTRACE_HELLO_PO_FILE_SIZE 118680586
-#define EXPECTED_CPUTRACE_HELLO_PO_SHA "716D8D515876C138B7F3D8F078F05684C801D707"
+#define EXPECTED_CPUTRACE_HELLO_PO_FILE_SIZE  EXPECTED_CPUTRACE_HELLO_FILE_SIZE
+#define EXPECTED_CPUTRACE_HELLO_PO_SHA        EXPECTED_CPUTRACE_HELLO_SHA
 TEST test_cputrace_hello_po() {
     test_setup_boot_disk(BLANK_PO, 0);
 
@@ -198,7 +279,7 @@ TEST test_cputrace_hello_po() {
 
     const char *homedir = HOMEDIR;
     char *output = NULL;
-    asprintf(&output, "%s/a2_cputrace_hello_po.txt", homedir);
+    ASPRINTF(&output, "%s/a2_cputrace_hello_po.txt", homedir);
     if (output) {
         unlink(output);
         cpu65_trace_begin(output);
@@ -206,7 +287,7 @@ TEST test_cputrace_hello_po() {
 
     srandom(0);
     apple_ii_64k[0][WATCHPOINT_ADDR] = 0x00;
-    test_type_input("RUN HELLO\r");
+    test_type_input_deterministically("RUN HELLO\r");
     c_debugger_go();
 
     cpu65_trace_end();
@@ -239,12 +320,12 @@ TEST test_cputrace_hello_po() {
     PASS();
 }
 
-#define EXPECTED_VM_TRACE_FILE_SIZE 2830792
-#define EXPECTED_VM_TRACE_SHA "E3AA4EBEACF9053D619E115F6AEB454A8939BFB4"
+#define EXPECTED_VM_TRACE_FILE_SIZE 2832136
+#define EXPECTED_VM_TRACE_SHA "E39658183FF87974D8538B38B772A193C6C3276C"
 TEST test_boot_disk_vmtrace() {
     const char *homedir = HOMEDIR;
     char *disk = NULL;
-    asprintf(&disk, "%s/a2_vmtrace.txt", homedir);
+    ASPRINTF(&disk, "%s/a2_vmtrace.txt", homedir);
     if (disk) {
         unlink(disk);
         vm_trace_begin(disk);
@@ -285,14 +366,14 @@ TEST test_boot_disk_vmtrace() {
     PASS();
 }
 
-#define EXPECTED_VM_TRACE_NIB_FILE_SIZE 2930056
-#define EXPECTED_VM_TRACE_NIB_SHA "D60DAE2F3AA4002678457F6D16FC8A25FA14C10E"
+#define EXPECTED_VM_TRACE_NIB_FILE_SIZE 2931400
+#define EXPECTED_VM_TRACE_NIB_SHA "5ED6270A7A9CC523D9BAB07E08B74394C3386A32"
 TEST test_boot_disk_vmtrace_nib() {
     test_setup_boot_disk(BLANK_NIB, 0);
 
     const char *homedir = HOMEDIR;
     char *disk = NULL;
-    asprintf(&disk, "%s/a2_vmtrace_nib.txt", homedir);
+    ASPRINTF(&disk, "%s/a2_vmtrace_nib.txt", homedir);
     if (disk) {
         unlink(disk);
         vm_trace_begin(disk);
@@ -334,13 +415,13 @@ TEST test_boot_disk_vmtrace_nib() {
 }
 
 #define EXPECTED_VM_TRACE_PO_FILE_SIZE EXPECTED_VM_TRACE_FILE_SIZE
-#define EXPECTED_VM_TRACE_PO_SHA "DA200BE91FD8D6D09E551A19ED0445F985898C16"
+#define EXPECTED_VM_TRACE_PO_SHA "EDBE060984FC1BAA30C2633B791AF49BA89112AE"
 TEST test_boot_disk_vmtrace_po() {
     test_setup_boot_disk(BLANK_PO, 0);
 
     const char *homedir = HOMEDIR;
     char *disk = NULL;
-    asprintf(&disk, "%s/a2_vmtrace_po.txt", homedir);
+    ASPRINTF(&disk, "%s/a2_vmtrace_po.txt", homedir);
     if (disk) {
         unlink(disk);
         vm_trace_begin(disk);
@@ -395,18 +476,19 @@ GREATEST_SUITE(test_suite_trace) {
 
     // TESTS --------------------------
 
+    RUN_TESTp(test_timing_overflow);
+    RUN_TESTp(test_boot_sound);
+
 #if ABUSIVE_TESTS
     RUN_TESTp(test_boot_disk_cputrace);
 #endif
 
-#if FINICKY_TESTS
     RUN_TESTp(test_cputrace_hello_dsk);
     RUN_TESTp(test_cputrace_hello_nib);
     RUN_TESTp(test_cputrace_hello_po);
     RUN_TESTp(test_boot_disk_vmtrace);
     RUN_TESTp(test_boot_disk_vmtrace_nib);
     RUN_TESTp(test_boot_disk_vmtrace_po);
-#endif
 
     // ...
     disk6_eject(0);
@@ -419,7 +501,7 @@ GREATEST_MAIN_DEFS();
 static char **test_argv = NULL;
 static int test_argc = 0;
 
-static void *_test_thread(void) {
+static int _test_thread(void) {
     int argc = test_argc;
     char **argv = test_argv;
     GREATEST_MAIN_BEGIN();
