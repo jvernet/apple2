@@ -132,7 +132,7 @@ EXTRA_testprefs_SOURCES = $(ASM_SRC_x86) $(VIDEO_SRC) $(AUDIO_SRC) $(META_SRC)
 #######################################
 
 testtrace_SOURCES = src/test/testtrace.c $(A2_TEST_SOURCES)
-testtrace_CFLAGS = $(A2_TEST_CFLAGS) -DTEST_TRACE=1 -DCPU_TRACING=1 -DDISK_TRACING=1 -DVM_TRACING=1 -DSPEAKER_TRACING=1
+testtrace_CFLAGS = $(A2_TEST_CFLAGS) -DTEST_TRACE=1 -DCPU_TRACING=1 -DDISK_TRACING=1 -DVM_TRACING=1 -DSPEAKER_TRACING=1 -DMB_TRACING=1
 testtrace_CCASFLAGS = $(testtrace_CFLAGS)
 testtrace_LDFLAGS = $(apple2ix_LDFLAGS)
 testtrace_LDADD = @testtrace_ASM_O@ @testtrace_VIDEO_O@ @testtrace_AUDIO_O@ @testtrace_META_O@ @X_LIBS@
@@ -159,18 +159,8 @@ man_MANS = docs/apple2ix.6
 shadersdir = @datadir@/@PACKAGE@/shaders
 shaders_DATA = src/video/Basic.vsh src/video/Basic.fsh
 
-# disk images
-disksdir = @datadir@/@PACKAGE@/disks
-disks_DATA = \
-	disks/README disks/blank.dsk.gz disks/blank.nib.gz disks/blank.po.gz disks/etc.dsk.gz \
-	disks/mystery.dsk.gz disks/speedtest.dsk.gz disks/speedtest.txt disks/flapple140.po.gz \
-	disks/testdisplay1.dsk.gz disks/testdisplay1.nib.gz disks/testvm1.dsk.gz disks/testvm1.nib.gz
-
-
 # Extra distribution stuff
 EXTRA_DIST = reconf.sh configure README.debugger PROBLEMS .apple2 \
-	\
-	$(disks_DATA) \
 	\
 	$(man_MANS) \
 	\
@@ -178,5 +168,15 @@ EXTRA_DIST = reconf.sh configure README.debugger PROBLEMS .apple2 \
 	src/genglue.sh \
 	\
 	$(shaders_DATA)
+
+install-data-hook:
+	rm -rf @datadir@/@PACKAGE@/disks
+	cp -Rp external-disks/ @datadir@/@PACKAGE@/disks/
+
+dist-hook:
+	echo "TODO FIXME disks and external-disks"
+	echo rm -rf $(distdir)/disks
+	echo cp -Rp disks $(distdir)/disks
+	echo cp -Rp external-disks $(distdir)/disks
 
 CLEANFILES = src/font.c src/rom.c src/meta/debug.c src/x86/glue.S

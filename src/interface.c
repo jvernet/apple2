@@ -98,7 +98,6 @@ static void _convert_screen_graphics(char *screen, const int x, const int y, con
                     break;
                 }
             }
-            idx += xlen+1;
         }
 
         if (found_glyph) {

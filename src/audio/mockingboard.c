@@ -19,7 +19,7 @@ Copyright (C) 2006-2007, Tom Charlesworth, Michael Pohoreski
 
 AppleWin is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2 of the License, or
+the Free Software Foundation; either version 3 of the License, or
 (at your option) any later version.
 
 AppleWin is distributed in the hope that it will be useful,
@@ -194,7 +194,7 @@ static SY6522_AY8910 g_MB[NUM_AY8910];
 
 // Timer vars
 static unsigned long g_n6522TimerPeriod = 0;
-static const unsigned int TIMERDEVICE_INVALID = -1;
+#define TIMERDEVICE_INVALID -1
 static unsigned int g_nMBTimerDevice = TIMERDEVICE_INVALID;	// SY6522 device# which is generating timer IRQ
 static unsigned long g_uLastCumulativeCycles = 0;
 
@@ -258,6 +258,13 @@ static short g_nMixBuffer[g_dwDSBufferSize / sizeof(short)];
 
 
 #if 1 // APPLE2IX
+#   if MB_TRACING
+static FILE *mb_trace_fp = NULL;
+static FILE *mb_trace_samples_fp = NULL;
+static unsigned long cycles_mb_toggled_r = 0;
+static unsigned long cycles_mb_toggled_w = 0;
+#   endif
+
 static AudioBuffer_s *MockingboardVoice = NULL;
 static AudioBuffer_s *SSI263Voice[64] = { 0 };
 static pthread_cond_t ssi263_cond = PTHREAD_COND_INITIALIZER;
@@ -279,7 +286,7 @@ static const double g_f6522TimerPeriod_NoIRQ = CLK_6502 / 60.0;		// Constant wha
 
 // External global vars:
 bool g_bMBTimerIrqActive = false;
-#ifdef _DEBUG
+#if 0 // _DEBUG
 uint32_t g_uTimer1IrqCount = 0;	// DEBUG
 #endif
 
@@ -290,8 +297,19 @@ uint32_t g_uTimer1IrqCount = 0;	// DEBUG
 static DWORD WINAPI SSI263Thread(LPVOID);
 static void Votrax_Write(BYTE nDevice, BYTE nValue);
 #else
+#   if 0 // ENABLE_SSI263
 static void* SSI263Thread(void *);
 static void Votrax_Write(uint8_t nDevice, uint8_t nValue);
+#   else
+static void mb_assert(bool condition) {
+#       ifdef NDEBUG
+    // RELEASE
+#       else
+    // DEBUG
+    assert(condition);
+#       endif
+}
+#   endif
 #endif
 
 //---------------------------------------------------------------------------
@@ -350,6 +368,9 @@ static void AY8910_Write(uint8_t nDevice, uint8_t nReg, uint8_t nValue, uint8_t 
 	{
 		// RESET: Reset AY8910 only
 		AY8910_reset(nDevice+2*nAYDevice);
+#if MB_TRACING
+                _mb_trace_AY8910(nDevice+2*nAYDevice, mb_trace_fp);
+#endif
 	}
 	else
 	{
@@ -371,6 +392,9 @@ static void AY8910_Write(uint8_t nDevice, uint8_t nReg, uint8_t nValue, uint8_t 
 
 			case AY_WRITE:		// 6: WRITE TO PSG
 				_AYWriteReg(nDevice+2*nAYDevice, pMB->nAYCurrentRegister, pMB->sy6522.ORA);
+#if MB_TRACING
+                                _mb_trace_AY8910(nDevice+2*nAYDevice, mb_trace_fp);
+#endif
 				break;
 
 			case AY_LATCH:		// 7: LATCH ADDRESS
@@ -382,6 +406,10 @@ static void AY8910_Write(uint8_t nDevice, uint8_t nReg, uint8_t nValue, uint8_t 
 					pMB->nAYCurrentRegister = pMB->sy6522.ORA & 0x0F;
 				// else Pro-Mockingboard (clone from HK)
 				break;
+#if 1 // APPLE2IX
+                        default:
+                                mb_assert(false);
+#endif
 		}
 	}
 }
@@ -408,6 +436,11 @@ static void UpdateIFR(SY6522_AY8910* pMB)
 	if (bIRQ)
 	{
 #if 1 // APPLE2IX
+#if MB_TRACING
+            if (mb_trace_fp) {
+                fprintf(mb_trace_fp, "\t%s\n", "IRQ_6522");
+            }
+#endif
             cpu65_interrupt(IS_6522);
 #else
 	    CpuIrqAssert(IS_6522);
@@ -416,6 +449,11 @@ static void UpdateIFR(SY6522_AY8910* pMB)
 	else
 	{
 #if 1 // APPLE2IX
+#if MB_TRACING
+            if (mb_trace_fp) {
+                fprintf(mb_trace_fp, "\t%s\n", "!IRQ_6522");
+            }
+#endif
             cpu65_uninterrupt(IS_6522);
 #else
 	    CpuIrqDeassert(IS_6522);
@@ -423,8 +461,44 @@ static void UpdateIFR(SY6522_AY8910* pMB)
 	}
 }
 
+#if MB_TRACING
+static void _mb_traceWriteSample(INOUT char **tracingBufPtr, INOUT size_t *tracingBufSize, const char *samPrefix, int dat) {
+    int sz = INT_MAX;
+
+    char *buf = *tracingBufPtr;
+    int max = (int)*tracingBufSize;
+
+    sz = snprintf(buf, max, "%s[%08x]", samPrefix, dat);
+    assert(sz > 0 && sz < max);
+    buf += sz;
+    max -= sz;
+    assert(max >= 0);
+
+    *tracingBufPtr = buf;
+    *tracingBufSize = (size_t)max;
+}
+
+static void _mb_traceSY6522_AY8910(uint8_t nDevice) {
+    SY6522_AY8910* pMB = &g_MB[nDevice];
+
+    fprintf(mb_trace_fp, "\tSYS6522_AY8910(%d) nAY8910Number:%02X nAYCurrentRegister:%02X nTimerStatus:%02X\n", nDevice, pMB->nAY8910Number, pMB->nAYCurrentRegister, pMB->nTimerStatus);
+
+    SY6522 *sy6522 = &pMB->sy6522;
+    fprintf(mb_trace_fp, "\t\tSYS6522 : ORB:%02X ORA:%02X DDRB:%02X DDRA:%02X TIMER1_COUNTER:%04X TIMER1_LATCH:%04X TIMER2_COUNTER:%04X TIMER2_LATCH:%04X SERIAL_SHIFT:%02X ACR:%02X PCR:%02X IFR:%02X IER:%02X ORA_NO_HS:%02X\n", sy6522->ORB, sy6522->ORA, sy6522->DDRB, sy6522->DDRA, sy6522->TIMER1_COUNTER.w, sy6522->TIMER1_LATCH.w, sy6522->TIMER2_COUNTER.w, sy6522->TIMER2_LATCH.w, sy6522->SERIAL_SHIFT, sy6522->ACR, sy6522->PCR, sy6522->IFR, sy6522->IER, sy6522->ORA_NO_HS);
+
+#if 0 // ENABLE_SSI263
+    TODO FIXME : trace SSI263 stuff
+#endif
+}
+#endif
+
 static void SY6522_Write(uint8_t nDevice, uint8_t nReg, uint8_t nValue)
 {
+#if MB_TRACING
+        if (mb_trace_fp) {
+            fprintf(mb_trace_fp, "\tSY6522_Write(%02X, %02X, %02X)...\n", nDevice, nReg, nValue);
+        }
+#endif
 	g_bMB_Active = true;
 
 	SY6522_AY8910* pMB = &g_MB[nDevice];
@@ -439,7 +513,11 @@ static void SY6522_Write(uint8_t nDevice, uint8_t nReg, uint8_t nValue)
 				if( (pMB->sy6522.DDRB == 0xFF) && (pMB->sy6522.PCR == 0xB0) )
 				{
 					// Votrax speech data
+#if 0 // ENABLE_SSI263
 					Votrax_Write(nDevice, nValue);
+#else
+                                        mb_assert(false);
+#endif
 					break;
 				}
 
@@ -548,12 +626,23 @@ static void SY6522_Write(uint8_t nDevice, uint8_t nReg, uint8_t nValue)
 		case 0x0f:	// ORA_NO_HS
 			break;
 	}
+
+#if MB_TRACING
+        if (mb_trace_fp) {
+            _mb_traceSY6522_AY8910(nDevice);
+        }
+#endif
 }
 
 //-----------------------------------------------------------------------------
 
 static uint8_t SY6522_Read(uint8_t nDevice, uint8_t nReg)
 {
+#if MB_TRACING
+        if (mb_trace_fp) {
+            fprintf(mb_trace_fp, "\tSY6522_Read(%02X, %02X)...\n", nDevice, nReg);
+        }
+#endif
 //	g_bMB_RegAccessedFlag = true;
 	g_bMB_Active = true;
 
@@ -615,12 +704,21 @@ static uint8_t SY6522_Read(uint8_t nDevice, uint8_t nReg)
 			break;
 	}
 
+#if MB_TRACING
+        if (mb_trace_fp) {
+            _mb_traceSY6522_AY8910(nDevice);
+            fprintf(mb_trace_fp, "\tret:%02X\n", nValue);
+        }
+#endif
+
 	return nValue;
 }
 
 //---------------------------------------------------------------------------
 
+#if 0 // ENABLE_SSI263
 static void SSI263_Play(unsigned int nPhoneme);
+#endif
 
 #if 0
 typedef struct
@@ -656,6 +754,7 @@ const uint8_t CONTROL_MASK = 0x80;
 const uint8_t ARTICULATION_MASK = 0x70;
 const uint8_t AMPLITUDE_MASK = 0x0F;
 
+#if 0 // ENABLE_SSI263
 static uint8_t SSI263_Read(uint8_t nDevice, uint8_t nReg)
 {
 	SY6522_AY8910* pMB = &g_MB[nDevice];
@@ -738,6 +837,7 @@ static void SSI263_Write(uint8_t nDevice, uint8_t nReg, uint8_t nValue)
 		break;
 	}
 }
+#endif
 
 //-------------------------------------
 
@@ -812,6 +912,7 @@ static uint8_t Votrax2SSI263[64] =
 	0x00,	// 3F: STOP no sound -> PA
 };
 
+#if 0 // ENABLE_SSI263
 static void Votrax_Write(uint8_t nDevice, uint8_t nValue)
 {
 	g_bVotraxPhoneme = true;
@@ -825,6 +926,7 @@ static void Votrax_Write(uint8_t nDevice, uint8_t nValue)
 
 	SSI263_Play(Votrax2SSI263[nValue & PHONEME_MASK]);
 }
+#endif
 
 //===========================================================================
 
@@ -844,6 +946,11 @@ static void MB_Update()
     {
         return;
     }
+#   if MB_TRACING
+    if (mb_trace_fp) {
+        fprintf(mb_trace_fp, "%s", "\tMB_Update()\n");
+    }
+#   endif
 #else
 	char szDbg[200];
 
@@ -853,6 +960,7 @@ static void MB_Update()
 
 	if (g_bFullSpeed)
 	{
+#if !MB_TRACING
 		// Keep AY reg writes relative to the current 'frame'
 		// - Required for Ultima3:
 		//   . Tune ends
@@ -865,6 +973,7 @@ static void MB_Update()
 		// If any AY regs have changed then push them out to the AY chip
 
 		return;
+#endif
 	}
 
 	//
@@ -995,25 +1104,64 @@ static void MB_Update()
 		return;
 
 	//
+#if MB_TRACING
+        if (mb_trace_fp) {
+            fprintf(mb_trace_fp, "%s", "\tsubmitting samples...\n");
+        }
+#endif
 
 	const double fAttenuation = g_bPhasorEnable ? 2.0/3.0 : 1.0;
 
 	for(int i=0; i<nNumSamples; i++)
 	{
+#if MB_TRACING
+#   define TRACING_BUF_SIZ 1024
+                size_t tracingBufLSize = TRACING_BUF_SIZ;
+                size_t tracingBufRSize = TRACING_BUF_SIZ;
+                char tracingBufL[TRACING_BUF_SIZ];
+                char *tracingBufLPtr = tracingBufL;
+                char tracingBufR[TRACING_BUF_SIZ];
+                char *tracingBufRPtr = tracingBufR;
+#endif
 		// Mockingboard stereo (all voices on an AY8910 wire-or'ed together)
 		// L = Address.b7=0, R = Address.b7=1
 		int nDataL = 0, nDataR = 0;
 
 		for(unsigned int j=0; j<NUM_VOICES_PER_AY8910; j++)
 		{
+                        int datL, datR;
+
 			// Slot4
-			nDataL += (int) ((double)ppAYVoiceBuffer[0*NUM_VOICES_PER_AY8910+j][i] * fAttenuation);
-			nDataR += (int) ((double)ppAYVoiceBuffer[1*NUM_VOICES_PER_AY8910+j][i] * fAttenuation);
+			datL = (int) ((double)ppAYVoiceBuffer[0*NUM_VOICES_PER_AY8910+j][i] * fAttenuation);
+			datR = (int) ((double)ppAYVoiceBuffer[1*NUM_VOICES_PER_AY8910+j][i] * fAttenuation);
+#if MB_TRACING
+                        if (mb_trace_samples_fp) {
+                            _mb_traceWriteSample(&tracingBufLPtr, &tracingBufLSize, "+4", datL);
+                            _mb_traceWriteSample(&tracingBufRPtr, &tracingBufRSize, "+4", datR);
+                        }
+#endif
+                        nDataL += datL;
+                        nDataR += datR;
 
 			// Slot5
-			nDataL += (int) ((double)ppAYVoiceBuffer[2*NUM_VOICES_PER_AY8910+j][i] * fAttenuation);
-			nDataR += (int) ((double)ppAYVoiceBuffer[3*NUM_VOICES_PER_AY8910+j][i] * fAttenuation);
+			datL = (int) ((double)ppAYVoiceBuffer[2*NUM_VOICES_PER_AY8910+j][i] * fAttenuation);
+			datR = (int) ((double)ppAYVoiceBuffer[3*NUM_VOICES_PER_AY8910+j][i] * fAttenuation);
+#if MB_TRACING
+                        if (mb_trace_samples_fp) {
+                            _mb_traceWriteSample(&tracingBufLPtr, &tracingBufLSize, "+5", datL);
+                            _mb_traceWriteSample(&tracingBufRPtr, &tracingBufRSize, "+5", datR);
+                        }
+#endif
+                        nDataL += datL;
+                        nDataR += datR;
 		}
+
+#if MB_TRACING
+                if (mb_trace_samples_fp) {
+                    _mb_traceWriteSample(&tracingBufLPtr, &tracingBufLSize, "==", nDataL);
+                    _mb_traceWriteSample(&tracingBufRPtr, &tracingBufRSize, "==", nDataR);
+                }
+#endif
 
 		// Cap the superpositioned output
 		if(nDataL < nWaveDataMin)
@@ -1025,6 +1173,14 @@ static void MB_Update()
 			nDataR = nWaveDataMin;
 		else if(nDataR > nWaveDataMax)
 			nDataR = nWaveDataMax;
+
+#if MB_TRACING
+                if (mb_trace_samples_fp) {
+                    _mb_traceWriteSample(&tracingBufLPtr, &tracingBufLSize, "=>", nDataL);
+                    _mb_traceWriteSample(&tracingBufRPtr, &tracingBufRSize, "=>", nDataR);
+                    fprintf(mb_trace_samples_fp, "L:%s\nR:%s\n", tracingBufL, tracingBufR);
+                }
+#endif
 
 		g_nMixBuffer[i*g_nMB_NumChannels+0] = (short)nDataL * samplesScale;	// L
 		g_nMixBuffer[i*g_nMB_NumChannels+1] = (short)nDataR * samplesScale;	// R
@@ -1059,6 +1215,9 @@ static void MB_Update()
         }
 
         // make at least 2 attempts to submit data (could be at a ringBuffer boundary)
+#   if MB_TRACING
+        if (!g_bFullSpeed) {
+#   endif
         do {
             if (MockingboardVoice->Lock(MockingboardVoice, requestedBufSize, &pDSLockedBuffer0, &dwDSLockedBufferSize0)) {
                 return;
@@ -1076,6 +1235,9 @@ static void MB_Update()
             ++counter;
         } while (bufIdx < originalRequestedBufSize && counter < 2);
         assert(bufIdx == originalRequestedBufSize);
+#   if MB_TRACING
+        }
+#   endif
 #endif
 
 #ifdef RIFF_MB
@@ -1085,6 +1247,7 @@ static void MB_Update()
 
 //-----------------------------------------------------------------------------
 
+#if 0 // ENABLE_SSI263
 #if 0 // !APPLE2IX
 static DWORD WINAPI SSI263Thread(LPVOID lpParameter)
 {
@@ -1209,10 +1372,6 @@ static void* SSI263Thread(void *lpParameter)
 
 static void SSI263_Play(unsigned int nPhoneme)
 {
-#if 1 // APPLE2IX
-    assert(pthread_self() == cpu_thread_id);
-#warning FIXME TODO : this needs to be properly implemented ...
-#else
 #if 1
 	HRESULT hr;
 
@@ -1309,8 +1468,8 @@ static void SSI263_Play(unsigned int nPhoneme)
 
 	SSI263Voice.bActive = true;
 #endif
-#endif
 }
+#endif // ENABLE_SSI263
 
 //-----------------------------------------------------------------------------
 
@@ -1413,10 +1572,8 @@ static bool MB_DSInit()
 	}
 #endif
 
-#if 1 // APPLE2IX
+#if 0 // ENABLE_SSI263
 #warning FIXME TODO : this needs to be properly implemented ...
-        return true;
-#else
 
 	for(int i=0; i<64; i++)
 	{
@@ -1504,7 +1661,7 @@ static bool MB_DSInit()
 		}
 #endif
 
-#ifdef APPLE2IX
+#if 1 // APPLE2IX
 		hr = SSI263Voice[i]->UnlockStaticBuffer(SSI263Voice[i], dwDSLockedBufferSize);
 		LOG("MB_DSInit: (%02d) Unlock(),hr=0x%08X\n", i, (unsigned int)hr);
 #else
@@ -1519,7 +1676,7 @@ static bool MB_DSInit()
 
 		SSI263Voice[i]->bActive = false;
 		SSI263Voice[i]->nVolume = MockingboardVoice->nVolume;		// Use same volume as MB
-#if !defined(APPLE2IX)
+#if 0 // !APPLE2IX
 		hr = SSI263Voice[i].lpDSBvoice->SetVolume(SSI263Voice[i].nVolume);
 		LogFileOutput("MB_DSInit: (%02d) SetVolume(), hr=0x%08X\n", i, hr);
 #endif
@@ -1529,7 +1686,7 @@ static bool MB_DSInit()
 
 	unsigned long dwThreadId;
 
-#ifdef APPLE2IX
+#if 1 // APPLE2IX
         {
             int err = 0;
             if ((err = pthread_create(&g_hThread, NULL, SSI263Thread, NULL)))
@@ -1567,9 +1724,9 @@ static bool MB_DSInit()
 	LOG("MB_DSInit: SetThreadPriority(), bRes=%d\n", bRes2 ? 1 : 0);
 #endif
 
+#endif // FIXME : ENABLE_SSI263
 	return true;
 
-#endif // FIXME : APPLE2IX
 #endif // NO_DIRECT_X
 }
 
@@ -1577,7 +1734,7 @@ static void MB_DSUninit()
 {
 	if(g_hThread)
 	{
-#ifdef APPLE2IX
+#if 1 // APPLE2IX
                 quit_event = true;
                 pthread_cond_signal(&ssi263_cond);
 
@@ -1602,7 +1759,7 @@ static void MB_DSUninit()
 		while(1);
 #endif
 
-#ifdef APPLE2IX
+#if 1 // APPLE2IX
 		g_hThread = 0;
                 pthread_mutex_destroy(&ssi263_mutex);
                 pthread_cond_destroy(&ssi263_cond);
@@ -1616,7 +1773,7 @@ static void MB_DSUninit()
 
 	if(MockingboardVoice && MockingboardVoice->bActive)
 	{
-#if !defined(APPLE2IX)
+#if 0 // !APPLE2IX
 		MockingboardVoice.lpDSBvoice->Stop();
 #endif
 		MockingboardVoice->bActive = false;
@@ -1630,7 +1787,7 @@ static void MB_DSUninit()
 	{
 		if(SSI263Voice[i] && SSI263Voice[i]->bActive)
 		{
-#if !defined(APPLE2IX)
+#if 0 // !APPLE2IX
 			SSI263Voice[i].lpDSBvoice->Stop();
 #endif
 			SSI263Voice[i]->bActive = false;
@@ -1641,7 +1798,7 @@ static void MB_DSUninit()
 
 	//
 
-#ifdef APPLE2IX
+#if 1 // APPLE2IX
         FREE(g_nMixBuffer);
 #else
 	if(g_hSSI263Event[0])
@@ -1668,14 +1825,14 @@ static void MB_DSUninit()
 
 void MB_Initialize()
 {
-#ifdef APPLE2IX
+#if 1 // APPLE2IX
     assert(pthread_self() == cpu_thread_id);
     memset(SSI263Voice, 0x0, sizeof(AudioBuffer_s *) * 64);
 #endif
 	LOG("MB_Initialize: g_bDisableDirectSound=%d, g_bDisableDirectSoundMockingboard=%d\n", g_bDisableDirectSound, g_bDisableDirectSoundMockingboard);
 	if (g_bDisableDirectSound || g_bDisableDirectSoundMockingboard)
 	{
-#if !defined(APPLE2IX)
+#if 0 // !APPLE2IX
 		MockingboardVoice.bMute = true;
 #endif
 		g_SoundcardType = CT_Empty;
@@ -1684,7 +1841,7 @@ void MB_Initialize()
 	{
 		memset(&g_MB,0,sizeof(g_MB));
 
-#ifdef APPLE2IX
+#if 1 // APPLE2IX
 		g_bMBAvailable = MB_DSInit();
                 if (!g_bMBAvailable) {
                     //MockingboardVoice->bMute = true;
@@ -1695,7 +1852,7 @@ void MB_Initialize()
 
 		int i;
 		for(i=0; i<NUM_VOICES; i++)
-#ifdef APPLE2IX
+#if 1 // APPLE2IX
 			ppAYVoiceBuffer[i] = MALLOC(sizeof(short) * SAMPLE_RATE); // Buffer can hold a max of 1 seconds worth of samples
 #else
 			ppAYVoiceBuffer[i] = new short [SAMPLE_RATE];	// Buffer can hold a max of 1 seconds worth of samples
@@ -1709,7 +1866,7 @@ void MB_Initialize()
 
 		//
 
-#if !defined(APPLE2IX)
+#if 0 // !APPLE2IX
 		g_bMBAvailable = MB_DSInit();
 #endif
 		LOG("MB_Initialize: MB_DSInit(), g_bMBAvailable=%d\n", g_bMBAvailable);
@@ -1719,7 +1876,7 @@ void MB_Initialize()
 	}
 }
 
-#ifdef APPLE2IX
+#if 1 // APPLE2IX
 // HACK functions for "soft" destroying backend audio resource (but keeping current state)
 void MB_SoftDestroy(void) {
     assert(pthread_self() == cpu_thread_id);
@@ -1736,7 +1893,7 @@ void MB_SoftInitialize(void) {
 // NB. Called when /cycles_persec_target/ changes
 void MB_Reinitialize()
 {
-#ifdef APPLE2IX
+#if 1 // APPLE2IX
 	AY8910_InitClock((int)cycles_persec_target, SAMPLE_RATE);
 #else
 	AY8910_InitClock((int)g_fCurrentCLK6502);	// todo: account for g_PhasorClockScaleFactor?
@@ -1748,14 +1905,14 @@ void MB_Reinitialize()
 
 void MB_Destroy()
 {
-#ifdef APPLE2IX
+#if 1 // APPLE2IX
     assert(pthread_self() == cpu_thread_id);
 #endif
 	MB_DSUninit();
 
 	for(int i=0; i<NUM_VOICES; i++)
         {
-#ifdef APPLE2IX
+#if 1 // APPLE2IX
 		FREE(ppAYVoiceBuffer[i]);
 #else
 		delete [] ppAYVoiceBuffer[i];
@@ -1763,7 +1920,7 @@ void MB_Destroy()
         }
 }
 
-#ifdef APPLE2IX
+#if 1 // APPLE2IX
 // HACK NOTE TODO FIXME : hardcoded for now (until we have dynamic emulation for other cards in these slots) ...
 //SS_CARDTYPE g_Slot4 = CT_Phasor;
 //SS_CARDTYPE g_Slot5 = CT_Empty;
@@ -1823,7 +1980,7 @@ void MB_Reset()
 
 //-----------------------------------------------------------------------------
 
-#ifdef APPLE2IX
+#if 1 // APPLE2IX
 #define MemReadFloatingBus floating_bus
 #define nAddr ea
 GLUE_C_READ(MB_Read)
@@ -1831,13 +1988,19 @@ GLUE_C_READ(MB_Read)
 static BYTE __stdcall MB_Read(WORD PC, WORD nAddr, BYTE bWrite, BYTE nValue, ULONG nCyclesLeft)
 #endif
 {
-#ifdef APPLE2IX
+#if 1 // APPLE2IX
+#   if MB_TRACING
+    if (mb_trace_fp) {
+        unsigned long uCycles = cycles_count_total - g_uLastCumulativeCycles;
+        fprintf(mb_trace_fp, "MB_Read|%04X|%lu\n", ea, uCycles);
+    }
+#   endif
 	MB_UpdateCycles();
 #else
 	MB_UpdateCycles(nCyclesLeft);
 #endif
 
-#ifdef _DEBUG
+#if 0 // _DEBUG
 	if(!IS_APPLE2 && !MemCheckSLOTCXROM())
 	{
 		_ASSERT(0);	// Card ROM disabled, so IORead_Cxxx() returns the internal ROM
@@ -1857,7 +2020,7 @@ static BYTE __stdcall MB_Read(WORD PC, WORD nAddr, BYTE bWrite, BYTE nValue, ULO
 	if(g_bPhasorEnable)
 	{
 		if(nMB != 0)	// Slot4 only
-#ifdef APPLE2IX
+#if 1 // APPLE2IX
 			return MemReadFloatingBus();
 #else
 			return MemReadFloatingBus(nCyclesLeft);
@@ -1881,11 +2044,15 @@ static BYTE __stdcall MB_Read(WORD PC, WORD nAddr, BYTE bWrite, BYTE nValue, ULO
 
 		if((nOffset >= SSI263_Offset) && (nOffset <= (SSI263_Offset+0x05)))
 		{
+#if 0 // ENABLE_SSI263
 			nRes |= SSI263_Read(nMB, nAddr&0xf);
+#else
+                        mb_assert(false);
+#endif
 			bAccessedDevice = true;
 		}
 
-#ifdef APPLE2IX
+#if 1 // APPLE2IX
 		return bAccessedDevice ? nRes : MemReadFloatingBus();
 #else
 		return bAccessedDevice ? nRes : MemReadFloatingBus(nCyclesLeft);
@@ -1897,31 +2064,54 @@ static BYTE __stdcall MB_Read(WORD PC, WORD nAddr, BYTE bWrite, BYTE nValue, ULO
 	else if((nOffset >= SY6522B_Offset) && (nOffset <= (SY6522B_Offset+0x0F)))
 		return SY6522_Read(nMB*NUM_DEVS_PER_MB + SY6522_DEVICE_B, nAddr&0xf);
 	else if((nOffset >= SSI263_Offset) && (nOffset <= (SSI263_Offset+0x05)))
+#if 0 // ENABLE_SSI263
 		return SSI263_Read(nMB, nAddr&0xf);
-	else
-#ifdef APPLE2IX
-		return MemReadFloatingBus();
 #else
+                mb_assert(false);
+#endif
+
+#if MB_TRACING
+#   if 1 // APPLE2IX
+        uint8_t b = MemReadFloatingBus();
+#   else
+        BYTE b = MemReadFloatingBus(nCyclesLeft);
+#   endif
+        if (mb_trace_fp) {
+            fprintf(mb_trace_fp, "\tfall through ret:%02X\n", b);
+        }
+        return b;
+#else
+#   if 1 // APPLE2IX
+		return MemReadFloatingBus();
+#   else
 		return MemReadFloatingBus(nCyclesLeft);
+#   endif
 #endif
 }
 
 //-----------------------------------------------------------------------------
 
-#ifdef APPLE2IX
+#if 1 // APPLE2IX
 #define nValue b
 GLUE_C_WRITE(MB_Write)
 #else
 static BYTE __stdcall MB_Write(WORD PC, WORD nAddr, BYTE bWrite, BYTE nValue, ULONG nCyclesLeft)
 #endif
 {
-#ifdef APPLE2IX
+#if 1 // APPLE2IX
+#   if MB_TRACING
+    // output cycle count delta when toggled
+    if (mb_trace_fp) {
+        unsigned long uCycles = cycles_count_total - g_uLastCumulativeCycles;
+        fprintf(mb_trace_fp, "MB_Write|%04X|%02X|%lu\n", ea, b, uCycles);
+    }
+#   endif
 	MB_UpdateCycles();
 #else
 	MB_UpdateCycles(nCyclesLeft);
 #endif
 
-#ifdef _DEBUG
+#if 0 // _DEBUG
 	if(!IS_APPLE2 && !MemCheckSLOTCXROM())
 	{
 		_ASSERT(0);	// Card ROM disabled, so IORead_Cxxx() returns the internal ROM
@@ -1957,7 +2147,11 @@ static BYTE __stdcall MB_Write(WORD PC, WORD nAddr, BYTE bWrite, BYTE nValue, UL
 			SY6522_Write(nMB*NUM_DEVS_PER_MB + SY6522_DEVICE_B, nAddr&0xf, nValue);
 
 		if((nOffset >= SSI263_Offset) && (nOffset <= (SSI263_Offset+0x05)))
+#if 0 // ENABLE_SSI263
 			SSI263_Write(nMB*2+1, nAddr&0xf, nValue);		// Second 6522 is used for speech chip
+#else
+                        mb_assert(false);
+#endif
 
 		return/*0*/;
 	}
@@ -1967,21 +2161,25 @@ static BYTE __stdcall MB_Write(WORD PC, WORD nAddr, BYTE bWrite, BYTE nValue, UL
 	else if((nOffset >= SY6522B_Offset) && (nOffset <= (SY6522B_Offset+0x0F)))
 		SY6522_Write(nMB*NUM_DEVS_PER_MB + SY6522_DEVICE_B, nAddr&0xf, nValue);
 	else if((nOffset >= SSI263_Offset) && (nOffset <= (SSI263_Offset+0x05)))
+#if 0 // ENABLE_SSI263
 		SSI263_Write(nMB*2+1, nAddr&0xf, nValue);		// Second 6522 is used for speech chip
+#else
+                mb_assert(false);
+#endif
 
 	return/*0*/;
 }
 
 //-----------------------------------------------------------------------------
 
-#ifdef APPLE2IX
+#if 1 // APPLE2IX
 GLUE_C_READ(PhasorIO)
 #else
 static BYTE __stdcall PhasorIO(WORD PC, WORD nAddr, BYTE bWrite, BYTE nValue, ULONG nCyclesLeft)
 #endif
 {
 	if(!g_bPhasorEnable)
-#ifdef APPLE2IX
+#if 1 // APPLE2IX
 		return MemReadFloatingBus();
 #else
 		return MemReadFloatingBus(nCyclesLeft);
@@ -1992,7 +2190,7 @@ static BYTE __stdcall PhasorIO(WORD PC, WORD nAddr, BYTE bWrite, BYTE nValue, UL
 
 	g_PhasorClockScaleFactor = (nAddr & 4) ? 2 : 1;
 
-#ifdef APPLE2IX
+#if 1 // APPLE2IX
 	AY8910_InitClock((int)CLK_6502 * g_PhasorClockScaleFactor, SAMPLE_RATE);
 
 	return MemReadFloatingBus();
@@ -2004,7 +2202,7 @@ static BYTE __stdcall PhasorIO(WORD PC, WORD nAddr, BYTE bWrite, BYTE nValue, UL
 }
 
 //-----------------------------------------------------------------------------
-#ifdef APPLE2IX
+#if 1 // APPLE2IX
 
 #define IO_Null NULL
 
@@ -2072,13 +2270,13 @@ void MB_Mute()
 
 	if(MockingboardVoice->bActive && !MockingboardVoice->bMute)
 	{
-#if !defined(APPLE2IX)
+#if 0 // !APPLE2IX
 		MockingboardVoice.lpDSBvoice->SetVolume(DSBVOLUME_MIN);
 #endif
 		MockingboardVoice->bMute = true;
 	}
 
-#if !defined(APPLE2IX)
+#if 0 // !APPLE2IX
 	if(g_nCurrentActivePhoneme >= 0)
 		SSI263Voice[g_nCurrentActivePhoneme].lpDSBvoice->SetVolume(DSBVOLUME_MIN);
 #endif
@@ -2093,13 +2291,13 @@ void MB_Demute()
 
 	if(MockingboardVoice->bActive && MockingboardVoice->bMute)
 	{
-#if !defined(APPLE2IX)
+#if 0 // !APPLE2IX
 		MockingboardVoice.lpDSBvoice->SetVolume(MockingboardVoice.nVolume);
 #endif
 		MockingboardVoice->bMute = false;
 	}
 
-#if !defined(APPLE2IX)
+#if 0 // !APPLE2IX
 	if(g_nCurrentActivePhoneme >= 0)
 		SSI263Voice[g_nCurrentActivePhoneme].lpDSBvoice->SetVolume(SSI263Voice[g_nCurrentActivePhoneme].nVolume);
 #endif
@@ -2118,6 +2316,11 @@ void MB_EndOfVideoFrame()
 {
 	if(g_SoundcardType == CT_Empty)
 		return;
+#if MB_TRACING
+        if (mb_trace_fp) {
+            fprintf(mb_trace_fp, "%s", "MB_EndOfVideoFrame\n");
+        }
+#endif
 
 	if(!g_bMBTimerIrqActive)
 		MB_Update();
@@ -2126,7 +2329,7 @@ void MB_EndOfVideoFrame()
 //-----------------------------------------------------------------------------
 
 // Called by CpuExecute() after every N opcodes (N = ~1000 @ 1MHz)
-#ifdef APPLE2IX
+#if 1 // APPLE2IX
 void MB_UpdateCycles(void)
 #else
 void MB_UpdateCycles(ULONG uExecutedCycles)
@@ -2138,10 +2341,10 @@ void MB_UpdateCycles(ULONG uExecutedCycles)
 	timing_checkpoint_cycles();
 	unsigned long uCycles = cycles_count_total - g_uLastCumulativeCycles;
 	g_uLastCumulativeCycles = cycles_count_total;
-#if defined(APPLE2IX)
+#if 1 // APPLE2IX
         if (uCycles >= 0x10000) {
-            printf("OOPS!!! Mockingboard failed assert!\n");
-            return;
+            LOG("OOPS!!! Mockingboard failed assert!");
+            uCycles %= 0x10000;
         }
 #else
 	_ASSERT(uCycles < 0x10000);
@@ -2162,7 +2365,12 @@ void MB_UpdateCycles(ULONG uExecutedCycles)
 
 		if( bTimer1Underflow && (g_nMBTimerDevice == i) && g_bMBTimerIrqActive )
 		{
-#ifdef _DEBUG
+#if MB_TRACING
+                        if (mb_trace_fp) {
+                            fprintf(mb_trace_fp, "\ttimer1 (%d) underflow\n", i);
+                        }
+#endif
+#if 0 // _DEBUG
 			g_uTimer1IrqCount++;	// DEBUG
 #endif
 
@@ -2174,6 +2382,11 @@ void MB_UpdateCycles(ULONG uExecutedCycles)
 				// One-shot mode
 				// - Phasor's playback code uses one-shot mode
 				// - Willy Byte sets to one-shot to stop the timer IRQ
+#if MB_TRACING
+                                if (mb_trace_fp) {
+                                    fprintf(mb_trace_fp, "\tstop timer %d\n", i);
+                                }
+#endif
 				StopTimer(pMB);
 			}
 			else
@@ -2181,6 +2394,11 @@ void MB_UpdateCycles(ULONG uExecutedCycles)
 				// Free-running mode
 				// - Ultima4/5 change ACCESS_TIMER1 after a couple of IRQs into tune
 				pMB->sy6522.TIMER1_COUNTER.w = pMB->sy6522.TIMER1_LATCH.w;
+#if MB_TRACING
+                                if (mb_trace_fp) {
+                                    fprintf(mb_trace_fp, "\tstart timer %d\n", i);
+                                }
+#endif
 				StartTimer(pMB);
 			}
 
@@ -2191,6 +2409,11 @@ void MB_UpdateCycles(ULONG uExecutedCycles)
 					&& (pMB->sy6522.IFR & IxR_TIMER1)					// IRQ
 					&& ((pMB->sy6522.ACR & RUNMODE) == RM_ONESHOT) )	// One-shot mode
 		{
+#if MB_TRACING
+                        if (mb_trace_fp) {
+                            fprintf(mb_trace_fp, "\ttimer1 (%d) alt underflow\n", i);
+                        }
+#endif
 			// Fix for Willy Byte - need to confirm that 6522 really does this!
 			// . It never accesses IER/IFR/TIMER1 regs to clear IRQ
 			pMB->sy6522.IFR &= ~IxR_TIMER1;		// Deassert the TIMER IRQ
@@ -2238,7 +2461,7 @@ bool MB_IsActive()
 }
 
 //-----------------------------------------------------------------------------
-#if defined(APPLE2IX)
+#if 1 // APPLE2IX
 void MB_SetVolumeZeroToTen(unsigned long goesToTen) {
     samplesScale = goesToTen/10.f;
 }
@@ -2262,7 +2485,7 @@ void MB_SetVolume(DWORD dwVolume, DWORD dwVolumeMax)
 //===========================================================================
 
 // Called by debugger - Debugger_Display.cpp
-#if !defined(APPLE2IX)
+#if 0 // !APPLE2IX
 void MB_GetSnapshot_v1(SS_CARD_MOCKINGBOARD_v1* const pSS, const DWORD dwSlot)
 {
 	pSS->Hdr.UnitHdr.hdr.v2.Length = sizeof(SS_CARD_MOCKINGBOARD_v1);
@@ -2356,7 +2579,7 @@ static __attribute__((constructor)) void _init_mockingboard(void) {
     prefs_registerListener(PREF_DOMAIN_AUDIO, &mb_prefsChanged);
 }
 
-#if !defined(APPLE2IX)
+#if 0 // !APPLE2IX
 static UINT DoWriteFile(const HANDLE hFile, const void* const pData, const UINT Length)
 {
 	DWORD dwBytesWritten;
@@ -2710,3 +2933,38 @@ bool Phasor_LoadSnapshot(YamlLoadHelper& yamlLoadHelper, UINT slot, UINT version
 }
 #endif // !APPLE2IX
 
+//-----------------------------------------------------------------------------
+
+#if MB_TRACING
+void mb_traceBegin(const char *trace_file) {
+    if (trace_file) {
+        mb_trace_fp = fopen(trace_file, "w");
+        char *samp_file = NULL;
+        ASPRINTF(&samp_file, "%s.samp", trace_file);
+        assert(samp_file);
+        mb_trace_samples_fp = fopen(samp_file, "w");
+        FREE(samp_file);
+    }
+}
+
+void mb_traceFlush(void) {
+    if (mb_trace_fp) {
+        fflush(mb_trace_fp);
+    }
+    if (mb_trace_samples_fp) {
+        fflush(mb_trace_samples_fp);
+    }
+}
+
+void mb_traceEnd(void) {
+    mb_traceFlush();
+    if (mb_trace_fp) {
+        fclose(mb_trace_fp);
+        mb_trace_fp = NULL;
+    }
+    if (mb_trace_samples_fp) {
+        fclose(mb_trace_samples_fp);
+        mb_trace_samples_fp = NULL;
+    }
+}
+#endif

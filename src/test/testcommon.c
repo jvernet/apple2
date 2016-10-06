@@ -56,34 +56,31 @@ void test_common_init(void) {
     prefs_load();
     prefs_setLongValue(PREF_DOMAIN_VIDEO, PREF_COLOR_MODE, COLOR);
     prefs_setBoolValue(PREF_DOMAIN_KEYBOARD, PREF_KEYBOARD_CAPS, true);
-    prefs_setFloatValue(PREF_DOMAIN_VM, PREF_CPU_SCALE, CPU_SCALE_FASTEST);
-    prefs_setFloatValue(PREF_DOMAIN_VM, PREF_CPU_SCALE_ALT, CPU_SCALE_FASTEST);
+    prefs_setFloatValue(PREF_DOMAIN_VM, PREF_CPU_SCALE, (CPU_SCALE_FASTEST * 100.));
+    prefs_setFloatValue(PREF_DOMAIN_VM, PREF_CPU_SCALE_ALT, (CPU_SCALE_FASTEST * 100.));
     prefs_save();
 
     c_debugger_set_watchpoint(WATCHPOINT_ADDR);
-    if (0) {
-        c_debugger_set_timeout(15);
-    } else {
-        fprintf(stderr, "NOTE : RUNNING WITH DISPLAY\n");
-        fprintf(stderr, "Will spinloop on failed tests for debugger intervention\n");
-        c_debugger_set_timeout(0);
-    }
+
+    fprintf(stderr, "NOTE : RUNNING WITH DISPLAY\n");
+    fprintf(stderr, "Will spinloop on failed tests for debugger intervention\n");
+    c_debugger_set_timeout(0);
 }
 
 int test_setup_boot_disk(const char *fileName, int readonly) {
     int err = 0;
     char **path = NULL;
-    const unsigned int pathsCount = 3;
-    char *paths[pathsCount + 1] = {
-        NULL,
-        NULL,
-        NULL,
-        NULL,
-    };
-    const char *fmts[pathsCount + 1] = {
+#define PATHS_COUNT 8
+    char *paths[PATHS_COUNT + 1] = { 0 };
+    const char *fmts[PATHS_COUNT + 1] = {
         "%s%sdisks/%s",
         "%s%sdisks/demo/%s",
         "%s%sdisks/blanks/%s",
+        "%s%sdisks/3rd-party-test/%s",
+        "%s%sexternal-disks/%s",
+        "%s%sexternal-disks/demo/%s",
+        "%s%sexternal-disks/blanks/%s",
+        "%s%sexternal-disks/3rd-party-test/%s",
         NULL,
     };
 
@@ -97,7 +94,6 @@ int test_setup_boot_disk(const char *fileName, int readonly) {
 #   endif
 
     do {
-        
         const char **fmtPtr = &fmts[0];
         unsigned int idx = 0;
         while (*fmtPtr) {
@@ -107,7 +103,7 @@ int test_setup_boot_disk(const char *fileName, int readonly) {
             CFStringRef fileString = NULL;
             CFURLRef fileURL = NULL;
             
-            ASPRINTF(&diskFile, fmt, prefixPath, sep, fileName);
+            int len = ASPRINTF(&diskFile, fmt, prefixPath, sep, fileName);
             assert(diskFile);
             fileString = CFStringCreateWithCString(kCFAllocatorDefault, diskFile, kCFStringEncodingUTF8);
             assert(fileString);
@@ -119,6 +115,22 @@ int test_setup_boot_disk(const char *fileName, int readonly) {
             // AppDelegate should have copied disks to a R/W location
             fileURL = CFURLCreateWithFileSystemPath(kCFAllocatorDefault, fileString, kCFURLPOSIXPathStyle, /*isDirectory*/false);
 #   endif
+            if (!fileURL) {
+                if (CFStringHasSuffix(fileString, CFSTR(".gz")) || CFStringHasSuffix(fileString, CFSTR(".GZ"))) {
+                    *(diskFile + len - 3) = '\0';
+                    CFRELEASE(fileString);
+                    fileString = CFStringCreateWithCString(kCFAllocatorDefault, diskFile, kCFStringEncodingUTF8);
+                    assert(fileString);
+#   if TARGET_OS_SIMULATOR || !TARGET_OS_EMBEDDED
+                    // Use disks directly out of bundle ... is this OKAY?
+                    fileURL = CFBundleCopyResourceURL(CFBundleGetMainBundle(), fileString, NULL, NULL);
+#   else
+                    // AppDelegate should have copied disks to a R/W location
+                    fileURL = CFURLCreateWithFileSystemPath(kCFAllocatorDefault, fileString, kCFURLPOSIXPathStyle, /*isDirectory*/false);
+#   endif
+                }
+            }
+            
             if (fileURL) {
                 CFStringRef filePath = CFURLCopyFileSystemPath(fileURL, kCFURLPOSIXPathStyle);
                 assert(filePath);

@@ -33,9 +33,16 @@ drive_t disk6;
 static uint8_t disk_a[NIB_SIZE] = { 0 };
 static uint8_t disk_b[NIB_SIZE] = { 0 };
 
-static int stepper_phases = 0; // state bits for stepper magnet phases 0-3
-static int skew_table_6_po[16] = { 0x00,0x08,0x01,0x09,0x02,0x0A,0x03,0x0B, 0x04,0x0C,0x05,0x0D,0x06,0x0E,0x07,0x0F }; // ProDOS order
-static int skew_table_6_do[16] = { 0x00,0x07,0x0E,0x06,0x0D,0x05,0x0C,0x04, 0x0B,0x03,0x0A,0x02,0x09,0x01,0x08,0x0F }; // DOS order
+#if TESTING
+#   define STATIC
+#else
+#   define STATIC static
+#endif
+
+STATIC int stepper_phases = 0; // state bits for stepper magnet phases 0-3
+
+STATIC int skew_table_6_po[16] = { 0x00,0x08,0x01,0x09,0x02,0x0A,0x03,0x0B, 0x04,0x0C,0x05,0x0D,0x06,0x0E,0x07,0x0F }; // ProDOS order
+STATIC int skew_table_6_do[16] = { 0x00,0x07,0x0E,0x06,0x0D,0x05,0x0C,0x04, 0x0B,0x03,0x0A,0x02,0x09,0x01,0x08,0x0F }; // DOS order
 
 static pthread_mutex_t unlink_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -1093,8 +1100,8 @@ bool disk6_loadState(StateHelper_s *helper) {
             if (!helper->load(fd, &state, 1)) {
                 break;
             }
-            disk6.disk[i].is_protected = state;
-            LOG("LOAD is_protected[%lu] = %02x", i, disk6.disk[i].is_protected);
+            bool is_protected = (bool)state;
+            LOG("LOAD is_protected[%lu] = %02x", i, is_protected);
 
             uint8_t serialized[4] = { 0 };
             if (!helper->load(fd, serialized, 4)) {
@@ -1117,11 +1124,11 @@ bool disk6_loadState(StateHelper_s *helper) {
                 }
 
                 namebuf[namelen] = '\0';
-                if (disk6_insert(i, namebuf, disk6.disk[i].is_protected)) {
+                if (disk6_insert(i, namebuf, is_protected)) {
                     snprintf(namebuf+namelen, gzlen, "%s", EXT_GZ);
                     namebuf[namelen+gzlen] = '\0';
                     LOG("LOAD disk[%lu] : (%u) %s", i, namelen, namebuf);
-                    if (disk6_insert(i, namebuf, disk6.disk[i].is_protected)) {
+                    if (disk6_insert(i, namebuf, is_protected)) {
                         FREE(namebuf);
                         break;
                     }

@@ -38,6 +38,7 @@ void test_breakpoint(void *arg);
 void test_common_init(void);
 void test_common_setup(void);
 void test_type_input(const char *input);
+void test_type_input_deterministically(const char *input);
 int test_setup_boot_disk(const char *fileName, int readonly);
 void sha1_to_str(const uint8_t * const md, char *buf);
 
@@ -54,6 +55,14 @@ static inline int ASSERT_SHA_MEM(const char *SHA_STR, uint16_t ea, uint16_t len)
     uint8_t md[SHA_DIGEST_LENGTH];
     const uint8_t * const mem = &apple_ii_64k[0][ea];
     SHA1(mem, len, md);
+    sha1_to_str(md, mdstr);
+    ASSERT(strcasecmp(mdstr, SHA_STR) == 0);
+    return 0;
+}
+
+static inline int ASSERT_SHA_BIN(const char *SHA_STR, const uint8_t * const buf, unsigned long len) {
+    uint8_t md[SHA_DIGEST_LENGTH];
+    SHA1(buf, len, md);
     sha1_to_str(md, mdstr);
     ASSERT(strcasecmp(mdstr, SHA_STR) == 0);
     return 0;
