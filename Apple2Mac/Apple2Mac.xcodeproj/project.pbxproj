@@ -1568,11 +1568,7 @@
 		773B3D04195688590085CE5F /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-<<<<<<< HEAD
-				LastUpgradeCheck = 0720;
-=======
 				LastUpgradeCheck = 0730;
->>>>>>> mauiaaron/develop
 				ORGANIZATIONNAME = deadc0de.org;
 				TargetAttributes = {
 					4ACD73201D20A83E00123DE6 = {
@@ -1589,14 +1585,7 @@
 					};
 					935C55271C12BA5F0013166D = {
 						CreatedOnToolsVersion = 7.1.1;
-<<<<<<< HEAD
-<<<<<<< HEAD
 						DevelopmentTeam = 774X2MBDTH;
-=======
->>>>>>> mauiaaron/develop
-=======
-						DevelopmentTeam = 4S92KXH58V;
->>>>>>> mauiaaron/develop
 					};
 				};
 			};
@@ -1822,15 +1811,9 @@
 				935C55351C12BA5F0013166D /* Main.storyboard in Resources */,
 				935C55921C1371AD0013166D /* Basic.vsh in Resources */,
 				935C55911C1371AD0013166D /* Basic.fsh in Resources */,
-<<<<<<< HEAD
-<<<<<<< HEAD
 				4EF7D04E1C38204C007E0ADD /* floppy.png in Resources */,
-=======
->>>>>>> mauiaaron/develop
-=======
 				939C95A21C3B8E2100263E41 /* SolidColor.vsh in Resources */,
 				939C959F1C3B8E2100263E41 /* SolidColor.fsh in Resources */,
->>>>>>> mauiaaron/develop
 				93206C781C14E14000668153 /* Apple2iOS.strings in Resources */,
 				4ACD731A1D205D6000123DE6 /* disks in Resources */,
 			);
