@@ -15,7 +15,9 @@
 
 #include "common.h"
 
-#define SAVE_MAGICK "A2VM"
+#define SAVE_MAGICK  "A2VM"
+#define SAVE_MAGICK2 "A2V2"
+#define SAVE_VERSION 2
 #define SAVE_MAGICK_LEN sizeof(SAVE_MAGICK)
 
 typedef struct module_ctor_node_s {
@@ -53,7 +55,7 @@ static bool _save_state(int fd, const uint8_t * outbuf, ssize_t outmax) {
     ssize_t outlen = 0;
     do {
         if (TEMP_FAILURE_RETRY(outlen = write(fd, outbuf, outmax)) == -1) {
-            ERRLOG("error writing emulator save state file");
+            ERRLOG("OOPS, error writing emulator save-state file");
             break;
         }
         outbuf += outlen;
@@ -65,13 +67,33 @@ static bool _save_state(int fd, const uint8_t * outbuf, ssize_t outmax) {
 
 static bool _load_state(int fd, uint8_t * inbuf, ssize_t inmax) {
     ssize_t inlen = 0;
+
+    assert(inmax > 0);
+
+    struct stat stat_buf;
+    if (UNLIKELY(fstat(fd, &stat_buf) < 0)) {
+        ERRLOG("OOPS, could not stat FD");
+        return false;
+    }
+    off_t fileSiz = stat_buf.st_size;
+    off_t filePos = lseek(fd, 0, SEEK_CUR);
+    if (UNLIKELY(filePos < 0)) {
+        ERRLOG("OOPS, could not lseek FD");
+        return false;
+    }
+
+    if (UNLIKELY(filePos + inmax > fileSiz)) {
+        LOG("OOPS, encountered truncated save-state file");
+        return false;
+    }
+
     do {
         if (TEMP_FAILURE_RETRY(inlen = read(fd, inbuf, inmax)) == -1) {
-            ERRLOG("error reading emulator save state file");
+            ERRLOG("error reading emulator save-state file");
             break;
         }
         if (inlen == 0) {
-            ERRLOG("error reading emulator save state file (truncated)");
+            ERRLOG("error reading emulator save-state file (truncated)");
             break;
         }
         inbuf += inlen;
@@ -97,12 +119,13 @@ bool emulator_saveState(const char * const path) {
         assert(fd != 0 && "crazy platform");
 
         // save header
-        if (!_save_state(fd, (const uint8_t *)SAVE_MAGICK, SAVE_MAGICK_LEN)) {
+        if (!_save_state(fd, (const uint8_t *)SAVE_MAGICK2, SAVE_MAGICK_LEN)) {
             break;
         }
 
         StateHelper_s helper = {
             .fd = fd,
+            .version = SAVE_VERSION,
             .save = &_save_state,
             .load = &_load_state,
         };
@@ -119,7 +142,15 @@ bool emulator_saveState(const char * const path) {
             break;
         }
 
+        if (!timing_saveState(&helper)) {
+            break;
+        }
+
         if (!video_saveState(&helper)) {
+            break;
+        }
+
+        if (!mb_saveState(&helper)) {
             break;
         }
 
@@ -132,7 +163,7 @@ bool emulator_saveState(const char * const path) {
     }
 
     if (!saved) {
-        ERRLOG("could not write to the emulator save state file");
+        ERRLOG("OOPS, could not write to the emulator save-state file");
         unlink(path);
     }
 
@@ -149,6 +180,7 @@ bool emulator_loadState(const char * const path) {
 
     video_setDirty(A2_DIRTY_FLAG);
 
+    int version=-1;
     do {
         TEMP_FAILURE_RETRY(fd = open(path, O_RDONLY));
         if (fd < 0) {
@@ -163,13 +195,19 @@ bool emulator_loadState(const char * const path) {
         }
 
         // check header
-        if (memcmp(magick, SAVE_MAGICK, SAVE_MAGICK_LEN) != 0) {
+
+        if (memcmp(magick, SAVE_MAGICK, SAVE_MAGICK_LEN) == 0) {
+            version = 1;
+        } else if (memcmp(magick, SAVE_MAGICK2, SAVE_MAGICK_LEN) == 0) {
+            version = 2;
+        } else {
             ERRLOG("bad header magick in emulator save state file");
             break;
         }
 
         StateHelper_s helper = {
             .fd = fd,
+            .version = version,
             .save = &_save_state,
             .load = &_load_state,
         };
@@ -186,8 +224,36 @@ bool emulator_loadState(const char * const path) {
             break;
         }
 
+        if (version >= 2) {
+            if (!timing_loadState(&helper)) {
+                break;
+            }
+        }
+
         if (!video_loadState(&helper)) {
             break;
+        }
+
+        if (version >= 2) {
+            if (!mb_loadState(&helper)) {
+                break;
+            }
+        }
+
+        // sanity-check whole file was read
+
+        struct stat stat_buf;
+        if (fstat(fd, &stat_buf) < 0) {
+            ERRLOG("OOPS, could not stat FD");
+        }
+        off_t fileSiz = stat_buf.st_size;
+        off_t filePos = lseek(fd, 0, SEEK_CUR);
+        if (filePos < 0) {
+            ERRLOG("OOPS, could not lseek FD");
+        }
+
+        if (UNLIKELY(filePos != fileSiz)) {
+            LOG("OOPS, state file read: %lu total: %lu", filePos, fileSiz);
         }
 
         loaded = true;
@@ -198,7 +264,7 @@ bool emulator_loadState(const char * const path) {
     }
 
     if (!loaded) {
-        ERRLOG("could not load emulator save state file");
+        LOG("OOPS, problem(s) encountered loading emulator save-state file");
     }
 
     return loaded;
@@ -298,8 +364,6 @@ void emulator_start(void) {
 
 void emulator_shutdown(void) {
     emulatorShuttingDown = true;
-    disk6_eject(0);
-    disk6_eject(1);
     video_shutdown();
     prefs_shutdown();
     timing_stopCPU();

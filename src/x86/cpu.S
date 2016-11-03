@@ -58,12 +58,15 @@
                 CommonSaveCPUState; \
                 popLQ _XAX; \
                 CALL_FN(callLQ, cpu65_trace_epilogue, 0x4);
+#   define TRACE_IRQ \
+                CALL_FN(callLQ, cpu65_trace_irq, 0x4);
 #else
 #   define TRACE_PROLOGUE
 #   define TRACE_ARG
 #   define TRACE_ARG1
 #   define TRACE_ARG2
 #   define TRACE_EPILOGUE
+#   define TRACE_IRQ
 #endif
 
 /* -------------------------------------------------------------------------
@@ -87,12 +90,14 @@
                 CALL_IND(cpu65_vmem_r,EffectiveAddr_X,SZ_PTR); \
                 TRACE_ARG1;
 
+#define CPUStatsReset \
+                REG2MEM(movb, $0, cpu65_opcycles); \
+                REG2MEM(movb, $0, cpu65_rw);
+
 #define JumpNextInstruction \
                 TRACE_PROLOGUE; \
                 GetFromPC_B \
                 REG2MEM(movb, %al, cpu65_opcode); \
-                REG2MEM(movb, $0, cpu65_opcycles); \
-                REG2MEM(movb, $0, cpu65_rw); \
                 JUMP_IND(cpu65__opcodes,_XAX,SZ_PTR);
 
 #define GetFromEA_B \
@@ -1125,7 +1130,7 @@ ENTRY(op_DEC_abs) // 0xce
                 Continue
 
 ENTRY(op_DEC_abs_x) // 0xde
-                GetAbs_X
+                GetAbs_X_STx
                 DoDEC
                 Continue
 
@@ -1230,7 +1235,7 @@ ENTRY(op_INC_abs) // 0xee
                 Continue
 
 ENTRY(op_INC_abs_x) // 0xfe
-                GetAbs_X
+                GetAbs_X_STx
                 DoINC
                 Continue
 
@@ -2157,13 +2162,30 @@ continue:
                 REG2MEM(addl, %eax, cpu65_cycle_count)
                 REG2MEM(subl, %eax, gc_cycles_timer_0)
                 REG2MEM(subl, %eax, gc_cycles_timer_1)
-                REG2MEM(subl, %eax, cpu65_cycles_to_execute)
+#if CONFORMANT_IRQ_CHECKPOINT
+                REG2MEM(subl, %eax, irqCheckTimeout)
+                jl      irq_checkpoint // AppleWin : CheckInterruptSources()
+#endif
+continue1:      REG2MEM(subl, %eax, cpu65_cycles_to_execute)
                 jle     exit_cpu65_run
-
-continue1:      xorLQ   _XAX, _XAX
+continue2:      xorLQ   _XAX, _XAX
                 MEM2REG(orb, cpu65__signal, %al)
                 jnz     exception
+                CPUStatsReset
                 JumpNextInstruction
+
+#if CONFORMANT_IRQ_CHECKPOINT
+irq_checkpoint:
+#if __PIC__ && __i386__
+                pushl   %ebx
+#endif
+                CALL_FN(callLQ, cpu_irqCheck, 0x8)
+#if __PIC__ && __i386__
+                popl    %ebx
+#endif
+                REG2MEM(movl, $IRQ_CHECK_CYCLES, irqCheckTimeout)
+                jmp     continue1
+#endif
 
 /* -------------------------------------------------------------------------
         Exception handlers
@@ -2181,12 +2203,15 @@ ex_reset:       REG2MEM(movb, $0, cpu65__signal)
                 GetFromEA_W
                 movw    %ax, PC_Reg
                 xorb    %ah, %ah
+                CPUStatsReset
                 JumpNextInstruction
 
 ex_irq:         testb   $I_Flag, F_Reg                      // Already interrupted?
                 jz      1f
+                CPUStatsReset
                 JumpNextInstruction                         // Yes (ignored) ...
-1:              movw    PC_Reg, %ax                         // No (handle IRQ) ...
+1:              TRACE_IRQ                                   // No (handle IRQ) ...
+                movw    PC_Reg, %ax
 #if __PIC__
                 xchgb   %al, %ah
                 Push(%al)
@@ -2206,6 +2231,8 @@ ex_irq:         testb   $I_Flag, F_Reg                      // Already interrupt
                 GetFromEA_W
                 movw    %ax, PC_Reg
                 xorb    %ah, %ah
+                CPUStatsReset
+                REG2MEM(addb, $7, cpu65_opcycles);          // IRQ handling will take additional 7 cycles
                 JumpNextInstruction
 
 /* -------------------------------------------------------------------------
@@ -2252,7 +2279,7 @@ ENTRY(cpu65_run)
 #endif
                 REG2MEM(cmpb, $0, emul_reinitialize)
                 jnz     enter_reinit
-                jmp     continue1
+                jmp     continue2
 
 enter_reinit:   REG2MEM(movb, $0, emul_reinitialize)
                 jmp     ex_reset

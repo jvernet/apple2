@@ -542,7 +542,7 @@ uint8_t cpu65__opcycles[256] = {
     7, // op_STP_65c02
     7, // op_UNK_65c02
     4, // op_CMP_abs_x
-    6, // op_DEC_abs_x
+    7, // op_DEC_abs_x
     5, // op_BBS5_65c02
     2, // op_CPX_imm         E0
     6, // op_SBC_ind_x
@@ -574,7 +574,7 @@ uint8_t cpu65__opcycles[256] = {
     7, // op_UNK_65c02
     7, // op_UNK_65c02
     4, // op_SBC_abs_x
-    6, // op_INC_abs_x
+    7, // op_INC_abs_x
     5  // op_BBS7_65c02
 };
 
@@ -878,9 +878,16 @@ GLUE_C_WRITE(cpu65_trace_epilogue)
     }
     flags_buf[8] = '\0';
 
-    fprintf(cpu_trace_fp, " %s CYC:%u EA:%04X", flags_buf, cpu65_opcycles, cpu65_ea);
-
     char fmt[64];
+    if (UNLIKELY(cpu65_opcycles >= 10)) {
+        // occurs rarely for interrupt + opcode
+        snprintf(fmt, 64, "%s", " %s CY:%u irqChk:%d totCyc:%d EA:%04X");
+    } else {
+        snprintf(fmt, 64, "%s", " %s CYC:%u irqChk:%d totCyc:%d EA:%04X");
+    }
+    extern int32_t irqCheckTimeout;
+    fprintf(cpu_trace_fp, fmt, flags_buf, cpu65_opcycles, (irqCheckTimeout - cpu65_opcycles), (cycles_count_total + cpu65_opcycles), cpu65_ea);
+
     sprintf(fmt, " %s %s", opcodes_65c02[cpu65_opcode].mnemonic, disasm_templates[opcodes_65c02[cpu65_opcode].mode]);
 
     switch (opcodes_65c02[cpu65_opcode].mode) {
@@ -916,7 +923,13 @@ GLUE_C_WRITE(cpu65_trace_epilogue)
     }
 
     fprintf(cpu_trace_fp, "%s", "\n");
-    fflush(cpu_trace_fp);
+}
+
+GLUE_C_WRITE(cpu65_trace_irq)
+{
+    if (cpu_trace_fp) {
+        fprintf(cpu_trace_fp, "IRQ:%02X\n", cpu65__signal);
+    }
 }
 
 void cpu65_trace_checkpoint(void) {

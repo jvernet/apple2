@@ -40,11 +40,11 @@ static void testdisk_teardown(void *arg) {
 // Disk TESTS ...
 
 #if CONFORMANT_TRACKS
-#define EXPECTED_DISK_TRACE_FILE_SIZE 141350
-#define EXPECTED_DISK_TRACE_SHA "471EB3D01917B1C6EF9F13C5C7BC1ACE4E74C851"
+#define EXPECTED_DISK_TRACE_FILE_SIZE 141348
+#define EXPECTED_DISK_TRACE_SHA "8E2415BB7F0A113BFE048FFE0C076AD4B377D22E"
 #else
-#define EXPECTED_DISK_TRACE_FILE_SIZE 134292
-#define EXPECTED_DISK_TRACE_SHA "19C10B594055D88862A35A45301B2E37A2E7E9F4"
+#define EXPECTED_DISK_TRACE_FILE_SIZE 134290
+#define EXPECTED_DISK_TRACE_SHA "FA47CC59F0CC7E5B1E938FD54A3BD8DB6C930593"
 #endif
 TEST test_boot_disk_bytes() {
     srandom(0);
@@ -54,12 +54,12 @@ TEST test_boot_disk_bytes() {
     ASPRINTF(&disk, "%s/a2_read_disk_test.txt", homedir);
     if (disk) {
         unlink(disk);
-        c_begin_disk_trace_6(disk, NULL);
+        disk6_traceBegin(disk, NULL);
     }
 
     BOOT_TO_DOS();
 
-    c_end_disk_trace_6();
+    disk6_traceEnd();
     disk6_eject(0);
 
     do {
@@ -91,8 +91,8 @@ TEST test_boot_disk_bytes() {
     PASS();
 }
 
-#define EXPECTED_DISK_TRACE_NIB_FILE_SIZE 147368
-#define EXPECTED_DISK_TRACE_NIB_SHA "DE92EABF6C9747353E9C8A367706D70E520CC2C1"
+#define EXPECTED_DISK_TRACE_NIB_FILE_SIZE 147366
+#define EXPECTED_DISK_TRACE_NIB_SHA "CE61D709A344778AB8A8DACED5A38D0D40F1E645"
 TEST test_boot_disk_bytes_nib() {
     test_setup_boot_disk(BLANK_NIB, 0);
     srandom(0);
@@ -102,12 +102,12 @@ TEST test_boot_disk_bytes_nib() {
     ASPRINTF(&disk, "%s/a2_read_disk_test_nib.txt", homedir);
     if (disk) {
         unlink(disk);
-        c_begin_disk_trace_6(disk, NULL);
+        disk6_traceBegin(disk, NULL);
     }
 
     BOOT_TO_DOS();
 
-    c_end_disk_trace_6();
+    disk6_traceEnd();
     disk6_eject(0);
 
     do {
@@ -140,11 +140,11 @@ TEST test_boot_disk_bytes_nib() {
 }
 
 #if CONFORMANT_TRACKS
-#define EXPECTED_DISK_TRACE_PO_FILE_SIZE 141350
-#define EXPECTED_DISK_TRACE_PO_SHA "6C2170D3AA82F87DD34E177309808199BDCCB018"
+#define EXPECTED_DISK_TRACE_PO_FILE_SIZE 141348
+#define EXPECTED_DISK_TRACE_PO_SHA "41C382A0A508F9A7935532ECFB7A1B6D53956A8D"
 #else
-#define EXPECTED_DISK_TRACE_PO_FILE_SIZE 134292
-#define EXPECTED_DISK_TRACE_PO_SHA "9A6DDCB421B369A4BB7ACC5E40D24B0F38F98711"
+#define EXPECTED_DISK_TRACE_PO_FILE_SIZE 134290
+#define EXPECTED_DISK_TRACE_PO_SHA "E85D7B357B02942772F46332953E59CAB67D85CD"
 #endif
 TEST test_boot_disk_bytes_po() {
     test_setup_boot_disk(BLANK_PO, 0);
@@ -155,12 +155,12 @@ TEST test_boot_disk_bytes_po() {
     ASPRINTF(&disk, "%s/a2_read_disk_test_po.txt", homedir);
     if (disk) {
         unlink(disk);
-        c_begin_disk_trace_6(disk, NULL);
+        disk6_traceBegin(disk, NULL);
     }
 
     BOOT_TO_DOS();
 
-    c_end_disk_trace_6();
+    disk6_traceEnd();
     disk6_eject(0);
 
     do {
@@ -325,10 +325,10 @@ TEST test_savehello_po() {
 
 #if CONFORMANT_TRACKS
 #   define EXPECTED_DISKWRITE_TRACE_DSK_FILE_SIZE 85915
-#   define EXPECTED_DISKWRITE_TRACE_DSK_SHA "727162AD8C2C475BDFE1DEEDAE068215C50A28D1"
+#   define EXPECTED_DISKWRITE_TRACE_DSK_SHA "05A9043B09605546F2BCFD31CB2E48C779227D95"
 #else
 #   define EXPECTED_DISKWRITE_TRACE_DSK_FILE_SIZE 85916
-#   define EXPECTED_DISKWRITE_TRACE_DSK_SHA "A8956DFE0E6CDFB5A2A838971FB9CAB9DC0913BB"
+#   define EXPECTED_DISKWRITE_TRACE_DSK_SHA "06E446C69C4C3522BDEF146B56B0414CA945A588"
 #endif
 #define EXPECTED_BSAVE_DSK_SHA "4DC3AEB266692EB5F8C757F36963F8CCC8056AE4"
 TEST test_disk_bytes_savehello_dsk() {
@@ -344,7 +344,7 @@ TEST test_disk_bytes_savehello_dsk() {
     ASPRINTF(&disk, "%s/a2_write_disk_test_dsk.txt", homedir);
     if (disk) {
         unlink(disk);
-        c_begin_disk_trace_6(NULL, disk);
+        disk6_traceBegin(NULL, disk);
     }
 
     apple_ii_64k[0][WATCHPOINT_ADDR] = 0x0;
@@ -356,7 +356,7 @@ TEST test_disk_bytes_savehello_dsk() {
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
     ASSERT_SHA(SAVE_SHA1);
 
-    c_end_disk_trace_6();
+    disk6_traceEnd();
 
     do {
         uint8_t md[SHA_DIGEST_LENGTH];
@@ -424,7 +424,7 @@ TEST test_disk_bytes_savehello_dsk() {
 
 #define EXPECTED_DISKWRITE_TRACE_NIB_FILE_SIZE 2409
 #define EXPECTED_DISKWRITE_TRACE_NIB_SHA "332EA76D8BCE45ACA6F805B978E6A3327386ABD6"
-#define EXPECTED_BSAVE_NIB_SHA "94193718A6B610AE31B5ABE7058416B321968CA1"
+#define EXPECTED_BSAVE_NIB_SHA "D894560D1061008FFA9F0BC08B163AC7086A7C0E"
 TEST test_disk_bytes_savehello_nib() {
     test_setup_boot_disk(BLANK_NIB, 0);
     BOOT_TO_DOS();
@@ -438,7 +438,7 @@ TEST test_disk_bytes_savehello_nib() {
     ASPRINTF(&disk, "%s/a2_write_disk_test_nib.txt", homedir);
     if (disk) {
         unlink(disk);
-        c_begin_disk_trace_6(NULL, disk);
+        disk6_traceBegin(NULL, disk);
     }
 
     apple_ii_64k[0][WATCHPOINT_ADDR] = 0x0;
@@ -450,7 +450,7 @@ TEST test_disk_bytes_savehello_nib() {
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
     ASSERT_SHA(SAVE_SHA1);
 
-    c_end_disk_trace_6();
+    disk6_traceEnd();
 
     do {
         uint8_t md[SHA_DIGEST_LENGTH];
@@ -532,7 +532,7 @@ TEST test_disk_bytes_savehello_po() {
     ASPRINTF(&disk, "%s/a2_write_disk_test_po.txt", homedir);
     if (disk) {
         unlink(disk);
-        c_begin_disk_trace_6(NULL, disk);
+        disk6_traceBegin(NULL, disk);
     }
 
     apple_ii_64k[0][WATCHPOINT_ADDR] = 0x0;
@@ -544,7 +544,7 @@ TEST test_disk_bytes_savehello_po() {
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
     ASSERT_SHA(SAVE_SHA1);
 
-    c_end_disk_trace_6();
+    disk6_traceEnd();
 
     do {
         uint8_t md[SHA_DIGEST_LENGTH];
@@ -627,10 +627,10 @@ TEST test_disk_bytes_savehello_po() {
 #define EXPECTED_OOS_DSK_SHA "D5C5A3FFB43F3C55E1C9E4ABD8580322415E9CE0"
 #if CONFORMANT_TRACKS
 #   define EXPECTED_OOS_DSK_TRACE_FILE_SIZE 4386397
-#   define EXPECTED_OOS_DSK_TRACE_SHA "2451ED08296637220614B1DE2C5AE11AB97ED173"
+#   define EXPECTED_OOS_DSK_TRACE_SHA "FF60D99539047B76B0B441C5907F0FBE3D0B2FCE"
 #else
 #   define EXPECTED_OOS_DSK_TRACE_FILE_SIZE 4386354
-#   define EXPECTED_OOS_DSK_TRACE_SHA "FB1BFF7D1535D30810EED9FD1D98CC054FB6FB1A"
+#   define EXPECTED_OOS_DSK_TRACE_SHA "1304191D985B3D3E528FB462D2CF3677584CD2C3"
 #endif
 TEST test_outofspace_dsk() {
     test_setup_boot_disk(BLANK_DSK, 0);
@@ -645,7 +645,7 @@ TEST test_outofspace_dsk() {
     ASPRINTF(&disk, "%s/a2_oos_dsk_test.txt", homedir);
     if (disk) {
         unlink(disk);
-        c_begin_disk_trace_6(NULL, disk);
+        disk6_traceBegin(NULL, disk);
     }
 
     apple_ii_64k[0][WATCHPOINT_ADDR] = 0x0;
@@ -657,7 +657,7 @@ TEST test_outofspace_dsk() {
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
     ASSERT_SHA(NOSPACE_SHA1);
 
-    c_end_disk_trace_6();
+    disk6_traceEnd();
 
     do {
         uint8_t md[SHA_DIGEST_LENGTH];
@@ -723,7 +723,7 @@ TEST test_outofspace_dsk() {
     PASS();
 }
 
-#define EXPECTED_OOS_NIB_SHA "8B91A71F6D52E1151D9DB4DB2E2B4B9C2FB5393C"
+#define EXPECTED_OOS_NIB_SHA "D1C404E55811C47CF105D08D536EBBEEC7AA7F51"
 TEST test_outofspace_nib() {
     test_setup_boot_disk(BLANK_NIB, 0);
     BOOT_TO_DOS();
@@ -856,7 +856,7 @@ TEST test_bload_trace_dsk() {
     ASPRINTF(&disk, "%s/a2_bload_trace_test_dsk.txt", homedir);
     if (disk) {
         unlink(disk);
-        c_begin_disk_trace_6(disk, NULL);
+        disk6_traceBegin(disk, NULL);
     }
 
     test_type_input("CALL-151\r");
@@ -925,7 +925,7 @@ TEST test_bload_trace_dsk() {
     ASSERT_SHA_MEM(JUNK_MEM_END_SHA1, 0x2000, 0x4000);
 
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    c_end_disk_trace_6();
+    disk6_traceEnd();
 
     do {
         uint8_t md[SHA_DIGEST_LENGTH];
@@ -974,7 +974,7 @@ TEST test_bload_trace_nib() {
     ASPRINTF(&disk, "%s/a2_bload_trace_test_nib.txt", homedir);
     if (disk) {
         unlink(disk);
-        c_begin_disk_trace_6(disk, NULL);
+        disk6_traceBegin(disk, NULL);
     }
 
     test_type_input("CALL-151\r");
@@ -1043,7 +1043,7 @@ TEST test_bload_trace_nib() {
     ASSERT_SHA_MEM(JUNK_MEM_END_SHA1, 0x2000, 0x4000);
 
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    c_end_disk_trace_6();
+    disk6_traceEnd();
 
     do {
         uint8_t md[SHA_DIGEST_LENGTH];
@@ -1092,7 +1092,7 @@ TEST test_bload_trace_po() {
     ASPRINTF(&disk, "%s/a2_bload_trace_test_po.txt", homedir);
     if (disk) {
         unlink(disk);
-        c_begin_disk_trace_6(disk, NULL);
+        disk6_traceBegin(disk, NULL);
     }
 
     test_type_input("CALL-151\r");
@@ -1161,7 +1161,7 @@ TEST test_bload_trace_po() {
     ASSERT_SHA_MEM(JUNK_MEM_END_SHA1, 0x2000, 0x4000);
 
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    c_end_disk_trace_6();
+    disk6_traceEnd();
 
     do {
         uint8_t md[SHA_DIGEST_LENGTH];
@@ -1307,7 +1307,7 @@ TEST test_data_stability_dsk() {
 }
 
 #define EXPECTED_STABILITY_NIB_FILE_SIZE 232960
-#define EXPECTED_STABILITY_NIB_SHA "94193718A6B610AE31B5ABE7058416B321968CA1"
+#define EXPECTED_STABILITY_NIB_SHA "D894560D1061008FFA9F0BC08B163AC7086A7C0E"
 
 TEST test_data_stability_nib() {
 

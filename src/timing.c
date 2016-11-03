@@ -54,6 +54,7 @@ unsigned long cycles_count_total = 0;           // Running at spec ~1MHz, this w
 int cycles_speaker_feedback = 0;
 int32_t cpu65_cycles_to_execute = 0;            // cycles-to-execute by cpu65_run()
 int32_t cpu65_cycle_count = 0;                  // cycles currently excuted by cpu65_run()
+int32_t irqCheckTimeout = IRQ_CHECK_CYCLES;
 static int32_t cycles_checkpoint_count = 0;
 static unsigned int g_dwCyclesThisFrame = 0;
 
@@ -147,6 +148,8 @@ void reinitialize(void) {
 #endif
 
     cycles_count_total = 0;
+    g_dwCyclesThisFrame = 0;
+    irqCheckTimeout = IRQ_CHECK_CYCLES;
 #if TESTING
     extern unsigned long (*testing_getCyclesCount)(void);
     if (testing_getCyclesCount) {
@@ -276,6 +279,7 @@ static void *cpu_thread(void *dummyptr) {
     speaker_init();
     MB_Initialize();
 
+cpu_runloop:
     do
     {
         LOG("CPUTHREAD %lu LOCKING FOR MAYBE INITIALIZING AUDIO ...", cpu_thread_id);
@@ -342,7 +346,7 @@ static void *cpu_thread(void *dummyptr) {
 
             MB_StartOfCpuExecute();
             if (is_debugging) {
-                debugging_cycles  = cpu65_cycles_to_execute;
+                debugging_cycles = cpu65_cycles_to_execute;
             }
 
             do {
@@ -353,10 +357,15 @@ static void *cpu_thread(void *dummyptr) {
                 cpu65_cycle_count = 0;
                 cycles_checkpoint_count = 0;
                 cpu65_run(); // run emulation for cpu65_cycles_to_execute cycles ...
+#if DEBUG_TIMING
+                dbg_cycles_executed += cpu65_cycle_count;
+#endif
+                g_dwCyclesThisFrame += cpu65_cycle_count;
 
                 if (is_debugging) {
                     debugging_cycles -= cpu65_cycle_count;
                     timing_checkpoint_cycles();
+
                     if (c_debugger_should_break() || (debugging_cycles <= 0)) {
                         int err = 0;
                         if ((err = pthread_cond_signal(&dbg_thread_cond))) {
@@ -369,17 +378,15 @@ static void *cpu_thread(void *dummyptr) {
                             break;
                         }
                     }
+
                     if (emul_reinitialize) {
-                        reinitialize();
+                        pthread_mutex_unlock(&interface_mutex);
+                        goto cpu_runloop;
                     }
                 }
             } while (is_debugging);
-#if DEBUG_TIMING
-            dbg_cycles_executed += cpu65_cycle_count;
-#endif
-            g_dwCyclesThisFrame += cpu65_cycle_count;
 
-            MB_UpdateCycles(); // update 6522s (NOTE: do this before updating cycles_count_total)
+            MB_UpdateCycles();
 
             timing_checkpoint_cycles();
 
@@ -506,6 +513,12 @@ static void *cpu_thread(void *dummyptr) {
     MB_Destroy();
     audio_shutdown();
 
+    cpu_thread_id = 0;
+    cpu_pause();
+
+    disk6_eject(0);
+    disk6_eject(1);
+
     return NULL;
 }
 
@@ -528,6 +541,8 @@ void timing_stopCPU(void) {
 }
 
 unsigned int CpuGetCyclesThisVideoFrame(void) {
+    assert(pthread_self() == cpu_thread_id);
+
     timing_checkpoint_cycles();
     return g_dwCyclesThisFrame + cycles_checkpoint_count;
 }
@@ -538,11 +553,11 @@ void timing_checkpoint_cycles(void) {
 
     const int32_t d = cpu65_cycle_count - cycles_checkpoint_count;
     assert(d >= 0);
-#if TESTING
-    unsigned long previous_cycles_count_total = cycles_count_total;
-#endif
+#if !TESTING
     cycles_count_total += d;
-#if TESTING
+#else
+    unsigned long previous_cycles_count_total = cycles_count_total;
+    cycles_count_total += d;
     if (UNLIKELY(cycles_count_total < previous_cycles_count_total)) {
         extern void (*testing_cyclesOverflow)(void);
         if (testing_cyclesOverflow) {
@@ -551,6 +566,88 @@ void timing_checkpoint_cycles(void) {
     }
 #endif
     cycles_checkpoint_count = cpu65_cycle_count;
+}
+
+// ----------------------------------------------------------------------------
+
+bool timing_saveState(StateHelper_s *helper) {
+    bool saved = false;
+    int fd = helper->fd;
+
+    do {
+        uint32_t lVal = 0;
+        uint8_t serialized[4] = { 0 };
+
+        assert(cpu_scale_factor >= 0);
+        assert(cpu_altscale_factor >= 0);
+
+        lVal = (uint32_t)(cpu_scale_factor * 100.);
+        serialized[0] = (uint8_t)((lVal & 0xFF000000) >> 24);
+        serialized[1] = (uint8_t)((lVal & 0xFF0000  ) >> 16);
+        serialized[2] = (uint8_t)((lVal & 0xFF00    ) >>  8);
+        serialized[3] = (uint8_t)((lVal & 0xFF      ) >>  0);
+        if (!helper->save(fd, serialized, sizeof(serialized))) {
+            break;
+        }
+
+        lVal = (long)(cpu_altscale_factor * 100.);
+        serialized[0] = (uint8_t)((lVal & 0xFF000000) >> 24);
+        serialized[1] = (uint8_t)((lVal & 0xFF0000  ) >> 16);
+        serialized[2] = (uint8_t)((lVal & 0xFF00    ) >>  8);
+        serialized[3] = (uint8_t)((lVal & 0xFF      ) >>  0);
+        if (!helper->save(fd, serialized, sizeof(serialized))) {
+            break;
+        }
+
+        uint8_t bVal = alt_speed_enabled ? 1 : 0;
+        if (!helper->save(fd, &bVal, sizeof(bVal))) {
+            break;
+        }
+
+        saved = true;
+    } while (0);
+
+    return saved;
+}
+
+bool timing_loadState(StateHelper_s *helper) {
+    bool loaded = false;
+    int fd = helper->fd;
+
+    do {
+        uint32_t lVal = 0;
+        uint8_t serialized[4] = { 0 };
+
+        if (!helper->load(fd, serialized, sizeof(uint32_t))) {
+            break;
+        }
+        lVal  = (uint32_t)(serialized[0] << 24);
+        lVal |= (uint32_t)(serialized[1] << 16);
+        lVal |= (uint32_t)(serialized[2] <<  8);
+        lVal |= (uint32_t)(serialized[3] <<  0);
+        cpu_scale_factor = lVal / 100.;
+
+        if (!helper->load(fd, serialized, sizeof(uint32_t))) {
+            break;
+        }
+        lVal  = (uint32_t)(serialized[0] << 24);
+        lVal |= (uint32_t)(serialized[1] << 16);
+        lVal |= (uint32_t)(serialized[2] <<  8);
+        lVal |= (uint32_t)(serialized[3] <<  0);
+        cpu_altscale_factor = lVal / 100.;
+
+        uint8_t bVal = 0;
+        if (!helper->load(fd, &bVal, sizeof(bVal))) {
+            break;
+        }
+        alt_speed_enabled = !!bVal;
+
+        timing_initialize();
+
+        loaded = true;
+    } while (0);
+
+    return loaded;
 }
 
 // ----------------------------------------------------------------------------

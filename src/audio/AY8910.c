@@ -35,7 +35,7 @@
 
 // [AppleWin-TC] From FUSE's sound.c module
 
-#if !defined(APPLE2IX)
+#if 0 // !defined(APPLE2IX)
 #include "StdAfx.h"
 
 #include <windows.h>
@@ -50,6 +50,9 @@
 #   include "common.h"
 #   include "audio/AY8910.h"
 #   include "audio/mockingboard.h"	// For g_uTimer1IrqCount
+#   if TESTING
+#       include "greatest.h"
+#   endif
 #endif
 
 /* The AY white noise RNG algorithm is based on info from MAME's ay8910.c -
@@ -1025,7 +1028,355 @@ void SetCLK(double CLK)
 #define SS_YAML_KEY_CHANGE "Change"
 #define SS_YAML_VALUE_CHANGE_FORMAT "%d, %d, 0x%1X, 0x%02X"
 
-#if UNBREAK_SOON
+#if 1 // APPLE2IX
+static bool _saveStateData32(StateHelper_s *helper, uint32_t data) {
+    int fd = helper->fd;
+    uint8_t serialized[sizeof(uint32_t)] = { 0 };
+    serialized[0] = (uint8_t)((data & 0xFF000000) >> 24);
+    serialized[1] = (uint8_t)((data & 0xFF0000  ) >> 16);
+    serialized[2] = (uint8_t)((data & 0xFF00    ) >>  8);
+    serialized[3] = (uint8_t)((data & 0xFF      ) >>  0);
+    return helper->save(fd, serialized, sizeof(serialized));
+}
+
+static bool _loadStateData32(StateHelper_s *helper, uint32_t *data) {
+    int fd = helper->fd;
+    uint8_t serialized[sizeof(uint32_t)] = { 0 };
+    if (!helper->load(fd, serialized, sizeof(uint32_t))) {
+        return false;
+    }
+    *data  = (uint32_t)(serialized[0] << 24) |
+             (uint32_t)(serialized[1] << 16) |
+             (uint32_t)(serialized[2] <<  8) |
+             (uint32_t)(serialized[3] <<  0);
+    return true;
+}
+
+static bool _saveState(StateHelper_s *helper, struct CAY8910 *_this) {
+    int fd = helper->fd;
+
+    bool saved = false;
+    do {
+        if (!_saveStateData32(helper, _this->ay_tone_tick[0])) {
+            break;
+        }
+        if (!_saveStateData32(helper, _this->ay_tone_tick[1])) {
+            break;
+        }
+        if (!_saveStateData32(helper, _this->ay_tone_tick[2])) {
+            break;
+        }
+        if (!_saveStateData32(helper, _this->ay_tone_high[0])) {
+            break;
+        }
+        if (!_saveStateData32(helper, _this->ay_tone_high[1])) {
+            break;
+        }
+        if (!_saveStateData32(helper, _this->ay_tone_high[2])) {
+            break;
+        }
+        if (!_saveStateData32(helper, _this->ay_noise_tick)) {
+            break;
+        }
+        if (!_saveStateData32(helper, _this->ay_tone_subcycles)) {
+            break;
+        }
+        if (!_saveStateData32(helper, _this->ay_env_subcycles)) {
+            break;
+        }
+        if (!_saveStateData32(helper, _this->ay_env_internal_tick)) {
+            break;
+        }
+        if (!_saveStateData32(helper, _this->ay_env_tick)) {
+            break;
+        }
+        if (!_saveStateData32(helper, _this->ay_tick_incr)) {
+            break;
+        }
+        if (!_saveStateData32(helper, _this->ay_tone_period[0])) {
+            break;
+        }
+        if (!_saveStateData32(helper, _this->ay_tone_period[1])) {
+            break;
+        }
+        if (!_saveStateData32(helper, _this->ay_tone_period[2])) {
+            break;
+        }
+        if (!_saveStateData32(helper, _this->ay_noise_period)) {
+            break;
+        }
+        if (!_saveStateData32(helper, _this->ay_env_period)) {
+            break;
+        }
+        if (!_saveStateData32(helper, _this->rng)) {
+            break;
+        }
+        if (!_saveStateData32(helper, _this->noise_toggle)) {
+            break;
+        }
+        if (!_saveStateData32(helper, _this->env_first)) {
+            break;
+        }
+        if (!_saveStateData32(helper, _this->env_rev)) {
+            break;
+        }
+        if (!_saveStateData32(helper, _this->env_counter)) {
+            break;
+        }
+
+        // Registers
+        {
+            bool success = true;
+            for (unsigned int i=0; i<16; i++) {
+                uint8_t reg = _this->sound_ay_registers[i];
+                if (!helper->save(fd, &reg, sizeof(reg))) {
+                    success = false;
+                    break;
+                }
+            }
+            if (!success) {
+                break;
+            }
+        }
+
+        // Queued changes
+        assert(_this->ay_change_count >= 0);
+        if (!_saveStateData32(helper, _this->ay_change_count)) {
+            break;
+        }
+        if (_this->ay_change_count)
+        {
+            bool success = true;
+            for (int i=0; i<_this->ay_change_count; i++) {
+                if (!_saveStateData32(helper, (uint32_t)_this->ay_change[i].tstates)) {
+                    success = false;
+                    break;
+                }
+                if (!_saveStateData32(helper, (uint32_t)(_this->ay_change[i].ofs))) {
+                    success = false;
+                    break;
+                }
+                uint8_t reg = _this->ay_change[i].reg;
+                if (!helper->save(fd, &reg, sizeof(reg))) {
+                    success = false;
+                    break;
+                }
+                uint8_t val = _this->ay_change[i].val;
+                if (!helper->save(fd, &val, sizeof(val))) {
+                    success = false;
+                    break;
+                }
+            }
+            if (!success) {
+                break;
+            }
+        }
+
+        saved = true;
+
+    } while (0);
+
+    return saved;
+}
+
+static bool _loadState(StateHelper_s *helper, struct CAY8910 *_this) {
+    int fd = helper->fd;
+
+    bool loaded = false;
+    do {
+        if (!_loadStateData32(helper, &(_this->ay_tone_tick[0]))) {
+            break;
+        }
+        if (!_loadStateData32(helper, &(_this->ay_tone_tick[1]))) {
+            break;
+        }
+        if (!_loadStateData32(helper, &(_this->ay_tone_tick[2]))) {
+            break;
+        }
+        if (!_loadStateData32(helper, &(_this->ay_tone_high[0]))) {
+            break;
+        }
+        if (!_loadStateData32(helper, &(_this->ay_tone_high[1]))) {
+            break;
+        }
+        if (!_loadStateData32(helper, &(_this->ay_tone_high[2]))) {
+            break;
+        }
+        if (!_loadStateData32(helper, &(_this->ay_noise_tick))) {
+            break;
+        }
+        if (!_loadStateData32(helper, &(_this->ay_tone_subcycles))) {
+            break;
+        }
+        if (!_loadStateData32(helper, &(_this->ay_env_subcycles))) {
+            break;
+        }
+        if (!_loadStateData32(helper, &(_this->ay_env_internal_tick))) {
+            break;
+        }
+        if (!_loadStateData32(helper, &(_this->ay_env_tick))) {
+            break;
+        }
+        if (!_loadStateData32(helper, &(_this->ay_tick_incr))) {
+            break;
+        }
+        if (!_loadStateData32(helper, &(_this->ay_tone_period[0]))) {
+            break;
+        }
+        if (!_loadStateData32(helper, &(_this->ay_tone_period[1]))) {
+            break;
+        }
+        if (!_loadStateData32(helper, &(_this->ay_tone_period[2]))) {
+            break;
+        }
+        if (!_loadStateData32(helper, &(_this->ay_noise_period))) {
+            break;
+        }
+        if (!_loadStateData32(helper, &(_this->ay_env_period))) {
+            break;
+        }
+        if (!_loadStateData32(helper, (uint32_t *)&(_this->rng))) {
+            break;
+        }
+        if (!_loadStateData32(helper, (uint32_t *)&(_this->noise_toggle))) {
+            break;
+        }
+        if (!_loadStateData32(helper, (uint32_t *)&(_this->env_first))) {
+            break;
+        }
+        if (!_loadStateData32(helper, (uint32_t *)&(_this->env_rev))) {
+            break;
+        }
+        if (!_loadStateData32(helper, (uint32_t *)&(_this->env_counter))) {
+            break;
+        }
+
+        // Registers
+        {
+            bool success = true;
+            for (unsigned int i=0; i<16; i++) {
+                if (!helper->load(fd, &(_this->sound_ay_registers[i]), sizeof(_this->sound_ay_registers[i]))) {
+                    success = false;
+                    break;
+                }
+            }
+            if (!success) {
+                break;
+            }
+        }
+
+        // Queued changes
+        if (!_loadStateData32(helper, (uint32_t *)&(_this->ay_change_count))) {
+            break;
+        }
+        assert(_this->ay_change_count >= 0);
+        if (_this->ay_change_count)
+        {
+            bool success = true;
+            for (int i=0; i<_this->ay_change_count; i++) {
+                if (!_loadStateData32(helper, (uint32_t *)&(_this->ay_change[i].tstates))) {
+                    success = false;
+                    break;
+                }
+                uint32_t ofs = 0;
+                if (!_loadStateData32(helper, &ofs)) {
+                    success = false;
+                    break;
+                }
+                assert(ofs <= 65535);
+                _this->ay_change[i].ofs = (uint16_t)ofs;
+
+                if (!helper->load(fd, (uint8_t *)&(_this->ay_change[i].reg), sizeof(_this->ay_change[i].reg))) {
+                    success = false;
+                    break;
+                }
+                if (!helper->load(fd, (uint8_t *)&(_this->ay_change[i].val), sizeof(_this->ay_change[i].val))) {
+                    success = false;
+                    break;
+                }
+            }
+
+            if (!success) {
+                break;
+            }
+        }
+
+        loaded = true;
+    } while (0);
+
+    return loaded;
+}
+
+#   if TESTING
+static int _assert_testData32(const uint32_t data32, uint8_t **exData) {
+    uint8_t *expected = *exData;
+    uint32_t d32 = (uint32_t)(expected[0] << 24) |
+                   (uint32_t)(expected[1] << 16) |
+                   (uint32_t)(expected[2] <<  8) |
+                   (uint32_t)(expected[3] <<  0);
+    ASSERT(d32 == data32);
+    *exData += 4;
+    PASS();
+}
+
+int _testStateA2V2(struct CAY8910 *_this, uint8_t **exData) {
+
+    uint8_t *p8 = *exData;
+
+    _assert_testData32(_this->ay_tone_tick[0], &p8);
+    _assert_testData32(_this->ay_tone_tick[1], &p8);
+    _assert_testData32(_this->ay_tone_tick[2], &p8);
+    _assert_testData32(_this->ay_tone_high[0], &p8);
+    _assert_testData32(_this->ay_tone_high[1], &p8);
+    _assert_testData32(_this->ay_tone_high[2], &p8);
+
+    _assert_testData32(_this->ay_noise_tick, &p8);
+    _assert_testData32(_this->ay_tone_subcycles, &p8);
+    _assert_testData32(_this->ay_env_subcycles, &p8);
+    _assert_testData32(_this->ay_env_internal_tick, &p8);
+    _assert_testData32(_this->ay_env_tick, &p8);
+
+    //_assert_testData32(_this->ay_tick_incr, &p8); -- IGNORE... this will change depending on sample rate
+    p8 += 4;
+
+    _assert_testData32(_this->ay_tone_period[0], &p8);
+    _assert_testData32(_this->ay_tone_period[1], &p8);
+    _assert_testData32(_this->ay_tone_period[2], &p8);
+
+    _assert_testData32(_this->ay_noise_period, &p8);
+    _assert_testData32(_this->ay_env_period, &p8);
+    _assert_testData32(_this->rng, &p8);
+    _assert_testData32(_this->noise_toggle, &p8);
+    _assert_testData32(_this->env_first, &p8);
+    _assert_testData32(_this->env_rev, &p8);
+    _assert_testData32(_this->env_counter, &p8);
+
+    // Registers
+    for (unsigned int i=0; i<16; i++) {
+        ASSERT(_this->sound_ay_registers[i] == *p8++);
+    }
+
+    int changeCount = _this->ay_change_count;
+    _assert_testData32(changeCount, &p8);
+    ASSERT(changeCount >= 0);
+
+    if (changeCount) {
+        for (int i=0; i<changeCount; i++) {
+            _assert_testData32(_this->ay_change[i].tstates, &p8);
+            _assert_testData32(_this->ay_change[i].ofs, &p8);
+            ASSERT(_this->ay_change[i].reg == *p8++);
+            ASSERT(_this->ay_change[i].val == *p8++);
+        }
+    }
+
+    *exData = p8;
+
+    PASS();
+}
+#   endif
+
+
+#else
 void CAY8910::SaveSnapshot(YamlSaveHelper& yamlSaveHelper, std::string& suffix)
 {
 	std::string unit = std::string(SS_YAML_KEY_AY8910) + suffix;
@@ -1168,7 +1519,7 @@ bool CAY8910::LoadSnapshot(YamlLoadHelper& yamlLoadHelper, std::string& suffix)
 
 	return true;
 }
-#endif // UNBREAK_SOON
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -1216,9 +1567,18 @@ void _mb_trace_AY8910(int chip, FILE *mb_trace_fp) {
 }
 #endif
 
-void _AYWriteReg(int chip, int r, int v)
+void _AYWriteReg(int chip, int r, int v
+#if MB_TRACING
+        , FILE *mb_trace_fp
+#endif
+        )
 {
 	libspectrum_dword uOffset = (libspectrum_dword) (cycles_count_total - g_uLastCumulativeCycles);
+#if MB_TRACING
+        if (mb_trace_fp) {
+            fprintf(mb_trace_fp, "\t uOffset: %lu\n", uOffset);
+        }
+#endif
 	sound_ay_write(&g_AY8910[chip], r, v, uOffset);
 }
 
@@ -1268,7 +1628,24 @@ uint8_t* AY8910_GetRegsPtr(unsigned int uChip)
 	return GetAYRegsPtr(&g_AY8910[uChip]);
 }
 
-#if UNBREAK_SOON
+#if 1 // APPLE2IX
+bool _ay8910_saveState(StateHelper_s *helper, unsigned int chip) {
+    assert(chip < MAX_8910);
+    return _saveState(helper, &g_AY8910[chip]);
+}
+
+bool _ay8910_loadState(StateHelper_s *helper, unsigned int chip) {
+    assert(chip < MAX_8910);
+    return _loadState(helper, &g_AY8910[chip]);
+}
+
+#   if TESTING
+int _ay8910_testAssertA2V2(unsigned int chip, uint8_t **exData) {
+    return _testStateA2V2(&g_AY8910[chip], exData);
+}
+#   endif
+
+#else
 UINT AY8910_SaveSnapshot(YamlSaveHelper& yamlSaveHelper, UINT uChip, std::string& suffix)
 {
 	if (uChip >= MAX_8910)
@@ -1285,5 +1662,5 @@ UINT AY8910_LoadSnapshot(YamlLoadHelper& yamlLoadHelper, UINT uChip, std::string
 
 	return g_AY8910[uChip].LoadSnapshot(yamlLoadHelper, suffix) ? 1 : 0;
 }
-#endif // UNBREAK_SOON
+#endif
 

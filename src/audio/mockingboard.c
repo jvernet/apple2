@@ -114,6 +114,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #       if defined(__linux) && !defined(ANDROID)
 #       include <sys/io.h>
 #       endif
+#       if TESTING
+#       include "greatest.h"
+#       endif
 
 #if defined(FAILED)
 #undef FAILED
@@ -391,7 +394,11 @@ static void AY8910_Write(uint8_t nDevice, uint8_t nReg, uint8_t nValue, uint8_t 
 				break;
 
 			case AY_WRITE:		// 6: WRITE TO PSG
-				_AYWriteReg(nDevice+2*nAYDevice, pMB->nAYCurrentRegister, pMB->sy6522.ORA);
+				_AYWriteReg(nDevice+2*nAYDevice, pMB->nAYCurrentRegister, pMB->sy6522.ORA
+#if MB_TRACING
+                                        , mb_trace_fp
+#endif
+                                        );
 #if MB_TRACING
                                 _mb_trace_AY8910(nDevice+2*nAYDevice, mb_trace_fp);
 #endif
@@ -1083,6 +1090,10 @@ static void MB_Update()
 	int nBytesRemaining = (int)dwCurrentPlayCursor;
         //LOG("Mockingboard : sound buffer position : %d", nBytesRemaining);
 #endif
+#if MB_TRACING
+        // set nBytesRemaining at a sweet spot for determinism
+        nBytesRemaining = g_dwDSBufferSize/4 + 16;
+#endif
 	if(nBytesRemaining < 0)
 		nBytesRemaining += g_dwDSBufferSize;
 
@@ -1100,13 +1111,18 @@ static void MB_Update()
 	else
 		nNumSamplesError = 0;						// Acceptable amount of data in buffer
 
+#if MB_TRACING
+        // assert determinism prevails ...
+        assert(nNumSamplesError == 0);
+#endif
+
 	if(nNumSamples == 0)
 		return;
 
 	//
 #if MB_TRACING
         if (mb_trace_fp) {
-            fprintf(mb_trace_fp, "%s", "\tsubmitting samples...\n");
+            fprintf(mb_trace_fp, "\tsubmitting %d samples...\n", nNumSamples);
         }
 #endif
 
@@ -1214,10 +1230,8 @@ static void MB_Update()
             return;
         }
 
+#   if !MB_TRACING
         // make at least 2 attempts to submit data (could be at a ringBuffer boundary)
-#   if MB_TRACING
-        if (!g_bFullSpeed) {
-#   endif
         do {
             if (MockingboardVoice->Lock(MockingboardVoice, requestedBufSize, &pDSLockedBuffer0, &dwDSLockedBufferSize0)) {
                 return;
@@ -1235,8 +1249,6 @@ static void MB_Update()
             ++counter;
         } while (bufIdx < originalRequestedBufSize && counter < 2);
         assert(bufIdx == originalRequestedBufSize);
-#   if MB_TRACING
-        }
 #   endif
 #endif
 
@@ -1506,6 +1518,10 @@ static bool MB_DSInit()
 
 #if 1 // APPLE2IX
         SAMPLE_RATE = audio_backend->systemSettings.sampleRateHz;
+#if MB_TRACING
+        // force determinism
+        SAMPLE_RATE = 44100;
+#endif
         g_dwDSBufferSize = audio_backend->systemSettings.stereoBufferSizeSamples * audio_backend->systemSettings.bytesPerSample * g_nMB_NumChannels;
         g_nMixBuffer = MALLOC(g_dwDSBufferSize / audio_backend->systemSettings.bytesPerSample);
 
@@ -1984,6 +2000,11 @@ void MB_Reset()
 #define MemReadFloatingBus floating_bus
 #define nAddr ea
 GLUE_C_READ(MB_Read)
+{
+    return mb_read(ea);
+}
+
+uint8_t mb_read(uint16_t ea)
 #else
 static BYTE __stdcall MB_Read(WORD PC, WORD nAddr, BYTE bWrite, BYTE nValue, ULONG nCyclesLeft)
 #endif
@@ -1991,8 +2012,7 @@ static BYTE __stdcall MB_Read(WORD PC, WORD nAddr, BYTE bWrite, BYTE nValue, ULO
 #if 1 // APPLE2IX
 #   if MB_TRACING
     if (mb_trace_fp) {
-        unsigned long uCycles = cycles_count_total - g_uLastCumulativeCycles;
-        fprintf(mb_trace_fp, "MB_Read|%04X|%lu\n", ea, uCycles);
+        fprintf(mb_trace_fp, "MB_Read|%04X\n", ea);
     }
 #   endif
 	MB_UpdateCycles();
@@ -2100,10 +2120,8 @@ static BYTE __stdcall MB_Write(WORD PC, WORD nAddr, BYTE bWrite, BYTE nValue, UL
 {
 #if 1 // APPLE2IX
 #   if MB_TRACING
-    // output cycle count delta when toggled
     if (mb_trace_fp) {
-        unsigned long uCycles = cycles_count_total - g_uLastCumulativeCycles;
-        fprintf(mb_trace_fp, "MB_Write|%04X|%02X|%lu\n", ea, b, uCycles);
+        fprintf(mb_trace_fp, "MB_Write|%04X|%02X\n", ea, b);
     }
 #   endif
 	MB_UpdateCycles();
@@ -2341,6 +2359,11 @@ void MB_UpdateCycles(ULONG uExecutedCycles)
 	timing_checkpoint_cycles();
 	unsigned long uCycles = cycles_count_total - g_uLastCumulativeCycles;
 	g_uLastCumulativeCycles = cycles_count_total;
+#if MB_TRACING
+        if (mb_trace_fp) {
+            fprintf(mb_trace_fp, "\tuCycles:%lu\n", uCycles);
+        }
+#endif
 #if 1 // APPLE2IX
         if (uCycles >= 0x10000) {
             LOG("OOPS!!! Mockingboard failed assert!");
@@ -2563,6 +2586,8 @@ int MB_SetSnapshot_v1(const SS_CARD_MOCKINGBOARD_v1* const pSS, const DWORD /*dw
 
 //===========================================================================
 
+#if 1 // APPLE2IX
+
 static void mb_prefsChanged(const char *domain) {
     long lVal = 0;
     long goesToTen = prefs_parseLongValue(domain, PREF_MOCKINGBOARD_VOLUME, &lVal, /*base:*/10) ? lVal : 5; // expected range 0-10
@@ -2579,7 +2604,394 @@ static __attribute__((constructor)) void _init_mockingboard(void) {
     prefs_registerListener(PREF_DOMAIN_AUDIO, &mb_prefsChanged);
 }
 
-#if 0 // !APPLE2IX
+static bool _sy6522_saveState(StateHelper_s *helper, SY6522 *sy6522) {
+    int fd = helper->fd;
+
+    bool saved = false;
+    do {
+        uint8_t state8 = 0x0;
+
+        state8 = sy6522->ORA;
+        if (!helper->save(fd, &state8, 1)) {
+            break;
+        }
+        state8 = sy6522->ORB;
+        if (!helper->save(fd, &state8, 1)) {
+            break;
+        }
+        state8 = sy6522->DDRA;
+        if (!helper->save(fd, &state8, 1)) {
+            break;
+        }
+        state8 = sy6522->DDRB;
+        if (!helper->save(fd, &state8, 1)) {
+            break;
+        }
+
+        uint8_t serialized[2] = { 0 };
+        serialized[0] = (uint8_t)((sy6522->TIMER1_COUNTER.w & 0xFF00) >> 8);
+        serialized[1] = (uint8_t)((sy6522->TIMER1_COUNTER.w & 0xFF  ) >> 0);
+        if (!helper->save(fd, serialized, 2)) {
+            break;
+        }
+        serialized[0] = (uint8_t)((sy6522->TIMER1_LATCH.w & 0xFF00) >> 8);
+        serialized[1] = (uint8_t)((sy6522->TIMER1_LATCH.w & 0xFF  ) >> 0);
+        if (!helper->save(fd, serialized, 2)) {
+            break;
+        }
+        serialized[0] = (uint8_t)((sy6522->TIMER2_COUNTER.w & 0xFF00) >> 8);
+        serialized[1] = (uint8_t)((sy6522->TIMER2_COUNTER.w & 0xFF  ) >> 0);
+        if (!helper->save(fd, serialized, 2)) {
+            break;
+        }
+        serialized[0] = (uint8_t)((sy6522->TIMER2_LATCH.w & 0xFF00) >> 8);
+        serialized[1] = (uint8_t)((sy6522->TIMER2_LATCH.w & 0xFF  ) >> 0);
+        if (!helper->save(fd, serialized, 2)) {
+            break;
+        }
+
+        state8 = sy6522->SERIAL_SHIFT;
+        if (!helper->save(fd, &state8, 1)) {
+            break;
+        }
+        state8 = sy6522->ACR;
+        if (!helper->save(fd, &state8, 1)) {
+            break;
+        }
+        state8 = sy6522->PCR;
+        if (!helper->save(fd, &state8, 1)) {
+            break;
+        }
+        state8 = sy6522->IFR;
+        if (!helper->save(fd, &state8, 1)) {
+            break;
+        }
+        state8 = sy6522->IER;
+        if (!helper->save(fd, &state8, 1)) {
+            break;
+        }
+
+        // NB. No need to write ORA_NO_HS, since same data as ORA, just without handshake
+
+        saved = true;
+    } while (0);
+
+    return saved;
+}
+
+static bool _sy6522_loadState(StateHelper_s *helper, SY6522 *sy6522) {
+    int fd = helper->fd;
+
+    bool loaded = false;
+    do {
+        if (!helper->load(fd, &(sy6522->ORA), 1)) {
+            break;
+        }
+        if (!helper->load(fd, &(sy6522->ORB), 1)) {
+            break;
+        }
+        if (!helper->load(fd, &(sy6522->DDRA), 1)) {
+            break;
+        }
+        if (!helper->load(fd, &(sy6522->DDRB), 1)) {
+            break;
+        }
+
+        uint8_t serialized[2] = { 0 };
+
+        if (!helper->load(fd, serialized, 2)) {
+            break;
+        }
+        sy6522->TIMER1_COUNTER.h = serialized[0];
+        sy6522->TIMER1_COUNTER.l = serialized[1];
+
+        if (!helper->load(fd, serialized, 2)) {
+            break;
+        }
+        sy6522->TIMER1_LATCH.h = serialized[0];
+        sy6522->TIMER1_LATCH.l = serialized[1];
+
+        if (!helper->load(fd, serialized, 2)) {
+            break;
+        }
+        sy6522->TIMER2_COUNTER.h = serialized[0];
+        sy6522->TIMER2_COUNTER.l = serialized[1];
+
+        if (!helper->load(fd, serialized, 2)) {
+            break;
+        }
+        sy6522->TIMER2_LATCH.h = serialized[0];
+        sy6522->TIMER2_LATCH.l = serialized[1];
+
+        if (!helper->load(fd, &(sy6522->SERIAL_SHIFT), 1)) {
+            break;
+        }
+        if (!helper->load(fd, &(sy6522->ACR), 1)) {
+            break;
+        }
+        if (!helper->load(fd, &(sy6522->PCR), 1)) {
+            break;
+        }
+        if (!helper->load(fd, &(sy6522->IFR), 1)) {
+            break;
+        }
+        if (!helper->load(fd, &(sy6522->IER), 1)) {
+            break;
+        }
+
+        // NB. No need to write ORA_NO_HS, since same data as ORA, just without handshake
+
+        loaded = true;
+    } while (0);
+
+    return loaded;
+}
+
+static bool _ssi263_saveState(StateHelper_s *helper, SSI263A *ssi263) {
+    int fd = helper->fd;
+
+    bool saved = false;
+    do {
+        if (!helper->save(fd, &(ssi263->DurationPhoneme), 1)) {
+            break;
+        }
+        if (!helper->save(fd, &(ssi263->Inflection), 1)) {
+            break;
+        }
+        if (!helper->save(fd, &(ssi263->RateInflection), 1)) {
+            break;
+        }
+        if (!helper->save(fd, &(ssi263->CtrlArtAmp), 1)) {
+            break;
+        }
+        if (!helper->save(fd, &(ssi263->FilterFreq), 1)) {
+            break;
+        }
+        if (!helper->save(fd, &(ssi263->CurrentMode), 1)) {
+            break;
+        }
+
+        saved = true;
+    } while (0);
+
+    return saved;
+}
+
+static bool _ssi263_loadState(StateHelper_s *helper, SSI263A *ssi263) {
+    int fd = helper->fd;
+
+    bool loaded = false;
+    do {
+        if (!helper->load(fd, &(ssi263->DurationPhoneme), 1)) {
+            break;
+        }
+        if (!helper->load(fd, &(ssi263->Inflection), 1)) {
+            break;
+        }
+        if (!helper->load(fd, &(ssi263->RateInflection), 1)) {
+            break;
+        }
+        if (!helper->load(fd, &(ssi263->CtrlArtAmp), 1)) {
+            break;
+        }
+        if (!helper->load(fd, &(ssi263->FilterFreq), 1)) {
+            break;
+        }
+        if (!helper->load(fd, &(ssi263->CurrentMode), 1)) {
+            break;
+        }
+
+        loaded = true;
+    } while (0);
+
+    return loaded;
+}
+
+bool mb_saveState(StateHelper_s *helper) {
+    LOG("SAVE mockingboard state ...");
+    int fd = helper->fd;
+
+    bool saved = false;
+    for (unsigned int i=0; i<NUM_DEVS_PER_MB; i++) {
+
+        unsigned int deviceIdx = i<<1;
+        SY6522_AY8910 *mb = &g_MB[deviceIdx];
+
+        for (unsigned int j=0; j<NUM_MB; j++) {
+
+            if (!_sy6522_saveState(helper, &(mb->sy6522))) {
+                goto exit_save;
+            }
+            if (!_ay8910_saveState(helper, deviceIdx)) {
+                goto exit_save;
+            }
+            if (!_ssi263_saveState(helper, &(mb->SpeechChip))) {
+                goto exit_save;
+            }
+
+            if (!helper->save(fd, &(mb->nAYCurrentRegister), 1)) {
+                goto exit_save;
+            }
+
+            // TIMER1 IRQ
+            // TIMER2 IRQ
+            // SPEECH IRQ
+
+            deviceIdx++;
+            mb++;
+        }
+    }
+    saved = true;
+
+exit_save:
+    return saved;
+}
+
+bool mb_loadState(StateHelper_s *helper) {
+    LOG("LOAD mockingboard state ...");
+    int fd = helper->fd;
+
+    // NOTE : always load state and calculate based on CPU @1.0 scale
+    double cpuScaleFactor = cpu_scale_factor;
+    double cpuAltScaleFactor = cpu_altscale_factor;
+    cpu_scale_factor = 1.;
+    cpu_altscale_factor = 1.;
+    timing_initialize();
+
+    MB_Reset();
+    AY8910UpdateSetCycles();
+
+    bool loaded = false;
+    for (unsigned int i=0; i<NUM_DEVS_PER_MB; i++) {
+
+        for (unsigned int j=0; j<NUM_MB; j++) {
+
+            unsigned int idx = (i<<1) + j;
+            SY6522_AY8910 *mb = &g_MB[idx];
+
+            if (!_sy6522_loadState(helper, &(mb->sy6522))) {
+                LOG("could not load SY6522 %u %u", i, j);
+                goto exit_load;
+            }
+            if (!_ay8910_loadState(helper, idx)) {
+                LOG("could not load AY8910 %u %u", i, j);
+                goto exit_load;
+            }
+            if (!_ssi263_loadState(helper, &(mb->SpeechChip))) {
+                LOG("could not load SSI263 %u %u", i, j);
+                goto exit_load;
+            }
+
+            if (!helper->load(fd, &(mb->nAYCurrentRegister), 1)) {
+                LOG("could not load nAYCurrentRegister %u %u", i, j);
+                goto exit_load;
+            }
+
+            // TIMER1 IRQ
+            // TIMER2 IRQ
+            // SPEECH IRQ
+
+            StartTimer(mb);
+
+            ++mb;
+        }
+    }
+    loaded = true;
+
+    MB_Reinitialize();
+
+exit_load:
+
+    cpu_scale_factor = cpuScaleFactor;
+    cpu_altscale_factor = cpuAltScaleFactor;
+    timing_initialize();
+
+    return loaded;
+}
+
+#   if TESTING
+static int _assert_testData16(const uint16_t data16, uint8_t **exData) {
+    uint8_t *expected = *exData;
+    uint16_t d16 = (uint16_t)(expected[0] << 8) |
+                   (uint16_t)(expected[1] << 0);
+    ASSERT(d16 == data16);
+    *exData += 2;
+    PASS();
+}
+
+static int _sy6522_testAssertA2V2(SY6522 *sy6522, uint8_t **exData) {
+
+    uint8_t *expected = *exData;
+
+    ASSERT(sy6522->ORA == *expected++);
+    ASSERT(sy6522->ORB == *expected++);
+    ASSERT(sy6522->DDRA == *expected++);
+    ASSERT(sy6522->DDRB == *expected++);
+
+    _assert_testData16(sy6522->TIMER1_COUNTER.w, &expected);
+    _assert_testData16(sy6522->TIMER1_LATCH.w, &expected);
+    _assert_testData16(sy6522->TIMER2_COUNTER.w, &expected);
+    _assert_testData16(sy6522->TIMER2_LATCH.w, &expected);
+
+    ASSERT(sy6522->SERIAL_SHIFT == *expected++);
+    ASSERT(sy6522->ACR == *expected++);
+    ASSERT(sy6522->PCR == *expected++);
+    ASSERT(sy6522->IFR == *expected++);
+    ASSERT(sy6522->IER == *expected++);
+
+    *exData = expected;
+
+    PASS();
+}
+
+static int _ssi263_testAssertA2V2(SSI263A *ssi263, uint8_t **exData) {
+
+    uint8_t *expected = *exData;
+
+    ASSERT(ssi263->DurationPhoneme == *expected++);
+    ASSERT(ssi263->Inflection == *expected++);
+    ASSERT(ssi263->RateInflection == *expected++);
+    ASSERT(ssi263->CtrlArtAmp == *expected++);
+    ASSERT(ssi263->FilterFreq == *expected++);
+    ASSERT(ssi263->CurrentMode == *expected++);
+
+    *exData = expected;
+
+    PASS();
+}
+
+int mb_testAssertA2V2(uint8_t *exData, size_t dataSiz) {
+
+    uint8_t *exStart = exData;
+
+    for (unsigned int i=0; i<NUM_DEVS_PER_MB; i++) {
+        for (unsigned int j=0; j<NUM_MB; j++) {
+            unsigned int idx = (i<<1) + j;
+            SY6522_AY8910 *mb = &g_MB[idx];
+
+            _sy6522_testAssertA2V2(&(mb->sy6522), &exData);
+            _ay8910_testAssertA2V2(idx, &exData);
+            _ssi263_testAssertA2V2(&(mb->SpeechChip), &exData);
+
+            ASSERT(mb->nAYCurrentRegister == *exData);
+            ++exData;
+
+            // TIMER1 IRQ
+            // TIMER2 IRQ
+            // SPEECH IRQ
+
+            ++mb;
+        }
+    }
+
+    ASSERT(exData - exStart == dataSiz);
+
+    PASS();
+}
+#   endif // TESTING
+
+#else // !APPLE2IX
+
 static UINT DoWriteFile(const HANDLE hFile, const void* const pData, const UINT Length)
 {
 	DWORD dwBytesWritten;

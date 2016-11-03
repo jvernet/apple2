@@ -17,7 +17,11 @@
 //-------------------------------------
 // MAME interface
 
-void _AYWriteReg(int chip, int r, int v);
+void _AYWriteReg(int chip, int r, int v
+#if MB_TRACING
+        , FILE *mb_trace_fp
+#endif
+        );
 //void AY8910_write_ym(int chip, int addr, int data);
 void AY8910_reset(int chip);
 void AY8910Update(int chip, int16_t** buffer, int nNumSamples);
@@ -28,7 +32,13 @@ uint8_t* AY8910_GetRegsPtr(unsigned int uChip);
 
 void AY8910UpdateSetCycles();
 
-#if UNBREAK_SOON
+#if 1 // APPLE2IX
+bool _ay8910_saveState(StateHelper_s *helper, unsigned int chip);
+bool _ay8910_loadState(StateHelper_s *helper, unsigned int chip);
+#   if TESTING
+int _ay8910_testAssertA2V2(unsigned int chip, uint8_t **exData);
+#   endif
+#else
 UINT AY8910_SaveSnapshot(class YamlSaveHelper& yamlSaveHelper, UINT uChip, std::string& suffix);
 UINT AY8910_LoadSnapshot(class YamlLoadHelper& yamlLoadHelper, UINT uChip, std::string& suffix);
 #endif
@@ -65,7 +75,8 @@ public:
 	void sound_frame(struct CAY8910 *_this);
 	uint8_t* GetAYRegsPtr(struct CAY8910 *_this);
 	void SetCLK(double CLK);
-#if UNBREAK_SOON
+#if 1 // APPLE2IX
+#else
 	void SaveSnapshot(class YamlSaveHelper& yamlSaveHelper, std::string& suffix);
 	bool LoadSnapshot(class YamlLoadHelper& yamlLoadHelper, std::string& suffix);
 #endif

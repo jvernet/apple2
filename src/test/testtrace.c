@@ -124,8 +124,8 @@ TEST test_boot_sound() {
 // Mockingboard tracing
 
 #define NSCT_DSK "NSCT.dsk.gz"
-#define NSCT_TRACE_SHA "35C58FEEB70E76FC31CEB55DB4C830B471B48AE3" // WARNING unstable if tests changed before this ...
-#define NSCT_SAMPS_SHA "C48AFC2ABFECC98CECB8A5B63E2261181195E1B2"
+#define NSCT_TRACE_SHA "B280BBCDC3C8475E53213D0DC78BD20D0E83D133"
+#define NSCT_SAMPS_SHA "A534CFDCD3A99468793E4D50E7F651E27964FD75"
 #define NSCT_TRACE_TARGET_SIZ (512 * 65536)  // 2^25
 #define NSCT_SAMPS_TARGET_SIZ (2048 * 65536) // 2^27
 TEST test_mockingboard_1() {
@@ -169,6 +169,10 @@ TEST test_mockingboard_1() {
         uint8_t md[SHA_DIGEST_LENGTH];
         char mdstr0[(SHA_DIGEST_LENGTH*2)+1];
 
+        mb_traceEnd();
+        truncate(mbTraceFile, NSCT_TRACE_TARGET_SIZ);
+        truncate(mbSampsFile, NSCT_SAMPS_TARGET_SIZ);
+
         // verify trace file
         do {
             unsigned char *buf = MALLOC(NSCT_TRACE_TARGET_SIZ);
@@ -196,7 +200,6 @@ TEST test_mockingboard_1() {
         break;
     } while (1);
     c_debugger_set_timeout(0);
-    mb_traceEnd();
 
     unlink(mbTraceFile);
     FREE(mbTraceFile);
@@ -211,11 +214,11 @@ TEST test_mockingboard_1() {
 // ----------------------------------------------------------------------------
 // CPU tracing
 
-// This test is majorly abusive ... it creates an ~800MB file in $HOME
+// This test is majorly abusive ... it creates an ~1GB file in $HOME
 // ... but if it's correct, you're fairly assured the cpu/vm is working =)
 #if ABUSIVE_TESTS
-#define EXPECTED_CPU_TRACE_FILE_SIZE 889495849
-#define EXPECTED_CPU_TRACE_SHA "5D16B61156B82960E668A8FA2C5DB931471524FE"
+#define EXPECTED_CPU_TRACE_FILE_SIZE 1233878608
+#define EXPECTED_CPU_TRACE_SHA "36E399BEC3A4671A9AE4145B7F01A9AD1F1CDE3B"
 TEST test_boot_disk_cputrace() {
     const char *homedir = HOMEDIR;
     char *output = NULL;
@@ -257,10 +260,75 @@ TEST test_boot_disk_cputrace() {
 
     PASS();
 }
+
+#define EXPECTED_BOOT_SIZ2 555444333
+#define EXPECTED_BOOT_SHA2 "A5F4114D404FDBE84691412ED85DB18E3B06EEE5"
+TEST test_boot_disk_cputrace2() {
+    test_setup_boot_disk(NSCT_DSK, 0);
+
+    const char *homedir = HOMEDIR;
+    char *output = NULL;
+
+    ASPRINTF(&output, "%s/a2_cputrace.txt", homedir);
+    if (output) {
+        unlink(output);
+        cpu65_trace_begin(output);
+    }
+
+    srandom(0);
+
+    // Poll for trace file of particular size
+    c_debugger_clear_watchpoints();
+    c_debugger_set_timeout(1);
+    do {
+        c_debugger_go();
+
+        FILE *fpTrace = fopen(output, "r");
+        fseek(fpTrace, 0, SEEK_END);
+        long minSizeTrace = ftell(fpTrace);
+
+        if (minSizeTrace < EXPECTED_BOOT_SIZ2) {
+            fclose(fpTrace);
+            continue;
+        }
+
+        // trace has generated files of sufficient length
+
+        uint8_t md[SHA_DIGEST_LENGTH];
+        char mdstr0[(SHA_DIGEST_LENGTH*2)+1];
+
+        cpu65_trace_end();
+        truncate(output, EXPECTED_BOOT_SIZ2);
+
+        // verify trace file
+        do {
+            unsigned char *buf = MALLOC(EXPECTED_BOOT_SIZ2);
+            fseek(fpTrace, 0, SEEK_SET);
+            ASSERT(fread(buf, 1, EXPECTED_BOOT_SIZ2, fpTrace) == EXPECTED_BOOT_SIZ2);
+            fclose(fpTrace); fpTrace = NULL;
+            SHA1(buf, EXPECTED_BOOT_SIZ2, md);
+            FREE(buf);
+            sha1_to_str(md, mdstr0);
+            ASSERT(strcmp(mdstr0, EXPECTED_BOOT_SHA2) == 0);
+        } while (0);
+
+        break;
+
+    } while (1);
+
+    c_debugger_set_timeout(0);
+
+    disk6_eject(0);
+
+    unlink(output);
+    FREE(output);
+
+    PASS();
+}
 #endif
 
-#define EXPECTED_CPUTRACE_HELLO_FILE_SIZE 118170553
-#define EXPECTED_CPUTRACE_HELLO_SHA "3BE4CFC3CFDBFED83FAF29EB0C8A004D20964461"
+#define EXPECTED_CPUTRACE_HELLO_FILE_SIZE 164542693
+#define EXPECTED_CPUTRACE_HELLO_SHA "46A3CAE4BB3D7F0A73465DFF6EAD9181D2F958CF"
 TEST test_cputrace_hello_dsk() {
     test_setup_boot_disk(BLANK_DSK, 0);
 
@@ -309,8 +377,8 @@ TEST test_cputrace_hello_dsk() {
     PASS();
 }
 
-#define EXPECTED_CPUTRACE_HELLO_NIB_FILE_SIZE 14153921
-#define EXPECTED_CPUTRACE_HELLO_NIB_SHA "AC3787B7AE7422DD88AA414989B059F13BBF1674"
+#define EXPECTED_CPUTRACE_HELLO_NIB_FILE_SIZE 19455366
+#define EXPECTED_CPUTRACE_HELLO_NIB_SHA "F0D3B25E98037E82422787DD950D4F959426F258"
 TEST test_cputrace_hello_nib() {
     test_setup_boot_disk(BLANK_NIB, 0);
 
@@ -412,8 +480,8 @@ TEST test_cputrace_hello_po() {
 // ----------------------------------------------------------------------------
 // VM tracing
 
-#define EXPECTED_VM_TRACE_FILE_SIZE 2832136
-#define EXPECTED_VM_TRACE_SHA "E39658183FF87974D8538B38B772A193C6C3276C"
+#define EXPECTED_VM_TRACE_FILE_SIZE 2383449
+#define EXPECTED_VM_TRACE_SHA "0B387CBF4342CC24E0B9D2DA37AF517FD75DF467"
 TEST test_boot_disk_vmtrace() {
     const char *homedir = HOMEDIR;
     char *disk = NULL;
@@ -458,8 +526,8 @@ TEST test_boot_disk_vmtrace() {
     PASS();
 }
 
-#define EXPECTED_VM_TRACE_NIB_FILE_SIZE 2931400
-#define EXPECTED_VM_TRACE_NIB_SHA "5ED6270A7A9CC523D9BAB07E08B74394C3386A32"
+#define EXPECTED_VM_TRACE_NIB_FILE_SIZE 2470474
+#define EXPECTED_VM_TRACE_NIB_SHA "0256D57E561FE301588B1FC081F04D20AA870789"
 TEST test_boot_disk_vmtrace_nib() {
     test_setup_boot_disk(BLANK_NIB, 0);
 
@@ -507,7 +575,7 @@ TEST test_boot_disk_vmtrace_nib() {
 }
 
 #define EXPECTED_VM_TRACE_PO_FILE_SIZE EXPECTED_VM_TRACE_FILE_SIZE
-#define EXPECTED_VM_TRACE_PO_SHA "EDBE060984FC1BAA30C2633B791AF49BA89112AE"
+#define EXPECTED_VM_TRACE_PO_SHA "3AE332028B37DE1DD0F967C095800E28D5DC6DB7"
 TEST test_boot_disk_vmtrace_po() {
     test_setup_boot_disk(BLANK_PO, 0);
 
@@ -575,14 +643,18 @@ GREATEST_SUITE(test_suite_trace) {
 
 #if ABUSIVE_TESTS
     RUN_TESTp(test_boot_disk_cputrace);
+    RUN_TESTp(test_boot_disk_cputrace2);
 #endif
 
     RUN_TESTp(test_cputrace_hello_dsk);
     RUN_TESTp(test_cputrace_hello_nib);
     RUN_TESTp(test_cputrace_hello_po);
+#if VM_TRACING_FIXED
+    // 2016/10/01 : VM tracing is undergoing upheaval
     RUN_TESTp(test_boot_disk_vmtrace);
     RUN_TESTp(test_boot_disk_vmtrace_nib);
     RUN_TESTp(test_boot_disk_vmtrace_po);
+#endif
 
     // ...
     disk6_eject(0);
