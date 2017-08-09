@@ -103,8 +103,26 @@ static bool _load_state(int fd, uint8_t * inbuf, ssize_t inmax) {
     return inmax == 0;
 }
 
-bool emulator_saveState(const char * const path) {
-    int fd = -1;
+static int _load_magick(int fd) {
+    // load header
+    uint8_t magick[SAVE_MAGICK_LEN] = { 0 };
+    if (!_load_state(fd, magick, SAVE_MAGICK_LEN)) {
+        return -1;
+    }
+
+    // check header
+
+    if (memcmp(magick, SAVE_MAGICK2, SAVE_MAGICK_LEN) == 0) {
+        return 2;
+    } else if (memcmp(magick, SAVE_MAGICK, SAVE_MAGICK_LEN) == 0) {
+        return 1;
+    }
+
+    ERRLOG("bad header magick in emulator save state file");
+    return -1;
+}
+
+bool emulator_saveState(int fd) {
     bool saved = false;
 
 #if !TESTING
@@ -112,12 +130,6 @@ bool emulator_saveState(const char * const path) {
 #endif
 
     do {
-        TEMP_FAILURE_RETRY(fd = open(path, O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR));
-        if (fd < 0) {
-            break;
-        }
-        assert(fd != 0 && "crazy platform");
-
         // save header
         if (!_save_state(fd, (const uint8_t *)SAVE_MAGICK2, SAVE_MAGICK_LEN)) {
             break;
@@ -158,20 +170,10 @@ bool emulator_saveState(const char * const path) {
         saved = true;
     } while (0);
 
-    if (fd >= 0) {
-        TEMP_FAILURE_RETRY(close(fd));
-    }
-
-    if (!saved) {
-        ERRLOG("OOPS, could not write to the emulator save-state file");
-        unlink(path);
-    }
-
     return saved;
 }
 
-bool emulator_loadState(const char * const path) {
-    int fd = -1;
+bool emulator_loadState(int fd, int fdA, int fdB) {
     bool loaded = false;
 
 #if !TESTING
@@ -180,34 +182,17 @@ bool emulator_loadState(const char * const path) {
 
     video_setDirty(A2_DIRTY_FLAG);
 
-    int version=-1;
     do {
-        TEMP_FAILURE_RETRY(fd = open(path, O_RDONLY));
-        if (fd < 0) {
-            break;
-        }
-        assert(fd != 0 && "crazy platform");
-
-        // load header
-        uint8_t magick[SAVE_MAGICK_LEN] = { 0 };
-        if (!_load_state(fd, magick, SAVE_MAGICK_LEN)) {
-            break;
-        }
-
-        // check header
-
-        if (memcmp(magick, SAVE_MAGICK, SAVE_MAGICK_LEN) == 0) {
-            version = 1;
-        } else if (memcmp(magick, SAVE_MAGICK2, SAVE_MAGICK_LEN) == 0) {
-            version = 2;
-        } else {
-            ERRLOG("bad header magick in emulator save state file");
+        int version = _load_magick(fd);
+        if (version < 0) {
             break;
         }
 
         StateHelper_s helper = {
             .fd = fd,
             .version = version,
+            .diskFdA = fdA,
+            .diskFdB = fdB,
             .save = &_save_state,
             .load = &_load_state,
         };
@@ -259,8 +244,44 @@ bool emulator_loadState(const char * const path) {
         loaded = true;
     } while (0);
 
+    if (!loaded) {
+        LOG("OOPS, problem(s) encountered loading emulator save-state file");
+    }
+
+    return loaded;
+}
+
+bool emulator_stateExtractDiskPaths(int fd, JSON_ref json) {
+    bool loaded = false;
+
+    do {
+        int version = _load_magick(fd);
+        if (version < 0) {
+            break;
+        }
+
+        StateHelper_s helper = {
+            .fd = fd,
+            .version = version,
+            .diskFdA = -1,
+            .diskFdB = -1,
+            .save = &_save_state,
+            .load = &_load_state,
+        };
+
+        if (!disk6_stateExtractDiskPaths(&helper, json)) {
+            break;
+        }
+
+        loaded = true;
+    } while (0);
+
     if (fd >= 0) {
-        TEMP_FAILURE_RETRY(close(fd));
+        // Ensure that we leave the file descriptor ready for a call to emulator_loadState()
+        off_t ret = lseek(fd, 0, SEEK_SET);
+        if (ret != 0) {
+            ERRLOG("OOPS : state file lseek() failed!");
+        }
     }
 
     if (!loaded) {

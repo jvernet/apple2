@@ -1065,13 +1065,13 @@ bool json_serialize(JSON_ref jsonRef, int fd, bool pretty) {
     }
 }
 
-bool json_unescapeSlashes(char **kbdPath) {
+bool json_unescapeSlashes(char **strPtr) {
     // A big "fhank-you" to the Java org.json.JSONStringer API which "helpfully" escapes slash '/' characters
-    if (!kbdPath) {
+    if (!strPtr) {
         return false;
     }
 
-    char *str = *kbdPath;
+    char *str = *strPtr;
     size_t len = strlen(str) + 1; // include termination \0
     char *p0 = NULL;
     char *p = str;
@@ -1101,9 +1101,6 @@ void json_destroy(JSON_ref *jsonRef) {
 
     FREE(parsedData->jsonString);
     FREE(parsedData->jsonTokens);
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wincompatible-pointer-types-discards-qualifiers"
-    FREE(*jsonRef);
-#pragma clang diagnostic pop
+    FREE(*((JSON_s **)jsonRef));
 }
 

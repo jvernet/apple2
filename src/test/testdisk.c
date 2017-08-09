@@ -392,7 +392,7 @@ TEST test_disk_bytes_savehello_dsk() {
     disk6_eject(0);
 
     // Now verify actual disk bytes written to disk
-    test_setup_boot_disk(BLANK_DSK, 1);
+    test_setup_boot_disk(BLANK_DSK, /*readonly:*/0); // !readonly forces gunzip()ping file so we can read raw data ...
 
     do {
         uint8_t md[SHA_DIGEST_LENGTH];
@@ -486,7 +486,7 @@ TEST test_disk_bytes_savehello_nib() {
     disk6_eject(0);
 
     // Now verify actual disk bytes written to disk
-    test_setup_boot_disk(BLANK_NIB, 1);
+    test_setup_boot_disk(BLANK_NIB, /*readonly:*/0); // !readonly forces gunzip()ping file so we can read raw data ...
 
     do {
         uint8_t md[SHA_DIGEST_LENGTH];
@@ -580,7 +580,7 @@ TEST test_disk_bytes_savehello_po() {
     disk6_eject(0);
 
     // Now verify actual disk bytes written to disk
-    test_setup_boot_disk(BLANK_PO, 1);
+    test_setup_boot_disk(BLANK_PO, /*readonly:*/0); // !readonly forces gunzip()ping file so we can read raw data ...
 
     do {
         uint8_t md[SHA_DIGEST_LENGTH];
@@ -693,7 +693,7 @@ TEST test_outofspace_dsk() {
     disk6_eject(0);
 
     // Now verify actual disk bytes written to disk
-    test_setup_boot_disk(BLANK_DSK, 1);
+    test_setup_boot_disk(BLANK_DSK, /*readonly:*/0); // !readonly forces gunzip()ping file so we can read raw data ...
 
     do {
         uint8_t md[SHA_DIGEST_LENGTH];
@@ -748,7 +748,7 @@ TEST test_outofspace_nib() {
     disk6_eject(0);
 
     // Now verify actual disk bytes written to disk
-    test_setup_boot_disk(BLANK_NIB, 1);
+    test_setup_boot_disk(BLANK_NIB, /*readonly:*/0); // !readonly forces gunzip()ping file so we can read raw data ...
 
     do {
         uint8_t md[SHA_DIGEST_LENGTH];
@@ -803,7 +803,7 @@ TEST test_outofspace_po() {
     disk6_eject(0);
 
     // Now verify actual disk bytes written to disk
-    test_setup_boot_disk(BLANK_PO, 1);
+    test_setup_boot_disk(BLANK_PO, /*readonly:*/0); // !readonly forces gunzip()ping file so we can read raw data ...
 
     do {
         uint8_t md[SHA_DIGEST_LENGTH];
@@ -1276,7 +1276,7 @@ TEST test_inithello_po() {
 
 TEST test_data_stability_dsk() {
 
-    test_setup_boot_disk(BLANK_DSK, 1);
+    test_setup_boot_disk(BLANK_DSK, /*readonly:*/0); // !readonly forces gunzip()ping file so we can read raw data ...
 
     do {
         uint8_t md[SHA_DIGEST_LENGTH];
@@ -1311,7 +1311,7 @@ TEST test_data_stability_dsk() {
 
 TEST test_data_stability_nib() {
 
-    test_setup_boot_disk(BLANK_NIB, 0);
+    test_setup_boot_disk(BLANK_NIB, /*readonly:*/0); // !readonly forces gunzip()ping file so we can read raw data ...
 
     do {
         uint8_t md[SHA_DIGEST_LENGTH];
@@ -1346,7 +1346,7 @@ TEST test_data_stability_nib() {
 
 TEST test_data_stability_po() {
 
-    test_setup_boot_disk(BLANK_PO, 0);
+    test_setup_boot_disk(BLANK_PO, /*readonly:*/0); // !readonly forces gunzip()ping file so we can read raw data ...
 
     do {
         uint8_t md[SHA_DIGEST_LENGTH];
@@ -1376,6 +1376,107 @@ TEST test_data_stability_po() {
     PASS();
 }
 
+#define GZBAD_NIB "testgzheader.nib"
+#define GZBAD_NIB_LOAD_SHA1 "98EB8D2EF486E5BF888789A6FF9D4E3DEC7902B7"
+#define GZBAD_NIB_LOAD_SHA2 "764F580287564B5464BF98BC2026E110F06C9EA4"
+static int _test_disk_image_with_gzip_header(int readonly) {
+
+    test_setup_boot_disk(GZBAD_NIB, readonly);
+
+    ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] != TEST_FINISHED);
+    c_debugger_go();
+    ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
+
+    test_type_input("CLEAR\r");
+
+    c_debugger_set_timeout(10);
+    c_debugger_go();
+    c_debugger_set_timeout(0);
+
+    do {
+        uint8_t md[SHA_DIGEST_LENGTH];
+        const uint8_t * const fb = video_scan();
+        SHA1(fb, SCANWIDTH*SCANHEIGHT, md);
+        sha1_to_str(md, mdstr);
+        bool matches_sha1 = (strcasecmp(mdstr, GZBAD_NIB_LOAD_SHA1) == 0);
+        bool matches_sha2 = (strcasecmp(mdstr, GZBAD_NIB_LOAD_SHA2) == 0);
+        ASSERT(matches_sha1 || matches_sha2);
+    } while(0);
+
+    disk6_eject(0);
+
+    PASS();
+}
+
+TEST test_disk_image_with_gzip_header_ro() {
+    return _test_disk_image_with_gzip_header(/*readonly:*/1);
+}
+
+TEST test_disk_image_with_gzip_header_rw() {
+    return _test_disk_image_with_gzip_header(/*readonly:*/0);
+}
+
+#define GZINVALID_DSK "CorruptedGzipped.dsk.gz"
+static int _test_disk_invalid_gzipped(int readonly) {
+
+    int found_disk_image_file = 0;
+    {
+        char **paths = test_copy_disk_paths(GZINVALID_DSK);
+
+        char **path = &paths[0];
+        while (*path) {
+            char *diskPath = *path;
+            ++path;
+
+            int fd = -1;
+            TEMP_FAILURE_RETRY(fd = open(diskPath, readonly ? O_RDONLY : O_RDWR));
+            if (fd != -1) {
+
+                ++found_disk_image_file;
+
+                int err = disk6_insert(fd, /*drive:*/0, diskPath, readonly) != NULL;
+                TEMP_FAILURE_RETRY(close(fd));
+                ASSERT(err);
+
+                // did not actually insert corruped disk image and did not crash
+                ASSERT(disk6.disk[0].file_name == NULL);
+                ASSERT(disk6.disk[0].fd == -1);
+
+                ASSERT(disk6.disk[0].raw_image_data == (void *)-1/*MAP_FAILED*/);
+                ASSERT(disk6.disk[0].whole_len == 0);
+                ASSERT(disk6.disk[0].nib_image_data == NULL);
+                ASSERT(disk6.disk[0].nibblized == false);
+                ASSERT(disk6.disk[0].is_protected == false);
+                ASSERT(disk6.disk[0].track_valid == false);
+                ASSERT(disk6.disk[0].track_dirty == false);
+                ASSERT(disk6.disk[0].skew_table == NULL);
+                ASSERT(disk6.disk[0].track_width == 0);
+            }
+        }
+
+        path = &paths[0];
+        while (*path) {
+            char *diskPath = *path;
+            ++path;
+            FREE(diskPath);
+        }
+
+        FREE(paths);
+    }
+
+    ASSERT(found_disk_image_file > 0);
+
+    PASS();
+}
+
+TEST test_disk_invalid_gzipped_ro() {
+    return _test_disk_invalid_gzipped(/*readonly:*/1);
+}
+
+TEST test_disk_invalid_gzipped_rw() {
+    return _test_disk_invalid_gzipped(/*readonly:*/0);
+}
+
 #if TEST_DISK_EDGE_CASES
 #define DROL_DSK "Drol.dsk.gz"
 #define DROL_CRACK_SCREEN_SHA "FD7332529E117F14DA3880BB36FE8E23C3704799"
@@ -1385,7 +1486,7 @@ TEST test_reinsert_edgecase() {
     // TODO FIXME : we need both a timeout and a step-until-framebuffer-is-a-particular-SHA routine ...
 
     // First verify we hit the crackscreen
-    c_debugger_set_timeout(5);
+    c_debugger_set_timeout(10);
     c_debugger_go();
     ASSERT_SHA(DROL_CRACK_SCREEN_SHA);
 
@@ -1462,6 +1563,12 @@ GREATEST_SUITE(test_suite_disk) {
     RUN_TESTp(test_data_stability_dsk);
     RUN_TESTp(test_data_stability_nib);
     RUN_TESTp(test_data_stability_po);
+
+    RUN_TESTp(test_disk_image_with_gzip_header_ro);
+    RUN_TESTp(test_disk_image_with_gzip_header_rw);
+
+    RUN_TESTp(test_disk_invalid_gzipped_ro);
+    RUN_TESTp(test_disk_invalid_gzipped_rw);
 
     // edge-case tests may require testing copyrighted images (which I have in my possession by legally owning the
     // original disk image (yep, I do ;-)

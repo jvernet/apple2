@@ -17,6 +17,8 @@
     <!-- main options -->
     <string name="about_apple2ix">About Apple2ix…</string>
     <string name="about_apple2ix_summary">About this software</string>
+    <string name="about_apple2ix_licenses">Licenses…</string>
+    <string name="about_apple2ix_licenses_summary">Apple2ix software licenses</string>
     <string name="app_name">Apple2ix</string>
     <string name="audio_configure">Configure audio…</string>
     <string name="audio_configure_summary">Speaker volume, Mockingboard, etc</string>
@@ -36,15 +38,18 @@
     <string name="diskA">Drive 1</string>
     <string name="diskB">Drive 2</string>
     <string name="disk_eject">Eject</string>
-    <string name="disk_insert_toast">Inserted disk in drive read-only</string>
-    <string name="disk_insert_could_not_read">Sorry, could not read the disk image!</string>
+    <string name="disk_insert_toast_cannot">Cannot insert (not a disk image or state file)</string>
     <string name="disk_read_only">Read only</string>
     <string name="disk_read_write">Read/write</string>
+    <string name="disk_selection_newschoool">System chooser</string>
     <string name="disk_show_operation">Show Disk ][ operations</string>
     <string name="disk_show_operation_summary">Shows when disk drives are reading or writing</string>
     <string name="emulation_continue">Continue…</string>
     <string name="emulation_disks">Load disk image</string>
+    <string name="file_chooser">Choose disk image or state file…</string>
     <string name="header_disks">Insert disk:</string>
+    <string name="header_eject_1">Eject 1</string>
+    <string name="header_eject_2">Eject 2</string>
     <string name="input_current">Current touch device</string>
     <string name="input_current_summary">Choose current touch device</string>
     <string name="joystick">Joystick</string>
@@ -126,8 +131,8 @@
     <string name="keypad_preset_left_right_space">&#8592;,&#8594;, tap spacebar</string>
     <string name="keypad_preset_wadx_space">W,A,D,X, tap spacebar</string>
     <string name="keypad_repeat_summary">Key repeat threshold in secs</string>
-    <string name="menu_disks">Load disk image…</string>
-    <string name="menu_disks_summary">Insert a Disk ][ image file</string>
+    <string name="menu_disks">Load image or state file…</string>
+    <string name="menu_disks_summary">Insert Disk ][ image or state file</string>
     <string name="menu_settings">Emulator settings…</string>
     <string name="menu_settings_summary">General settings, joystick, keyboard</string>
     <string name="mockingboard_disabled_title">Mockingboard disabled</string>
@@ -161,7 +166,7 @@
     <string name="save">Quick save</string>
     <string name="saverestore">Save &amp; restore…</string>
     <string name="saverestore_choice">Save current state or restore previous?</string>
-    <string name="saverestore_summary">Quick save and restore</string>
+    <string name="saverestore_summary">Save and restore emulator state</string>
     <string name="skip">Skip&#8594;</string>
     <string name="speaker_volume">Speaker volume</string>
     <string name="speaker_volume_summary">Set the speaker volume</string>
@@ -171,6 +176,7 @@
     <string name="settings_advanced_joystick">Advanced joystick/keypad settings</string>
     <string name="settings_advanced_joystick_summary">Advanced settings and performance tuning</string>
     <string name="storage">/storage/</string>
+    <string name="state_not_restored">Error restoring state…</string>
     <string name="touch_menu_enable">Enable touch menus</string>
     <string name="touch_menu_enable_summary">Enables soft menu buttons in top screen corners</string>
     <string name="video_configure">Configure video…</string>

@@ -54,14 +54,14 @@ static int _assert_blank_boot(void) {
     ASSERT(stepper_phases == 0x0);
     ASSERT(disk6.disk[0].is_protected);
     const char *file_name = strrchr(disk6.disk[0].file_name, '/');
-    ASSERT(strcmp(file_name, "/blank.dsk") == 0);
+    ASSERT(strcmp(file_name, "/blank.dsk.gz") == 0);
     ASSERT(disk6.disk[0].phase == 36);
     ASSERT(disk6.disk[0].run_byte == BLANK_RUN_BYTE);
     ASSERT(disk6.disk[0].fd > 0);
-    ASSERT(disk6.disk[0].mmap_image != 0);
-    ASSERT(disk6.disk[0].mmap_image != MAP_FAILED);
+    ASSERT(disk6.disk[0].raw_image_data != 0);
+    ASSERT(disk6.disk[0].raw_image_data != MAP_FAILED);
     ASSERT(disk6.disk[0].whole_len == 143360);
-    ASSERT(disk6.disk[0].whole_image != NULL);
+    ASSERT(disk6.disk[0].nib_image_data != NULL);
     ASSERT(disk6.disk[0].track_width == BLANK_TRACK_WIDTH);
     ASSERT(!disk6.disk[0].nibblized);
     ASSERT(!disk6.disk[0].track_dirty);
@@ -99,6 +99,35 @@ static int _assert_blank_boot(void) {
     PASS();
 }
 
+static int _get_fds(JSON_ref jsonData, int *fdA, int *fdB) {
+    {
+        char *pathA = NULL;
+        bool ret = json_mapCopyStringValue(jsonData, "diskA", &pathA);
+        ASSERT(ret);
+        ASSERT(pathA);
+
+        bool readOnlyA = true;
+        ret = json_mapParseBoolValue(jsonData, "readOnlyA", &readOnlyA);
+
+        *fdA = -1;
+        TEMP_FAILURE_RETRY(*fdA = open(pathA, readOnlyA ? O_RDONLY : O_RDWR));
+        FREE(pathA);
+    }
+    {
+        char *pathB = NULL;
+        bool ret = json_mapCopyStringValue(jsonData, "diskB", &pathB);
+        ASSERT(ret);
+        ASSERT(pathB);
+
+        bool readOnlyB = true;
+        ret = json_mapParseBoolValue(jsonData, "readOnlyB", &readOnlyB);
+
+        *fdB = -1;
+        TEMP_FAILURE_RETRY(*fdB = open(pathB, readOnlyB ? O_RDONLY : O_RDWR));
+        FREE(pathB);
+    }
+}
+
 TEST test_save_state_1() {
     test_setup_boot_disk(BLANK_DSK, 1);
 
@@ -106,13 +135,19 @@ TEST test_save_state_1() {
 
     _assert_blank_boot();
 
-    char *savFile = NULL;
-    ASPRINTF(&savFile, "%s/emulator-test.state", HOMEDIR);
+    char *savData = NULL;
+    ASPRINTF(&savData, "%s/emulator-test.a2state", HOMEDIR);
 
-    bool ret = emulator_saveState(savFile);
+    int fd = -1;
+    TEMP_FAILURE_RETRY(fd = open(savData, O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR));
+    ASSERT(fd > 0);
+
+    bool ret = emulator_saveState(fd);
     ASSERT(ret);
 
-    FREE(savFile);
+    TEMP_FAILURE_RETRY(close(fd));
+
+    FREE(savData);
     PASS();
 }
 
@@ -125,10 +160,27 @@ TEST test_load_state_1() {
     c_debugger_go();
     c_debugger_set_timeout(0);
 
-    char *savFile = NULL;
-    ASPRINTF(&savFile, "%s/emulator-test.state", HOMEDIR);
+    char *savData = NULL;
+    ASPRINTF(&savData, "%s/emulator-test.a2state", HOMEDIR);
 
-    bool ret = emulator_loadState(savFile);
+    int fdState = -1;
+    TEMP_FAILURE_RETRY(fdState = open(savData, O_RDONLY));
+    ASSERT(fdState > 0);
+
+    bool ret = false;
+    int fdA = -1;
+    int fdB = -1;
+    {
+        JSON_ref jsonData;
+        int siz = json_createFromString("{}", &jsonData);
+        ASSERT(siz > 0);
+        ret = emulator_stateExtractDiskPaths(fdState, jsonData);
+        ASSERT(ret);
+        _get_fds(jsonData, &fdA, &fdB);
+        json_destroy(&jsonData);
+    }
+
+    ret = emulator_loadState(fdState, fdA, fdB);
     ASSERT(ret);
 
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] != TEST_FINISHED);
@@ -136,8 +188,12 @@ TEST test_load_state_1() {
 
     _assert_blank_boot();
 
-    unlink(savFile);
-    FREE(savFile);
+    TEMP_FAILURE_RETRY(close(fdState));
+    TEMP_FAILURE_RETRY(close(fdA));
+    TEMP_FAILURE_RETRY(close(fdB));
+
+    unlink(savData);
+    FREE(savData);
 
     PASS();
 }
@@ -172,7 +228,24 @@ TEST test_load_A2VM_good1() {
 
     // load state and assert
 
-    bool ret = emulator_loadState(savData);
+    int fdState = -1;
+    TEMP_FAILURE_RETRY(fdState = open(savData, O_RDONLY));
+    ASSERT(fdState > 0);
+
+    bool ret = false;
+    int fdA = -1;
+    int fdB = -1;
+    {
+        JSON_ref jsonData;
+        int siz = json_createFromString("{}", &jsonData);
+        ASSERT(siz > 0);
+        ret = emulator_stateExtractDiskPaths(fdState, jsonData);
+        ASSERT(ret);
+        _get_fds(jsonData, &fdA, &fdB);
+        json_destroy(&jsonData);
+    }
+
+    ret = emulator_loadState(fdState, fdA, fdB);
     ASSERT(ret);
 
     // ASSERT framebuffer matches expected
@@ -191,10 +264,10 @@ TEST test_load_A2VM_good1() {
     ASSERT(disk6.disk[0].phase == 34);
     ASSERT(disk6.disk[0].run_byte == 2000);
     //ASSERT(disk6.disk[0].fd > 0);
-    //ASSERT(disk6.disk[0].mmap_image != 0);
-    //ASSERT(disk6.disk[0].mmap_image != MAP_FAILED);
+    //ASSERT(disk6.disk[0].raw_image_data != 0);
+    //ASSERT(disk6.disk[0].raw_image_data != MAP_FAILED);
     //ASSERT(disk6.disk[0].whole_len == 143360);
-    //ASSERT(disk6.disk[0].whole_image != NULL);
+    //ASSERT(disk6.disk[0].nib_image_data != NULL);
     //ASSERT(disk6.disk[0].track_width == BLANK_TRACK_WIDTH);
     ASSERT(!disk6.disk[0].nibblized);
     ASSERT(!disk6.disk[0].track_dirty);
@@ -228,6 +301,10 @@ TEST test_load_A2VM_good1() {
     ASSERT(cpu65_x       == 0x09);
     ASSERT(cpu65_y       == 0x01);
     ASSERT(cpu65_sp      == 0xEA);
+
+    TEMP_FAILURE_RETRY(close(fdState));
+    TEMP_FAILURE_RETRY(close(fdA));
+    TEMP_FAILURE_RETRY(close(fdB));
 
     unlink(savData);
     FREE(savData);
@@ -265,7 +342,24 @@ TEST test_load_A2V2_good1() {
 
     // load state and assert
 
-    bool ret = emulator_loadState(savData);
+    int fdState = -1;
+    TEMP_FAILURE_RETRY(fdState = open(savData, O_RDONLY));
+    ASSERT(fdState > 0);
+
+    bool ret = false;
+    int fdA = -1;
+    int fdB = -1;
+    {
+        JSON_ref jsonData;
+        int siz = json_createFromString("{}", &jsonData);
+        ASSERT(siz > 0);
+        ret = emulator_stateExtractDiskPaths(fdState, jsonData);
+        ASSERT(ret);
+        _get_fds(jsonData, &fdA, &fdB);
+        json_destroy(&jsonData);
+    }
+
+    ret = emulator_loadState(fdState, fdA, fdB);
     ASSERT(ret);
 
     // ASSERT framebuffer matches expected
@@ -284,10 +378,10 @@ TEST test_load_A2V2_good1() {
     ASSERT(disk6.disk[0].phase == 26);
     ASSERT(disk6.disk[0].run_byte == 5562);
     //ASSERT(disk6.disk[0].fd > 0);
-    //ASSERT(disk6.disk[0].mmap_image != 0);
-    //ASSERT(disk6.disk[0].mmap_image != MAP_FAILED);
+    //ASSERT(disk6.disk[0].raw_image_data != 0);
+    //ASSERT(disk6.disk[0].raw_image_data != MAP_FAILED);
     //ASSERT(disk6.disk[0].whole_len == 143360);
-    //ASSERT(disk6.disk[0].whole_image != NULL);
+    //ASSERT(disk6.disk[0].nib_image_data != NULL);
     //ASSERT(disk6.disk[0].track_width == BLANK_TRACK_WIDTH);
     ASSERT(!disk6.disk[0].nibblized);
     ASSERT(!disk6.disk[0].track_dirty);
@@ -334,6 +428,10 @@ TEST test_load_A2V2_good1() {
     size_t mbSiz = sizeof(mbData);
     mb_testAssertA2V2(mbData, mbSiz);
 
+    TEMP_FAILURE_RETRY(close(fdState));
+    TEMP_FAILURE_RETRY(close(fdA));
+    TEMP_FAILURE_RETRY(close(fdB));
+
     unlink(savData);
     FREE(savData);
 
@@ -355,7 +453,7 @@ TEST test_load_A2V2_good2() {
 
     const char *homedir = HOMEDIR;
     char *savData = NULL;
-    ASPRINTF(&savData, "%s/a2_emul_a2v2.dat", homedir);
+    ASPRINTF(&savData, "%s/a2_emul_a2v2-2.dat", homedir);
     if (savData) {
         unlink(savData);
     }
@@ -370,7 +468,24 @@ TEST test_load_A2V2_good2() {
 
     // load state and assert
 
-    bool ret = emulator_loadState(savData);
+    int fdState = -1;
+    TEMP_FAILURE_RETRY(fdState = open(savData, O_RDONLY));
+    ASSERT(fdState > 0);
+
+    bool ret = false;
+    int fdA = -1;
+    int fdB = -1;
+    {
+        JSON_ref jsonData;
+        int siz = json_createFromString("{}", &jsonData);
+        ASSERT(siz > 0);
+        ret = emulator_stateExtractDiskPaths(fdState, jsonData);
+        ASSERT(ret);
+        _get_fds(jsonData, &fdA, &fdB);
+        json_destroy(&jsonData);
+    }
+
+    ret = emulator_loadState(fdState, fdA, fdB);
     ASSERT(ret);
 
     // ASSERT framebuffer matches expected
@@ -389,10 +504,10 @@ TEST test_load_A2V2_good2() {
     ASSERT(disk6.disk[0].phase == 58);
     ASSERT(disk6.disk[0].run_byte == 1208);
     //ASSERT(disk6.disk[0].fd > 0);
-    //ASSERT(disk6.disk[0].mmap_image != 0);
-    //ASSERT(disk6.disk[0].mmap_image != MAP_FAILED);
+    //ASSERT(disk6.disk[0].raw_image_data != 0);
+    //ASSERT(disk6.disk[0].raw_image_data != MAP_FAILED);
     //ASSERT(disk6.disk[0].whole_len == 143360);
-    //ASSERT(disk6.disk[0].whole_image != NULL);
+    //ASSERT(disk6.disk[0].nib_image_data != NULL);
     //ASSERT(disk6.disk[0].track_width == BLANK_TRACK_WIDTH);
     ASSERT(!disk6.disk[0].nibblized);
     ASSERT(!disk6.disk[0].track_dirty);
@@ -439,6 +554,132 @@ TEST test_load_A2V2_good2() {
     size_t mbSiz = sizeof(mbData);
     mb_testAssertA2V2(mbData, mbSiz);
 
+    TEMP_FAILURE_RETRY(close(fdState));
+    TEMP_FAILURE_RETRY(close(fdA));
+    TEMP_FAILURE_RETRY(close(fdB));
+
+    unlink(savData);
+    FREE(savData);
+
+    PASS();
+}
+
+TEST test_load_A2V2_good3() {
+
+    // ensure stable test
+    disk6_eject(0);
+    c_debugger_set_timeout(1);
+    c_debugger_clear_watchpoints();
+    c_debugger_go();
+    c_debugger_set_timeout(0);
+
+    // write saved state to disk
+
+#include "test/a2v2-good3.h"
+
+    const char *homedir = HOMEDIR;
+    char *savData = NULL;
+    ASPRINTF(&savData, "%s/a2_emul_a2v2-3.dat", homedir);
+    if (savData) {
+        unlink(savData);
+    }
+
+    FILE *fp = fopen(savData, "w");
+    ASSERT(fp);
+    size_t dataSiz = sizeof(data);
+    if (fwrite(data, 1, dataSiz, fp) != dataSiz) {
+        ASSERT(false);
+    }
+    fflush(fp); fclose(fp); fp = NULL;
+
+    // load state and assert
+
+    int fdState = -1;
+    TEMP_FAILURE_RETRY(fdState = open(savData, O_RDONLY));
+    ASSERT(fdState > 0);
+
+    bool ret = false;
+    int fdA = -1;
+    int fdB = -1;
+    {
+        JSON_ref jsonData;
+        int siz = json_createFromString("{}", &jsonData);
+        ASSERT(siz > 0);
+        ret = emulator_stateExtractDiskPaths(fdState, jsonData);
+        ASSERT(ret);
+        _get_fds(jsonData, &fdA, &fdB);
+        json_destroy(&jsonData);
+    }
+
+    ret = emulator_loadState(fdState, fdA, fdB);
+    ASSERT(ret);
+
+    // ASSERT framebuffer matches expected
+    ASSERT_SHA("D92EECDF3C7446097F3E884412D7911DDD968287");
+
+    // Disk6 ... AVOID ASSERT()ing for non-portable things ... in particular this a2state file contains Droid content://
+    // paths that will not be valid (even on the original device), so the disk6_insert() call will have failed.
+    // emulator_stateRestore() will have logged the fault but continued optimistically
+    ASSERT(disk6.motor_off == 1);
+    ASSERT(disk6.drive == 1);
+    ASSERT(disk6.ddrw == 0);
+    ASSERT(disk6.disk_byte == 0xAA);
+    extern int stepper_phases;
+    ASSERT(stepper_phases == 0x0);
+    ASSERT(disk6.disk[0].phase == 6);
+    ASSERT(disk6.disk[0].run_byte == 1141);
+    ASSERT(!disk6.disk[0].nibblized);
+    ASSERT(!disk6.disk[0].track_dirty);
+
+    ASSERT(disk6.disk[1].phase == 50);
+    ASSERT(disk6.disk[1].run_byte == 5277);
+    ASSERT(!disk6.disk[1].nibblized);
+    ASSERT(!disk6.disk[1].track_dirty);
+
+    // VM ...
+    ASSERT(softswitches  == 0x000140f4);
+    ASSERT_SHA_BIN("16A730D3E709F096B693EA4029FC68672CE454B8", apple_ii_64k[0], /*len:*/sizeof(apple_ii_64k));
+    ASSERT_SHA_BIN("DF3EE367193484A6A1C28C2BAE0EFEF42E6D19BB", language_card[0], /*len:*/sizeof(language_card));
+    ASSERT_SHA_BIN("343C30374074AB3AEE22581A6477736121390B18", language_banks[0], /*len:*/sizeof(language_banks));
+    ASSERT(base_ramrd    == apple_ii_64k[0]);
+    ASSERT(base_ramwrt   == apple_ii_64k[0]);
+    ASSERT(base_textrd   == apple_ii_64k[0]);
+    ASSERT(base_textwrt  == apple_ii_64k[0]);
+    ASSERT(base_hgrrd    == apple_ii_64k[0]);
+    ASSERT(base_hgrwrt   == apple_ii_64k[0]);
+    ASSERT(base_stackzp  == apple_ii_64k[0]);
+    ASSERT(base_c3rom    == apple_ii_64k[1]);
+    ASSERT(base_cxrom    == (void *)&iie_read_peripheral_card);
+    ASSERT(base_d000_rd == language_banks[0]-0xD000);
+    ASSERT(base_d000_wrt == language_banks[0]-0xD000);
+    ASSERT(base_e000_rd  == language_card[0]-0xE000);
+    ASSERT(base_e000_wrt == language_card[0]-0xE000);
+
+    // CPU ...
+    ASSERT(cpu65_pc      == 0x0E9C);
+    ASSERT(cpu65_ea      == 0x0EB9);
+    ASSERT(cpu65_a       == 0x00);
+    ASSERT(cpu65_f       == 0xB0);
+    ASSERT(cpu65_x       == 0x05);
+    ASSERT(cpu65_y       == 0x04);
+    ASSERT(cpu65_sp      == 0xE0);
+
+    // Timing ...
+    long scaleFactor = (long)(cpu_scale_factor * 100.);
+    ASSERT(scaleFactor == 100);
+    long altScaleFactor = (long)(cpu_altscale_factor * 100.);
+    ASSERT(altScaleFactor == 100);
+    ASSERT(!alt_speed_enabled);
+
+    // Mockingboard ...
+#include "test/a2v2-good3-mb.h"
+    size_t mbSiz = sizeof(mbData);
+    mb_testAssertA2V2(mbData, mbSiz);
+
+    TEMP_FAILURE_RETRY(close(fdState));
+    TEMP_FAILURE_RETRY(close(fdA));
+    TEMP_FAILURE_RETRY(close(fdB));
+
     unlink(savData);
     FREE(savData);
 
@@ -466,6 +707,7 @@ GREATEST_SUITE(test_suite_ui) {
 
     RUN_TESTp(test_load_A2V2_good1);
     RUN_TESTp(test_load_A2V2_good2);
+    RUN_TESTp(test_load_A2V2_good3);
 
 #if INTERFACE_TOUCH
 #   warning TODO : touch joystick(s), keyboard, mouse, menu

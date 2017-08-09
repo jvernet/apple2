@@ -5,7 +5,7 @@
  * version 3 or later (your choice) as published by the Free Software
  * Foundation.
  *
- * Copyright 2013-2015 Aaron Culliney
+ * Copyright 2013-2017 Aaron Culliney
  *
  */
 
@@ -21,7 +21,15 @@
 #define ZERR_DEFLATE_OPEN_SOURCE "Error opening source file for deflation"
 #define ZERR_DEFLATE_READ_SOURCE "Error reading source file for deflation"
 
-const char* zlib_inflate(const char* const src, const int expected_bytes); // src : foo.dsk.gz --> foo.dsk
-const char* zlib_deflate(const char* const src, const int expected_bytes); // src : foo.dsk    --> foo.dsk.gz
+// Inflate/uncompress from file descriptor into previously allocated buffer of expected_bytes length.  Underlying file
+// can either be gzipped or not.  This is meant for readonly disk images.
+const char *zlib_inflate_to_buffer(int fd, const int expected_bytescount, uint8_t *buf);
+
+// Inflate/uncompress from file descriptor back into itself.  Underlying file can either be gzipped or not.  This is
+// meant for read/write disk images.
+const char *zlib_inflate_inplace(int fd, const int expected_bytescount, bool *is_gzipped);
+
+// Deflate/compress from buffer to buffer.  This is meant for ejecting read/write disk images.
+const char *zlib_deflate_buffer(const uint8_t *src, const int src_bytescount, uint8_t *dst, OUTPARM off_t *dst_size);
 
 #endif

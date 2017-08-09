@@ -60,15 +60,20 @@ bool emulator_isShuttingDown(void);
 typedef struct StateHelper_s {
     int fd;
     int version;
+    int diskFdA;
+    int diskFdB;
     bool (*save)(int fd, const uint8_t * outbuf, ssize_t outmax);
     bool (*load)(int fd, uint8_t * inbuf, ssize_t inmax);
 } StateHelper_s;
 
 // save current emulator state
-bool emulator_saveState(const char * const path);
+bool emulator_saveState(int fdState);
 
-// load emulator state from save path
-bool emulator_loadState(const char * const path);
+// load emulator state from save file descriptor
+bool emulator_loadState(int fdState, int fdA, int fdB);
+
+// extract path(s) and readonly status(es) from save state file into json
+bool emulator_stateExtractDiskPaths(int fdState, JSON_ref json);
 
 //
 // Crash handling ...
