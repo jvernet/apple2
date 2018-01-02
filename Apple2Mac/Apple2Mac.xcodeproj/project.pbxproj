@@ -982,7 +982,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4A4B670F1DB4723F005028A6 /* OpenAL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -990,7 +989,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4A4B67591DB47560005028A6 /* OpenAL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1170,8 +1168,6 @@
 				4ACD746A1D26210600123DE6 /* Apple2iOSTestDisplay.app */,
 				4ABDA9CD1D792E8C0086A35B /* Apple2MacTestTrace.app */,
 				4A8A40561D85CEEE00B460B0 /* Apple2MacTestUI.app */,
-				4A4B671E1DB4723F005028A6 /* Apple2iOSTestTrace.app */,
-				4A4B67681DB47560005028A6 /* Apple2iOSTestUI.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -1227,8 +1223,6 @@
 				4ACD736B1D20A9D700123DE6 /* Apple2iOSTestCPU-Info.plist */,
 				4ACD74071D20B1B300123DE6 /* Apple2iOSTestDisk-Info.plist */,
 				4ACD746C1D2621C800123DE6 /* Apple2iOSTestDisplay-Info.plist */,
-				4A4B676A1DB47682005028A6 /* Apple2iOSTestTrace-Info.plist */,
-				4A4B676B1DB47682005028A6 /* Apple2iOSTestUI-Info.plist */,
 				4ACD73BD1D20AC6500123DE6 /* Apple2iOSTestVM-Info.plist */,
 				779DD851195BD9F900DF89E5 /* Apple2MacTestCPU-Info.plist */,
 				4AD4FEC41A52464F00F958EC /* Apple2MacTestDisk-Info.plist */,
@@ -1523,7 +1517,6 @@
 			);
 			name = Apple2iOSTestTrace;
 			productName = Apple2iOS;
-			productReference = 4A4B671E1DB4723F005028A6 /* Apple2iOSTestTrace.app */;
 			productType = "com.apple.product-type.application";
 		};
 		4A4B67231DB47560005028A6 /* Apple2iOSTestUI */ = {
@@ -1542,7 +1535,6 @@
 			);
 			name = Apple2iOSTestUI;
 			productName = Apple2iOS;
-			productReference = 4A4B67681DB47560005028A6 /* Apple2iOSTestUI.app */;
 			productType = "com.apple.product-type.application";
 		};
 		4A8A40171D85CEEE00B460B0 /* Apple2MacTestUI */ = {
@@ -1916,15 +1908,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4A4B67121DB4723F005028A6 /* external-disks in Resources */,
-				4A4B67131DB4723F005028A6 /* Assets.xcassets in Resources */,
-				4A4B67141DB4723F005028A6 /* LaunchScreen.xib in Resources */,
-				4A4B67151DB4723F005028A6 /* Main.storyboard in Resources */,
-				4A4B67161DB4723F005028A6 /* Basic.vsh in Resources */,
-				4A4B67171DB4723F005028A6 /* Basic.fsh in Resources */,
-				4A4B67181DB4723F005028A6 /* SolidColor.vsh in Resources */,
-				4A4B67191DB4723F005028A6 /* SolidColor.fsh in Resources */,
-				4A4B671A1DB4723F005028A6 /* Apple2iOS.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1932,15 +1915,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4A4B675C1DB47560005028A6 /* external-disks in Resources */,
-				4A4B675D1DB47560005028A6 /* Assets.xcassets in Resources */,
-				4A4B675E1DB47560005028A6 /* LaunchScreen.xib in Resources */,
-				4A4B675F1DB47560005028A6 /* Main.storyboard in Resources */,
-				4A4B67601DB47560005028A6 /* Basic.vsh in Resources */,
-				4A4B67611DB47560005028A6 /* Basic.fsh in Resources */,
-				4A4B67621DB47560005028A6 /* SolidColor.vsh in Resources */,
-				4A4B67631DB47560005028A6 /* SolidColor.fsh in Resources */,
-				4A4B67641DB47560005028A6 /* Apple2iOS.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1989,7 +1963,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4A4B67221DB47538005028A6 /* external-disks in Resources */,
 				4ACD73AA1D20AB6A00123DE6 /* Assets.xcassets in Resources */,
 				4ACD73AC1D20AB6A00123DE6 /* LaunchScreen.xib in Resources */,
 				4ACD73AD1D20AB6A00123DE6 /* Main.storyboard in Resources */,
@@ -2020,7 +1993,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4A4B67201DB47512005028A6 /* external-disks in Resources */,
 				4ACD74601D26210600123DE6 /* Assets.xcassets in Resources */,
 				4ACD74621D26210600123DE6 /* LaunchScreen.xib in Resources */,
 				4ACD74631D26210600123DE6 /* Main.storyboard in Resources */,
@@ -2079,9 +2051,7 @@
 				773B3D201956885A0085CE5F /* Credits.rtf in Resources */,
 				779F562919E4FE9E00A6F107 /* Basic.vsh in Resources */,
 				779F562A19E4FE9E00A6F107 /* Basic.fsh in Resources */,
-				4A4B676D1DB47682005028A6 /* Apple2iOSTestUI-Info.plist in Resources */,
 				939C95A11C3B8E2100263E41 /* SolidColor.vsh in Resources */,
-				4A4B676C1DB47682005028A6 /* Apple2iOSTestTrace-Info.plist in Resources */,
 				4ABDA9D11D792F480086A35B /* Apple2MacTestTrace-Info.plist in Resources */,
 				4A8A40601D85D07A00B460B0 /* Apple2MacTestUI-Info.plist in Resources */,
 				939C959E1C3B8E2100263E41 /* SolidColor.fsh in Resources */,
@@ -2120,7 +2090,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4A4B67211DB47529005028A6 /* external-disks in Resources */,
 				935C55371C12BA5F0013166D /* Assets.xcassets in Resources */,
 				935C55461C12BE110013166D /* LaunchScreen.xib in Resources */,
 				935C55351C12BA5F0013166D /* Main.storyboard in Resources */,
@@ -2534,56 +2503,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4A4B66DC1DB4723F005028A6 /* darwin-cpu-glue.S in Sources */,
-				4A4B66DD1DB4723F005028A6 /* misc.c in Sources */,
-				4A4B66DE1DB4723F005028A6 /* glvideo.c in Sources */,
-				4A4B66DF1DB4723F005028A6 /* gltouchjoy_joy.c in Sources */,
-				4A4B66E01DB4723F005028A6 /* A2IXPopupChoreographer.m in Sources */,
-				4A4B676F1DB488BE005028A6 /* testtrace.c in Sources */,
-				4A4B66E11DB4723F005028A6 /* gltouchjoy_kpad.c in Sources */,
-				4A4B66E21DB4723F005028A6 /* gltouchjoy.c in Sources */,
-				4A4B66E31DB4723F005028A6 /* soundcore.c in Sources */,
-				4A4B66E41DB4723F005028A6 /* soundcore-openal.c in Sources */,
-				4A4B66E51DB4723F005028A6 /* opcodes.c in Sources */,
-				4A4B66E61DB4723F005028A6 /* prefs.c in Sources */,
-				4A4B66E71DB4723F005028A6 /* json_parse.c in Sources */,
-				4A4B66E81DB4723F005028A6 /* rom-shim.c in Sources */,
-				4A4B66E91DB4723F005028A6 /* timing.c in Sources */,
-				4A4B66EA1DB4723F005028A6 /* glalert.c in Sources */,
-				4A4B66EB1DB4723F005028A6 /* testcommon.c in Sources */,
-				4A4B66EC1DB4723F005028A6 /* memmngt.c in Sources */,
-				4A4B66ED1DB4723F005028A6 /* jsmn.c in Sources */,
-				4A4B66EF1DB4723F005028A6 /* glhudmodel.c in Sources */,
-				4A4B66F01DB4723F005028A6 /* glnode.c in Sources */,
-				4A4B66F11DB4723F005028A6 /* matrixUtil.c in Sources */,
-				4A4B66F21DB4723F005028A6 /* disksViewController.m in Sources */,
-				4A4B66F31DB4723F005028A6 /* modelUtil.c in Sources */,
-				4A4B66F41DB4723F005028A6 /* sourceUtil.c in Sources */,
-				4A4B66F51DB4723F005028A6 /* vectorUtil.c in Sources */,
-				4A4B66F61DB4723F005028A6 /* vm.c in Sources */,
-				4A4B66F71DB4723F005028A6 /* zlib-helpers.c in Sources */,
-				4A4B66F81DB4723F005028A6 /* gltouchkbd.c in Sources */,
-				4A4B66F91DB4723F005028A6 /* alhelpers.c in Sources */,
-				4A4B66FA1DB4723F005028A6 /* AY8910.c in Sources */,
-				4A4B66FB1DB4723F005028A6 /* mockingboard.c in Sources */,
-				4A4B66FC1DB4723F005028A6 /* playqueue.c in Sources */,
-				4A4B66FD1DB4723F005028A6 /* gltouchmenu.c in Sources */,
-				4A4B66FE1DB4723F005028A6 /* speaker.c in Sources */,
-				4A4B66FF1DB4723F005028A6 /* AppleViewController.m in Sources */,
-				4A4B67001DB4723F005028A6 /* cpu-supp.c in Sources */,
-				4A4B67011DB4723F005028A6 /* darwin-shim.c in Sources */,
-				4A4B67021DB4723F005028A6 /* debugger.c in Sources */,
-				4A4B67031DB4723F005028A6 /* disk.c in Sources */,
-				4A4B67041DB4723F005028A6 /* display.c in Sources */,
-				4A4B67051DB4723F005028A6 /* font.c in Sources */,
-				4A4B67061DB4723F005028A6 /* interface.c in Sources */,
-				4A4B67071DB4723F005028A6 /* joystick.c in Sources */,
-				4A4B67081DB4723F005028A6 /* iosPrefControllerViewController.m in Sources */,
-				4A4B67091DB4723F005028A6 /* sha1.c in Sources */,
-				4A4B670A1DB4723F005028A6 /* keys.c in Sources */,
-				4A4B670B1DB4723F005028A6 /* AppDelegate.m in Sources */,
-				4A4B670C1DB4723F005028A6 /* main.m in Sources */,
-				4A4B670D1DB4723F005028A6 /* EAGLView.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -2591,56 +2510,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4A4B67261DB47560005028A6 /* darwin-cpu-glue.S in Sources */,
-				4A4B67271DB47560005028A6 /* misc.c in Sources */,
-				4A4B67281DB47560005028A6 /* glvideo.c in Sources */,
-				4A4B67291DB47560005028A6 /* gltouchjoy_joy.c in Sources */,
-				4A4B672A1DB47560005028A6 /* A2IXPopupChoreographer.m in Sources */,
-				4A4B672B1DB47560005028A6 /* gltouchjoy_kpad.c in Sources */,
-				4A4B672C1DB47560005028A6 /* gltouchjoy.c in Sources */,
-				4A4B672D1DB47560005028A6 /* soundcore.c in Sources */,
-				4A4B672E1DB47560005028A6 /* soundcore-openal.c in Sources */,
-				4A4B672F1DB47560005028A6 /* opcodes.c in Sources */,
-				4A4B67301DB47560005028A6 /* prefs.c in Sources */,
-				4A4B67311DB47560005028A6 /* json_parse.c in Sources */,
-				4A4B67321DB47560005028A6 /* rom-shim.c in Sources */,
-				4A4B67331DB47560005028A6 /* timing.c in Sources */,
-				4A4B676E1DB488B9005028A6 /* testui.c in Sources */,
-				4A4B67341DB47560005028A6 /* glalert.c in Sources */,
-				4A4B67351DB47560005028A6 /* testcommon.c in Sources */,
-				4A4B67361DB47560005028A6 /* memmngt.c in Sources */,
-				4A4B67371DB47560005028A6 /* jsmn.c in Sources */,
-				4A4B67381DB47560005028A6 /* glhudmodel.c in Sources */,
-				4A4B67391DB47560005028A6 /* glnode.c in Sources */,
-				4A4B673A1DB47560005028A6 /* matrixUtil.c in Sources */,
-				4A4B673B1DB47560005028A6 /* disksViewController.m in Sources */,
-				4A4B673C1DB47560005028A6 /* modelUtil.c in Sources */,
-				4A4B673D1DB47560005028A6 /* sourceUtil.c in Sources */,
-				4A4B673E1DB47560005028A6 /* vectorUtil.c in Sources */,
-				4A4B673F1DB47560005028A6 /* vm.c in Sources */,
-				4A4B67401DB47560005028A6 /* zlib-helpers.c in Sources */,
-				4A4B67411DB47560005028A6 /* gltouchkbd.c in Sources */,
-				4A4B67421DB47560005028A6 /* alhelpers.c in Sources */,
-				4A4B67431DB47560005028A6 /* AY8910.c in Sources */,
-				4A4B67441DB47560005028A6 /* mockingboard.c in Sources */,
-				4A4B67451DB47560005028A6 /* playqueue.c in Sources */,
-				4A4B67461DB47560005028A6 /* gltouchmenu.c in Sources */,
-				4A4B67481DB47560005028A6 /* speaker.c in Sources */,
-				4A4B67491DB47560005028A6 /* AppleViewController.m in Sources */,
-				4A4B674A1DB47560005028A6 /* cpu-supp.c in Sources */,
-				4A4B674B1DB47560005028A6 /* darwin-shim.c in Sources */,
-				4A4B674C1DB47560005028A6 /* debugger.c in Sources */,
-				4A4B674D1DB47560005028A6 /* disk.c in Sources */,
-				4A4B674E1DB47560005028A6 /* display.c in Sources */,
-				4A4B674F1DB47560005028A6 /* font.c in Sources */,
-				4A4B67501DB47560005028A6 /* interface.c in Sources */,
-				4A4B67511DB47560005028A6 /* joystick.c in Sources */,
-				4A4B67521DB47560005028A6 /* iosPrefControllerViewController.m in Sources */,
-				4A4B67531DB47560005028A6 /* sha1.c in Sources */,
-				4A4B67541DB47560005028A6 /* keys.c in Sources */,
-				4A4B67551DB47560005028A6 /* AppDelegate.m in Sources */,
-				4A4B67561DB47560005028A6 /* main.m in Sources */,
-				4A4B67571DB47560005028A6 /* EAGLView.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -4410,7 +4279,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = 4S92KXH58V;
+				DEVELOPMENT_TEAM = 774X2MBDTH;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -4446,7 +4315,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
-				DEVELOPMENT_TEAM = 4S92KXH58V;
+				DEVELOPMENT_TEAM = 774X2MBDTH;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_PREFIX_HEADER = "Apple2Mac-Prefix.pch";
