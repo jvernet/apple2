@@ -172,7 +172,7 @@ void reinitialize(void) {
 
 void timing_initialize(void) {
 #if !TESTING
-#   ifdef __APPLE__
+#   if (TARGET_OS_MAC || TARGET_OS_PHONE)
 #       warning FIXME TODO : this assert is firing on iOS port ... but the assert is valid ... fix soon 
 #   else
     assert(cpu_isPaused() || (pthread_self() == cpu_thread_id));
@@ -284,7 +284,7 @@ static void *cpu_thread(void *dummyptr) {
 cpu_runloop:
     do
     {
-        LOG("CPUTHREAD %lu LOCKING FOR MAYBE INITIALIZING AUDIO ...", cpu_thread_id);
+        LOG("CPUTHREAD %lu LOCKING FOR MAYBE INITIALIZING AUDIO ...", (unsigned long)cpu_thread_id);
         pthread_mutex_lock(&interface_mutex);
         if (emul_reinitialize_audio) {
             emul_reinitialize_audio = false;
@@ -371,10 +371,10 @@ cpu_runloop:
                     if (c_debugger_should_break() || (debugging_cycles <= 0)) {
                         int err = 0;
                         if ((err = pthread_cond_signal(&dbg_thread_cond))) {
-                            ERRLOG("pthread_cond_signal : %d", err);
+                            LOG("pthread_cond_signal : %d", err);
                         }
                         if ((err = pthread_cond_wait(&cpu_thread_cond, &interface_mutex))) {
-                            ERRLOG("pthread_cond_wait : %d", err);
+                            LOG("pthread_cond_wait : %d", err);
                         }
                         if (debugging_cycles <= 0) {
                             break;
@@ -452,7 +452,7 @@ cpu_runloop:
                 dbg_ticks += EXECUTION_PERIOD_NSECS;
                 if ((dbg_ticks % (NANOSECONDS_PER_SECOND>>1)) == 0)
                 {
-                    video_flashText(); // TODO FIXME : proper FLASH timing ...
+                    display_flashText(); // TODO FIXME : proper FLASH timing ...
                 }
 #if DEBUG_TIMING
                 // collect timing statistics
@@ -528,8 +528,8 @@ void timing_startCPU(void) {
     cpu_shutting_down = false;
     int err = TEMP_FAILURE_RETRY(pthread_create(&cpu_thread_id, NULL, (void *)&cpu_thread, (void *)NULL));
     if (err) {
-        RELEASE_ERRLOG("pthread_create failed!");
-        RELEASE_BREAK();
+        LOG("pthread_create failed!");
+        assert(false);
     }
 }
 
@@ -538,7 +538,7 @@ void timing_stopCPU(void) {
 
     LOG("Emulator waiting for CPU thread clean up...");
     if (pthread_join(cpu_thread_id, NULL)) {
-        ERRLOG("OOPS: pthread_join of CPU thread ...");
+        LOG("OOPS: pthread_join of CPU thread ...");
     }
 }
 

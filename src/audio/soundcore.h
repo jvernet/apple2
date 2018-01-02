@@ -137,6 +137,8 @@ typedef struct AudioBackend_s {
 
     AudioSettings_s systemSettings;
 
+    const char *(*name)(void);
+
     // basic backend functionality controlled by soundcore
     PRIVATE long (*setup)(INOUT AudioContext_s **audio_context);
     PRIVATE long (*shutdown)(INOUT AudioContext_s **audio_context);
@@ -146,7 +148,19 @@ typedef struct AudioBackend_s {
 
 } AudioBackend_s;
 
-// Audio backend registered at CTOR time
-extern AudioBackend_s *audio_backend;
+enum {
+    AUD_PRIO_ALSA     = 10,
+    AUD_PRIO_OPENAL   = 20,
+    AUD_PRIO_OPENSLES = 30,
+    AUD_PRIO_NULL     = 100,
+};
+
+void audio_registerBackend(AudioBackend_s *backend, long prio);
+
+void audio_printBackends(FILE *out);
+
+void audio_chooseBackend(const char *name);
+
+AudioBackend_s *audio_getCurrentBackend(void);
 
 #endif /* whole file */

@@ -58,7 +58,7 @@ static demoSource *srcLoadSource(const char *filepathname) {
 
 demoSource *glshader_createSource(const char *fileName) {
     demoSource *src = NULL;
-#if defined(__APPLE__)
+#if (TARGET_OS_MAC || TARGET_OS_PHONE)
     CFBundleRef mainBundle = CFBundleGetMainBundle();
     CFStringRef fileString = CFStringCreateWithCString(/*allocator*/NULL, fileName, CFStringGetSystemEncoding());
     CFURLRef fileURL = CFBundleCopyResourceURL(mainBundle, fileString, NULL, NULL);
@@ -74,7 +74,7 @@ demoSource *glshader_createSource(const char *fileName) {
         src = srcLoadSource(filePath);
         FREE(filePath);
     } else {
-        ERRLOG("OOPS Could not load shader from %s (%s)", filePath, fileName);
+        LOG("OOPS Could not load shader from %s (%s)", filePath, fileName);
     }
 #endif
     return src;
@@ -100,7 +100,7 @@ GLuint glshader_buildProgram(demoSource *vertexSource, demoSource *fragmentSourc
 
     char *shaderLangVersion = (char *)glGetString(GL_SHADING_LANGUAGE_VERSION);
     if (shaderLangVersion == NULL) {
-        ERRQUIT("shader toolchain unavailable");
+        GL_ERRQUIT("shader toolchain unavailable");
     }
 #if TARGET_OS_IPHONE
     sscanf(shaderLangVersion, "OpenGL ES GLSL ES %f", &glLanguageVersion);
@@ -149,7 +149,7 @@ GLuint glshader_buildProgram(demoSource *vertexSource, demoSource *fragmentSourc
     if (version) {
         sprintf(sourceString, "#version %d\n%s", version, vertexSource->string);
     } else {
-        RELEASE_LOG("No GLSL version specified ... so NOT adding a #version directive to shader sources =P");
+        LOG("No GLSL version specified ... so NOT adding a #version directive to shader sources =P");
         sprintf(sourceString, "%s", vertexSource->string);
     }
 
@@ -247,7 +247,7 @@ GLuint glshader_buildProgram(demoSource *vertexSource, demoSource *fragmentSourc
         return 0;
     }
 
-    GL_ERRLOG("build program");
+    GL_MAYBELOG("build program");
     return prgName;
 }
 

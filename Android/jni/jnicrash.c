@@ -132,7 +132,7 @@ void Java_org_deadc0de_apple2ix_Apple2CrashHandler_nativeProcessCrash(JNIEnv *en
     do {
         outputFILE = TEMP_FAILURE_RETRY_FOPEN(fopen(outputPath, "w"));
         if (!outputFILE) {
-            ERRLOG("could not open %s", outputPath);
+            LOG("could not open %s", outputPath);
             break;
         }
 
@@ -146,7 +146,7 @@ void Java_org_deadc0de_apple2ix_Apple2CrashHandler_nativeProcessCrash(JNIEnv *en
 
         bool success = crashHandler->processCrash(crashPath, symbolsPath, outputFILE);
         if (!success) {
-            RELEASE_LOG("CRASH REPORT PROCESSING FAILED ...");
+            LOG("CRASH REPORT PROCESSING FAILED ...");
         }
     } while (0);
 

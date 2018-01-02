@@ -15,6 +15,8 @@
 
 #include "common.h"
 
+#include <locale.h>
+
 #define SAVE_MAGICK  "A2VM"
 #define SAVE_MAGICK2 "A2V2"
 #define SAVE_VERSION 2
@@ -29,23 +31,59 @@ typedef struct module_ctor_node_s {
 static module_ctor_node_s *head = NULL;
 static bool emulatorShuttingDown = false;
 
-bool do_logging = true; // also controlled by NDEBUG
-FILE *error_log = NULL;
 const char *data_dir = NULL;
 char **argv = NULL;
 int argc = 0;
+const char *locale = NULL;
 CrashHandler_s *crashHandler = NULL;
 
 #if defined(CONFIG_DATADIR)
 static void _init_common(void) {
-    LOG("Initializing common...");
     data_dir = STRDUP(CONFIG_DATADIR PATH_SEPARATOR PACKAGE_NAME);
+    log_init();
+    LOG("Initializing common...");
 }
 
 static __attribute__((constructor)) void __init_common(void) {
     emulator_registerStartupCallback(CTOR_PRIORITY_FIRST, &_init_common);
 }
-#elif defined(ANDROID) || defined(__APPLE__)
+
+static void _cli_help(void) {
+    fprintf(stderr, "\n");
+    fprintf(stderr, "Usage: %s [-A <audio>] [-V <video>]\n", argv[0]);
+
+    const char *aname = audio_getCurrentBackend()->name();
+    fprintf(stderr, "\t-A <");
+    audio_printBackends(stderr);
+    fprintf(stderr, "> -- choose audio renderer (default: %s)\n", aname);
+
+    const char *vname = video_getCurrentBackend()->name();
+    fprintf(stderr, "\t-V <");
+    video_printBackends(stderr);
+    fprintf(stderr, "> -- choose video renderer (default: %s)\n", vname);
+
+    fprintf(stderr, "\n");
+}
+
+static void _cli_argsToPrefs(void) {
+    int opt = -1;
+    while ((opt = getopt(argc, argv, "?hA:V:")) != -1) {
+        switch (opt) {
+            case 'A':
+                audio_chooseBackend(optarg);
+                break;
+            case 'V':
+                video_chooseBackend(optarg);
+                break;
+            case '?':
+            case 'h':
+            default:
+                _cli_help();
+                exit(EXIT_FAILURE);
+        }
+    }
+}
+#elif defined(ANDROID) || (TARGET_OS_MAC || TARGET_OS_PHONE)
     // data_dir is set up elsewhere
 #else
 #   error "Specify a CONFIG_DATADIR and PACKAGE_NAME"
@@ -55,7 +93,7 @@ static bool _save_state(int fd, const uint8_t * outbuf, ssize_t outmax) {
     ssize_t outlen = 0;
     do {
         if (TEMP_FAILURE_RETRY(outlen = write(fd, outbuf, outmax)) == -1) {
-            ERRLOG("OOPS, error writing emulator save-state file");
+            LOG("OOPS, error writing emulator save-state file");
             break;
         }
         outbuf += outlen;
@@ -72,13 +110,13 @@ static bool _load_state(int fd, uint8_t * inbuf, ssize_t inmax) {
 
     struct stat stat_buf;
     if (UNLIKELY(fstat(fd, &stat_buf) < 0)) {
-        ERRLOG("OOPS, could not stat FD");
+        LOG("OOPS, could not stat FD");
         return false;
     }
     off_t fileSiz = stat_buf.st_size;
     off_t filePos = lseek(fd, 0, SEEK_CUR);
     if (UNLIKELY(filePos < 0)) {
-        ERRLOG("OOPS, could not lseek FD");
+        LOG("OOPS, could not lseek FD");
         return false;
     }
 
@@ -89,11 +127,11 @@ static bool _load_state(int fd, uint8_t * inbuf, ssize_t inmax) {
 
     do {
         if (TEMP_FAILURE_RETRY(inlen = read(fd, inbuf, inmax)) == -1) {
-            ERRLOG("error reading emulator save-state file");
+            LOG("error reading emulator save-state file");
             break;
         }
         if (inlen == 0) {
-            ERRLOG("error reading emulator save-state file (truncated)");
+            LOG("error reading emulator save-state file (truncated)");
             break;
         }
         inbuf += inlen;
@@ -118,7 +156,7 @@ static int _load_magick(int fd) {
         return 1;
     }
 
-    ERRLOG("bad header magick in emulator save state file");
+    LOG("bad header magick in emulator save state file");
     return -1;
 }
 
@@ -229,16 +267,16 @@ bool emulator_loadState(int fd, int fdA, int fdB) {
 
         struct stat stat_buf;
         if (fstat(fd, &stat_buf) < 0) {
-            ERRLOG("OOPS, could not stat FD");
+            LOG("OOPS, could not stat FD");
         }
         off_t fileSiz = stat_buf.st_size;
         off_t filePos = lseek(fd, 0, SEEK_CUR);
         if (filePos < 0) {
-            ERRLOG("OOPS, could not lseek FD");
+            LOG("OOPS, could not lseek FD");
         }
 
         if (UNLIKELY(filePos != fileSiz)) {
-            LOG("OOPS, state file read: %lu total: %lu", filePos, fileSiz);
+            LOG("OOPS, state file read: %lu total: %lu", (unsigned long)filePos, (unsigned long)fileSiz);
         }
 
         loaded = true;
@@ -280,7 +318,7 @@ bool emulator_stateExtractDiskPaths(int fd, JSON_ref json) {
         // Ensure that we leave the file descriptor ready for a call to emulator_loadState()
         off_t ret = lseek(fd, 0, SEEK_SET);
         if (ret != 0) {
-            ERRLOG("OOPS : state file lseek() failed!");
+            LOG("OOPS : state file lseek() failed!");
         }
     }
 
@@ -297,7 +335,7 @@ static void _shutdown_threads(void) {
     do {
         DIR *dir = opendir("/proc/self/task");
         if (!dir) {
-            ERRLOG("Cannot open /proc/self/task !");
+            LOG("Cannot open /proc/self/task !");
             break;
         }
 
@@ -372,11 +410,15 @@ void emulator_start(void) {
     prefs_load(); // user prefs
     prefs_sync(NULL);
 
+#if defined(CONFIG_DATADIR)
+    _cli_argsToPrefs();
+#endif
+
 #if defined(INTERFACE_CLASSIC) && !TESTING
     c_keys_set_key(kF8); // show credits before emulation start
 #endif
 
-#if !defined(__APPLE__) && !defined(ANDROID)
+#if !(TARGET_OS_MAC || TARGET_OS_PHONE) && !defined(ANDROID)
     video_init();
 #endif
 
@@ -395,10 +437,13 @@ bool emulator_isShuttingDown(void) {
     return emulatorShuttingDown;
 }
 
-#if !defined(__APPLE__) && !defined(ANDROID)
+#if !(TARGET_OS_MAC || TARGET_OS_PHONE) && !defined(ANDROID)
 int main(int _argc, char **_argv) {
     argc = _argc;
     argv = _argv;
+
+    locale = setlocale(LC_ALL, "");
+    LOG("locale is : %s", locale);
 
 #if TESTING
 #   if TEST_CPU
@@ -440,7 +485,7 @@ int main(int _argc, char **_argv) {
 
     LOG("Emulator exit ...");
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 #endif
 

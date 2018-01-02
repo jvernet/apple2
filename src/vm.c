@@ -805,7 +805,7 @@ GLUE_C_READ(iie_altchar_off)
 {
     if (softswitches & SS_ALTCHAR) {
         softswitches &= ~SS_ALTCHAR;
-        video_loadfont(0x40,0x40,ucase_glyphs,3);
+        display_loadFont(/*start:*/0x40, /*qty:*/0x40, /*data:*/ucase_glyphs, FONT_MODE_FLASH);
         video_setDirty(A2_DIRTY_FLAG);
     }
     return floating_bus();
@@ -815,8 +815,8 @@ GLUE_C_READ(iie_altchar_on)
 {
     if (!(softswitches & SS_ALTCHAR)) {
         softswitches |= SS_ALTCHAR;
-        video_loadfont(0x40,0x20,mousetext_glyphs,1);
-        video_loadfont(0x60,0x20,lcase_glyphs,2);
+        display_loadFont(/*start:*/0x40, /*qty:*/0x20, /*data:*/mousetext_glyphs, FONT_MODE_MOUSETEXT);
+        display_loadFont(/*start:*/0x60, /*qty:*/0x20, /*data:*/lcase_glyphs, FONT_MODE_INVERSE);
         video_setDirty(A2_DIRTY_FLAG);
     }
     return floating_bus();
@@ -937,7 +937,7 @@ GLUE_C_READ(iie_read_slot_expansion)
 
 GLUE_C_READ(debug_illegal_bcd)
 {
-    RELEASE_LOG("Illegal/undefined BCD operation encountered, debug break on c_debug_illegal_bcd to debug...");
+    LOG("Illegal/undefined BCD operation encountered, debug break on c_debug_illegal_bcd to debug...");
     return 0;
 }
 
@@ -971,11 +971,11 @@ static void _initialize_iie_switches(void) {
 }
 
 static void _initialize_font(void) {
-    video_loadfont(0x00,0x40,ucase_glyphs,2);
-    video_loadfont(0x40,0x40,ucase_glyphs,3);
-    video_loadfont(0x80,0x40,ucase_glyphs,0);
-    video_loadfont(0xC0,0x20,ucase_glyphs,0);
-    video_loadfont(0xE0,0x20,lcase_glyphs,0);
+    display_loadFont(/*start:*/0x00, /*qty:*/0x40, /*data:*/ucase_glyphs, FONT_MODE_INVERSE);
+    display_loadFont(/*start:*/0x40, /*qty:*/0x40, /*data:*/ucase_glyphs, FONT_MODE_FLASH);
+    display_loadFont(/*start:*/0x80, /*qty:*/0x40, /*data:*/ucase_glyphs, FONT_MODE_NORMAL);
+    display_loadFont(/*start:*/0xC0, /*qty:*/0x20, /*data:*/ucase_glyphs, FONT_MODE_NORMAL);
+    display_loadFont(/*start:*/0xE0, /*qty:*/0x20, /*data:*/lcase_glyphs, FONT_MODE_NORMAL);
 }
 
 static void _initialize_apple_ii_memory(void) {
@@ -1050,7 +1050,7 @@ static void _initialize_tables(void) {
 
     // initialize first text & hires page, which are specially bank switched
     //
-    // video_reset() below substitutes it's own hooks for all visible write locations affect the display, leaving our
+    // display_reset() below substitutes it's own hooks for all visible write locations affect the display, leaving our
     // write-functions in place only at the `screen holes', hence the name.
     for (unsigned int i = 0x400; i < 0x800; i++) {
         cpu65_vmem_r[i] = iie_read_ram_text_page0;
@@ -1216,7 +1216,7 @@ static void _initialize_tables(void) {
         cpu65_vmem_r[i] = iie_read_slot_expansion;
     }
 
-    video_reset();
+    display_reset();
 
     // Peripheral card slot initializations ...
 
@@ -1350,7 +1350,7 @@ bool vm_saveState(StateHelper_s *helper) {
             }
         } else {
             LOG("OOPS ... language_banks[0] == %p base_d000_rd == %p", language_banks[0], base_d000_rd);
-            RELEASE_BREAK();
+            assert(false);
         }
 
         if (base_d000_wrt == 0) {
@@ -1380,7 +1380,7 @@ bool vm_saveState(StateHelper_s *helper) {
             }
         } else {
             LOG("OOPS ... language_banks[0] == %p base_d000_wrt == %p", language_banks[0], base_d000_wrt);
-            RELEASE_BREAK();
+            assert(false);
         }
 
         if (base_e000_rd == apple_ii_64k[0]) {
@@ -1400,7 +1400,7 @@ bool vm_saveState(StateHelper_s *helper) {
             }
         } else {
             LOG("OOPS ... language_card[0] == %p base_e000_rd == %p", language_card[0], base_e000_rd);
-            RELEASE_BREAK();
+            assert(false);
         }
 
         if (base_e000_wrt == 0) {
@@ -1420,7 +1420,7 @@ bool vm_saveState(StateHelper_s *helper) {
             }
         } else {
             LOG("OOPS ... language_card[0] == %p base_e000_wrt == %p", language_card[0], base_e000_wrt);
-            RELEASE_BREAK();
+            assert(false);
         }
 
         saved = true;
@@ -1546,7 +1546,7 @@ bool vm_loadState(StateHelper_s *helper) {
                 break;
             default:
                 LOG("Unknown state base_d000_rd %02x", state);
-                RELEASE_BREAK();
+                assert(false);
                 break;
         }
         LOG("LOAD base_d000_rd = %d", state);
@@ -1572,7 +1572,7 @@ bool vm_loadState(StateHelper_s *helper) {
                 break;
             default:
                 LOG("Unknown state base_d000_wrt %02x", state);
-                RELEASE_BREAK();
+                assert(false);
                 break;
         }
         LOG("LOAD base_d000_wrt = %d", state);
@@ -1592,7 +1592,7 @@ bool vm_loadState(StateHelper_s *helper) {
                 break;
             default:
                 LOG("Unknown state base_e000_rd %02x", state);
-                RELEASE_BREAK();
+                assert(false);
                 break;
         }
         LOG("LOAD base_e000_rd = %d", state);
@@ -1612,7 +1612,7 @@ bool vm_loadState(StateHelper_s *helper) {
                 break;
             default:
                 LOG("Unknown state base_e000_wrt %02x", state);
-                RELEASE_BREAK();
+                assert(false);
                 break;
         }
         LOG("LOAD base_e000_wrt = %d", state);

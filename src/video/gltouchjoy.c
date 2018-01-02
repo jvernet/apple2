@@ -146,13 +146,13 @@ static void *_azimuth_create_model(GLModel *parent) {
 
         vtxSource = glshader_createSource("SolidColor.vsh");
         if (!vtxSource) {
-            ERRLOG("Cannot compile vertex shader for joystick azimuth!");
+            LOG("Cannot compile vertex shader for joystick azimuth!");
             break;
         }
 
         frgSource = glshader_createSource("SolidColor.fsh");
         if (!frgSource) {
-            ERRLOG("Cannot compile fragment shader for joystick azimuth!");
+            LOG("Cannot compile fragment shader for joystick azimuth!");
             break;
         }
 
@@ -168,7 +168,7 @@ static void *_azimuth_create_model(GLModel *parent) {
         err = false;
     } while (0);
 
-    GL_ERRLOG("build Aziumth joystick");
+    GL_MAYBELOG("build Aziumth joystick");
 
     if (vtxSource) {
         glshader_destroySource(vtxSource);
@@ -228,7 +228,7 @@ static void _azimuth_render(void) {
     // back to main framebuffer/quad program
     glUseProgram(mainShaderProgram);
 
-    GL_ERRLOG("Azimuth render");
+    GL_MAYBELOG("Azimuth render");
 }
 
 // ----------------------------------------------------------------------------
@@ -468,7 +468,7 @@ static void gltouchjoy_setup(void) {
     joyglobals.isAvailable = true;
 
     if (joyglobals.ownsScreen) {
-        video_animations->animation_showTouchJoystick();
+        video_getAnimationDriver()->animation_showTouchJoystick();
     }
 }
 
@@ -911,8 +911,8 @@ static void _init_gltouchjoy(void) {
 
     joyglobals.prefsChanged = true; // force reload preferences/defaults
 
-    video_animations->animation_showTouchJoystick = &_animation_showTouchJoystick;
-    video_animations->animation_hideTouchJoystick = &_animation_hideTouchJoystick;
+    video_getAnimationDriver()->animation_showTouchJoystick = &_animation_showTouchJoystick;
+    video_getAnimationDriver()->animation_hideTouchJoystick = &_animation_hideTouchJoystick;
 
     glnode_registerNode(RENDER_LOW, (GLNode){
         .type = TOUCH_DEVICE_JOYSTICK,

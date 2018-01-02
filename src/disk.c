@@ -406,7 +406,7 @@ static void denibblize_track(const uint8_t * const src, int drive, uint8_t * con
             continue;
         }
         if (UNLIKELY(prologue[2] != 0xAD)) {
-            RELEASE_LOG("OMG, found mid-track 0xD5 byte...");
+            LOG("OMG, found mid-track 0xD5 byte...");
             continue;
         }
 
@@ -453,7 +453,7 @@ static void save_track_data(int drive) {
         int ret = -1;
         TEMP_FAILURE_RETRY(ret = msync(disk6.disk[drive].raw_image_data+niboff, NIB_TRACK_SIZE, MS_SYNC));
         if (ret) {
-            ERRLOG("Error syncing file %s", disk6.disk[drive].file_name);
+            LOG("Error syncing file %s", disk6.disk[drive].file_name);
         }
         */
     } else {
@@ -464,7 +464,7 @@ static void save_track_data(int drive) {
         int ret = -1;
         TEMP_FAILURE_RETRY(ret = msync(disk6.disk[drive].raw_image_data+dskoff, DSK_TRACK_SIZE, MS_SYNC));
         if (ret) {
-            ERRLOG("Error syncing file %s", disk6.disk[drive].file_name);
+            LOG("Error syncing file %s", disk6.disk[drive].file_name);
         }
         */
     }
@@ -473,7 +473,7 @@ static void save_track_data(int drive) {
 }
 
 static inline void animate_disk_track_sector(void) {
-    if (video_animations && video_animations->animation_showTrackSector) {
+    if (video_getAnimationDriver()->animation_showTrackSector) {
         static int previous_sect = 0;
         int sect_width = disk6.disk[disk6.drive].track_width>>4; // div-by-16
         do {
@@ -483,7 +483,7 @@ static inline void animate_disk_track_sector(void) {
             int sect = disk6.disk[disk6.drive].run_byte/sect_width;
             if (sect != previous_sect) {
                 previous_sect = sect;
-                video_animations->animation_showTrackSector(disk6.drive, disk6.disk[disk6.drive].phase>>1, sect);
+                video_getAnimationDriver()->animation_showTrackSector(disk6.drive, disk6.disk[disk6.drive].phase>>1, sect);
             }
         } while (0);
     }
@@ -780,7 +780,7 @@ void disk6_init(void) {
 const char *disk6_eject(int drive) {
 
 #if !TESTING
-#   if __APPLE__
+#   if TARGET_OS_MAC || TARGET_OS_PHONE
 #       warning FIXME TODO ...
 #   else
     assert(cpu_isPaused() && "CPU must be paused for disk ejection");
@@ -807,7 +807,7 @@ const char *disk6_eject(int drive) {
                 // re-compress in place ...
                 err = zlib_deflate_buffer(/*src:*/disk6.disk[drive].raw_image_data, disk6.disk[drive].whole_len, /*dst:*/compressed_data, &compressed_size);
                 if (err) {
-                    ERRLOG("OOPS, error deflating %s : %s", disk6.disk[drive].file_name, err);
+                    LOG("OOPS, error deflating %s : %s", disk6.disk[drive].file_name, err);
                 }
 
                 if (compressed_size > 0) {
@@ -818,32 +818,32 @@ const char *disk6_eject(int drive) {
 
                     TEMP_FAILURE_RETRY(ret = msync(disk6.disk[drive].raw_image_data, disk6.disk[drive].whole_len, MS_SYNC));
                     if (ret) {
-                        ERRLOG("Error syncing file %s", disk6.disk[drive].file_name);
+                        LOG("Error syncing file %s", disk6.disk[drive].file_name);
                     }
                 }
             }
 
             TEMP_FAILURE_RETRY(ret = munmap(disk6.disk[drive].raw_image_data, disk6.disk[drive].whole_len));
             if (ret) {
-                ERRLOG("Error munmap()ping file %s", disk6.disk[drive].file_name);
+                LOG("Error munmap()ping file %s", disk6.disk[drive].file_name);
             }
         }
 
         if (compressed_size > 0) {
             TEMP_FAILURE_RETRY(ret = ftruncate(disk6.disk[drive].fd, compressed_size));
             if (ret == -1) {
-                ERRLOG("OOPS, cannot truncate file descriptor!");
+                LOG("OOPS, cannot truncate file descriptor!");
             }
         }
 
         TEMP_FAILURE_RETRY(ret = fsync(disk6.disk[drive].fd));
         if (ret) {
-            ERRLOG("Error fsync()ing file %s", disk6.disk[drive].file_name);
+            LOG("Error fsync()ing file %s", disk6.disk[drive].file_name);
         }
 
         TEMP_FAILURE_RETRY(ret = close(disk6.disk[drive].fd));
         if (ret) {
-            ERRLOG("Error close()ing file %s", disk6.disk[drive].file_name);
+            LOG("Error close()ing file %s", disk6.disk[drive].file_name);
         }
     }
 
@@ -877,11 +877,7 @@ const char *disk6_eject(int drive) {
 const char *disk6_insert(int fd, int drive, const char * const file_name, int readonly) {
 
 #if !TESTING
-#   if __APPLE__
-#       warning FIXME TODO ...
-#   else
     assert(cpu_isPaused() && "CPU must be paused for disk insertion");
-#   endif
 #endif
     assert(drive == 0 || drive == 1);
 
@@ -916,7 +912,7 @@ const char *disk6_insert(int fd, int drive, const char * const file_name, int re
             // disk images inserted read/write are mmap'd/inflated in place ...
             TEMP_FAILURE_RETRY(fd = dup(fd));
             if (fd == -1) {
-                ERRLOG("OOPS, could not dup() file descriptor %d", fd);
+                LOG("OOPS, could not dup() file descriptor %d", fd);
                 err = ERR_CANNOT_DUP;
                 break;
             }
@@ -925,13 +921,13 @@ const char *disk6_insert(int fd, int drive, const char * const file_name, int re
             bool file_actually_was_gzipped; // but we don't care ...
             err = zlib_inflate_inplace(disk6.disk[drive].fd, expected, &file_actually_was_gzipped);
             if (err) {
-                ERRLOG("OOPS, An error occurred when attempting to inflate/load a disk image [%s] : [%s]", file_name, err);
+                LOG("OOPS, An error occurred when attempting to inflate/load a disk image [%s] : [%s]", file_name, err);
                 break;
             }
 
             TEMP_FAILURE_RETRY(disk6.disk[drive].raw_image_data = mmap(NULL, disk6.disk[drive].whole_len, (readonly ? PROT_READ : PROT_READ|PROT_WRITE), MAP_SHARED|MAP_FILE, disk6.disk[drive].fd, /*offset:*/0));
             if (disk6.disk[drive].raw_image_data == MAP_FAILED) {
-                ERRLOG("OOPS, could not mmap file %s", disk6.disk[drive].file_name);
+                LOG("OOPS, could not mmap file %s", disk6.disk[drive].file_name);
                 err = ERR_MMAP_FAILED;
                 break;
             }
@@ -959,7 +955,7 @@ const char *disk6_insert(int fd, int drive, const char * const file_name, int re
                     assert(track_width <= NIB_TRACK_SIZE);
 #if CONFORMANT_TRACKS
                     if (track_width != NI2_TRACK_SIZE) {
-                        ERRLOG("Invalid dsk image creation...");
+                        LOG("Invalid dsk image creation...");
                     }
 #endif
                     if (!disk6.disk[drive].track_width) {
@@ -1010,7 +1006,7 @@ void disk6_flush(int drive) {
     int ret = -1;
     TEMP_FAILURE_RETRY(ret = msync(disk6.disk[drive].raw_image_data, disk6.disk[drive].whole_len, MS_SYNC));
     if (ret) {
-        ERRLOG("Error syncing file %s", disk6.disk[drive].file_name);
+        LOG("Error syncing file %s", disk6.disk[drive].file_name);
     }
 }
 

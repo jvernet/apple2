@@ -1091,8 +1091,10 @@ void fb_sha1() {
     uint8_t md[SHA_DIGEST_LENGTH];
     char buf[(SHA_DIGEST_LENGTH*2)+1];
 
-    const uint8_t * const fb = video_scan();
+    uint8_t *fb = MALLOC(SCANWIDTH*SCANHEIGHT*sizeof(uint8_t));
+    display_renderStagingFramebuffer(fb);
     SHA1(fb, SCANWIDTH*SCANHEIGHT, md);
+    FREE(fb);
 
     int i=0;
     for (int j=0; j<SHA_DIGEST_LENGTH; j++, i+=2) {
@@ -1148,10 +1150,10 @@ static int begin_cpu_stepping() {
         }
 
         if ((err = pthread_cond_signal(&cpu_thread_cond))) {
-            ERRLOG("pthread_cond_signal : %d", err);
+            LOG("pthread_cond_signal : %d", err);
         }
         if ((err = pthread_cond_wait(&dbg_thread_cond, &interface_mutex))) {
-            ERRLOG("pthread_cond_wait : %d", err);
+            LOG("pthread_cond_wait : %d", err);
         }
 
 #if defined(INTERFACE_CLASSIC)
@@ -1168,7 +1170,7 @@ static int begin_cpu_stepping() {
     } while (!stepping_struct.should_break);
 
     if ((err = pthread_cond_signal(&cpu_thread_cond))) {
-        ERRLOG("pthread_cond_signal : %d", err);
+        LOG("pthread_cond_signal : %d", err);
     }
 
     cpu_scale_factor = saved_scale;
@@ -1185,8 +1187,8 @@ bool c_debugger_should_break() {
 
     if (pthread_self() != cpu_thread_id) {
         // OOPS ...
-        ERRLOG("should only call this from cpu thread, bailing...");
-        RELEASE_BREAK();
+        LOG("should only call this from cpu thread, bailing...");
+        assert(false);
     }
 
     bool break_stepping = false;
@@ -1409,7 +1411,7 @@ static void do_debug_command() {
         main debugging console
    ------------------------------------------------------------------------- */
 
-void c_interface_debugging() {
+void c_interface_debugging(uint8_t *stagingFB) {
 
     static char lex_initted = 0;
 
@@ -1453,7 +1455,7 @@ void c_interface_debugging() {
         c_interface_print(1, 1+PROMPT_Y, 0, command_line);
 
         /* highlight cursor */
-        video_plotchar(1+command_pos, 1+PROMPT_Y, 1, command_line[command_pos]);
+        display_plotChar(stagingFB, /*col:*/1+command_pos, /*row:*/1+PROMPT_Y, GREEN_ON_BLUE, command_line[command_pos]);
 
         while ((ch = c_mygetch(1)) == -1)
         {
@@ -1489,7 +1491,7 @@ void c_interface_debugging() {
     is_debugging = false;
     if ((err = pthread_cond_signal(&cpu_thread_cond)))
     {
-        ERRLOG("pthread_cond_signal : %d", err);
+        LOG("pthread_cond_signal : %d", err);
     }
     return;
 }

@@ -47,7 +47,7 @@ static void _glvideo_setup_hackarounds(void) {
     if (vendor && renderer && version) {
         LOG("GL_VENDOR:[%s] GL_RENDERER:[%s] GL_VERSION:[%s]", vendor, renderer, version);
     } else {
-        RELEASE_LOG("One or more of GL_VENDOR, GL_RENDERER, and GL_VERSION is NULL ... this is bad ...");
+        LOG("One or more of GL_VENDOR, GL_RENDERER, and GL_VERSION is NULL ... this is bad ...");
         return;
     }
 
@@ -203,7 +203,7 @@ static void glvideo_init(void) {
 
     if (maxTextureUnits < TEXTURE_ID_MAX) {
 #warning FIXME TODO ... gracefully handle devices with low max texture units?
-        ERRLOG("OOPS ... MAX TEXTURE UNITS : %d (<%d)", maxTextureUnits, TEXTURE_ID_MAX);
+        LOG("OOPS ... MAX TEXTURE UNITS : %d (<%d)", maxTextureUnits, TEXTURE_ID_MAX);
     } else {
         LOG("GL_MAX_TEXTURE_IMAGE_UNITS : %d", maxTextureUnits);
     }
@@ -218,7 +218,7 @@ static void glvideo_init(void) {
         LOG("OOPS, no texture selector in shader : %d", alphaValue);
     }
 
-    GL_ERRLOG("build program");
+    GL_MAYBELOG("build program");
 
     // ----------------------------
     // setup static OpenGL state
@@ -240,7 +240,7 @@ static void glvideo_init(void) {
     video_render();
 
     // Check for errors to make sure all of our setup went ok
-    GL_ERRLOG("finished initialization");
+    GL_MAYBELOG("finished initialization");
 
     if (glCheckFramebufferStatus != NULL) {
         GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
@@ -280,11 +280,6 @@ static void glvideo_shutdown(void) {
 static void glvideo_render(void) {
     SCOPE_TRACE_VIDEO("glvideo render");
 
-    uint8_t *fb = video_currentFramebuffer();
-    if (UNLIKELY(!fb)) {
-        return;
-    }
-
     if (UNLIKELY(prefsChanged)) {
         glvideo_applyPrefs();
     }
@@ -316,15 +311,20 @@ static void glvideo_render(void) {
     glUniformMatrix4fv(uniformMVPIdx, 1, GL_FALSE, mvpIdentity);
 #endif
 
+    static uint8_t fb[SCANWIDTH*SCANHEIGHT*sizeof(uint8_t)];
+#if INTERFACE_CLASSIC
+    interface_setStagingFramebuffer(fb);
+#endif
+    unsigned long wasDirty = 0UL;
     if (!cpu_isPaused()) {
         // check if a2 video memory is dirty
-        unsigned long wasDirty = video_clearDirty(A2_DIRTY_FLAG);
+        wasDirty = video_clearDirty(A2_DIRTY_FLAG);
         if (wasDirty) {
-            fb = video_scan();
+            display_renderStagingFramebuffer(fb);
         }
     }
 
-    unsigned long wasDirty = video_clearDirty(FB_DIRTY_FLAG);
+    wasDirty = video_clearDirty(FB_DIRTY_FLAG);
     char *pixels = (char *)crtModel->texPixels;
     if (wasDirty) {
         SCOPE_TRACE_VIDEO("pixel convert");
@@ -393,7 +393,7 @@ static void glvideo_render(void) {
     _HACKAROUND_GLDRAW_PRE();
     glDrawElements(GL_TRIANGLES, crtModel->numElements, crtModel->elementType, 0);
 
-    GL_ERRLOG("glvideo_render");
+    GL_MAYBELOG("glvideo_render");
 }
 
 static void glvideo_reshape(int w, int h, bool landscape) {

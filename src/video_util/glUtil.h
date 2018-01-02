@@ -16,7 +16,7 @@
 
 #define UNINITIALIZED_GL (-31337) // HACK FIXME TODO : is there an official OpenGL value we can use to signify an uninitialized state? (cannot depend on zero)
 
-#if defined(__APPLE__)
+#if (TARGET_OS_MAC || TARGET_OS_PHONE)
 #   define USE_VAO 1
 #   import <CoreFoundation/CoreFoundation.h>
 #   import <TargetConditionals.h>
@@ -41,10 +41,6 @@
 #   include <GL/glew.h>
 #   define FREEGLUT_STATIC
 #   include <GL/freeglut.h>
-#endif
-
-#if !defined(USE_VAO)
-#   define USE_VAO 1
 #endif
 
 // Global unified texture format constants ...

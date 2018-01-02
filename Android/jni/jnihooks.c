@@ -393,7 +393,7 @@ jstring Java_org_deadc0de_apple2ix_Apple2DisksMenu_nativeChooseDisk(JNIEnv *env,
     } else {
         fd = dup(fd);
         if (fd == -1) {
-            ERRLOG("OOPS could not dup file descriptor!");
+            LOG("OOPS could not dup file descriptor!");
         }
     }
 
@@ -406,10 +406,10 @@ jstring Java_org_deadc0de_apple2ix_Apple2DisksMenu_nativeChooseDisk(JNIEnv *env,
     if (err) {
         char *diskImageUnreadable = "Disk Image Unreadable";
         unsigned int cols = strlen(diskImageUnreadable);
-        video_animations->animation_showMessage(diskImageUnreadable, cols, 1);
+        video_getAnimationDriver()->animation_showMessage(diskImageUnreadable, cols, 1);
         inserted = false;
     } else {
-        video_animations->animation_showDiskChosen(drive);
+        video_getAnimationDriver()->animation_showDiskChosen(drive);
     }
 
     json_mapSetBoolValue(jsonData, "inserted", inserted);
@@ -468,7 +468,7 @@ static int _openFdFromJson(OUTPARM int *fdOut, JSON_ref jsonData, const char * c
         } else {
             fd = dup(fd);
             if (fd == -1) {
-                ERRLOG("OOPS could not dup file descriptor!");
+                LOG("OOPS could not dup file descriptor!");
             }
         }
     } while (0);

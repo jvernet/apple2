@@ -1282,7 +1282,7 @@ static DWORD WINAPI SSI263Thread(LPVOID lpParameter)
 #else
 static void* SSI263Thread(void *lpParameter)
 {
-        const unsigned long nsecWait = NANOSECONDS_PER_SECOND / audio_backend->systemSettings.sampleRateHz;
+        const unsigned long nsecWait = NANOSECONDS_PER_SECOND / audio_getCurrentBackend()->systemSettings.sampleRateHz;
         const struct timespec wait = { .tv_sec=0, .tv_nsec=nsecWait };
 
 	while(1)
@@ -1293,7 +1293,7 @@ static void* SSI263Thread(void *lpParameter)
             err = pthread_cond_timedwait(&ssi263_cond, &ssi263_mutex, &wait);
             if (err && (err != ETIMEDOUT))
             {
-                ERRLOG("OOPS pthread_cond_timedwait");
+                LOG("OOPS pthread_cond_timedwait");
             }
             pthread_mutex_unlock(&ssi263_mutex);
 
@@ -1518,13 +1518,13 @@ static bool MB_DSInit()
 	}
 
 #if 1 // APPLE2IX
-        SAMPLE_RATE = audio_backend->systemSettings.sampleRateHz;
+        SAMPLE_RATE = audio_getCurrentBackend()->systemSettings.sampleRateHz;
 #if MB_TRACING
         // force determinism
         SAMPLE_RATE = 44100;
 #endif
-        g_dwDSBufferSize = audio_backend->systemSettings.stereoBufferSizeSamples * audio_backend->systemSettings.bytesPerSample * g_nMB_NumChannels;
-        g_nMixBuffer = MALLOC(g_dwDSBufferSize / audio_backend->systemSettings.bytesPerSample);
+        g_dwDSBufferSize = audio_getCurrentBackend()->systemSettings.stereoBufferSizeSamples * audio_getCurrentBackend()->systemSettings.bytesPerSample * g_nMB_NumChannels;
+        g_nMixBuffer = MALLOC(g_dwDSBufferSize / audio_getCurrentBackend()->systemSettings.bytesPerSample);
 
 #else
 	bool bRes = DSZeroVoiceBuffer(&MockingboardVoice, "MB", g_dwDSBufferSize);
@@ -1562,12 +1562,12 @@ static bool MB_DSInit()
         int err = 0;
         if ((err = pthread_mutex_init(&ssi263_mutex, NULL)))
         {
-            ERRLOG("OOPS pthread_mutex_init");
+            LOG("OOPS pthread_mutex_init");
         }
 
         if ((err = pthread_cond_init(&ssi263_cond, NULL)))
         {
-            ERRLOG("OOPS pthread_cond_init");
+            LOG("OOPS pthread_cond_init");
         }
 #else
 	g_hSSI263Event[0] = CreateEvent(NULL,	// lpEventAttributes
@@ -1611,14 +1611,14 @@ static bool MB_DSInit()
 			bPause = false;
 		}
 
-		unsigned int nPhonemeByteLength = g_nPhonemeInfo[nPhoneme].nLength * audio_backend->systemSettings.bytesPerSample;
+		unsigned int nPhonemeByteLength = g_nPhonemeInfo[nPhoneme].nLength * audio_getCurrentBackend()->systemSettings.bytesPerSample;
 #if 0 // !APPLE2IX
 		// NB. DSBCAPS_LOCSOFTWARE required for Phoneme+2==0x28 - sample too short (see KB327698)
 		hr = DSGetSoundBuffer(&SSI263Voice[i], DSBCAPS_CTRLVOLUME+DSBCAPS_CTRLPOSITIONNOTIFY+DSBCAPS_LOCSOFTWARE, nPhonemeByteLength, 22050, 1);
 		LogFileOutput("MB_DSInit: (%02d) DSGetSoundBuffer(), hr=0x%08X\n", i, hr);
 #else
-                if (nPhonemeByteLength > audio_backend->systemSettings.monoBufferSizeSamples) {
-                    RELEASE_ERRLOG("!!!!!!!!!!!!!!!!!!!!! phoneme length > buffer size !!!!!!!!!!!!!!!!!!!!!");
+                if (nPhonemeByteLength > audio_getCurrentBackend()->systemSettings.monoBufferSizeSamples) {
+                    LOG("!!!!!!!!!!!!!!!!!!!!! phoneme length > buffer size !!!!!!!!!!!!!!!!!!!!!");
 #warning ^^^^^^^^^^ require vigilence here around this change ... we used to be able to specify the exact buffer size ...
                 }
                 nPhonemeByteLength = dwDSLockedBufferSize;
@@ -1708,7 +1708,7 @@ static bool MB_DSInit()
             int err = 0;
             if ((err = pthread_create(&g_hThread, NULL, SSI263Thread, NULL)))
             {
-                ERRLOG("SSI263Thread");
+                LOG("SSI263Thread");
             }
 
             // assuming time critical ...
@@ -1719,11 +1719,11 @@ static bool MB_DSInit()
 
             int prio = 0;
             if ((prio = sched_get_priority_max(policy)) < 0) {
-                ERRLOG("OOPS sched_get_priority_max");
+                LOG("OOPS sched_get_priority_max");
             } else {
                 if ((err = pthread_setschedprio(thread, prio)))
                 {
-                    ERRLOG("OOPS pthread_setschedprio");
+                    LOG("OOPS pthread_setschedprio");
                 }
             }
 #   endif
@@ -1757,7 +1757,7 @@ static void MB_DSUninit()
 
                 int err = 0;
                 if ( (err = pthread_join(g_hThread, NULL)) ) {
-                    ERRLOG("OOPS pthread_join");
+                    LOG("OOPS pthread_join");
                 }
 #else
 		unsigned long dwExitCode;

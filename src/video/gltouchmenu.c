@@ -226,7 +226,8 @@ static bool _sprout_menu(float x, float y) {
         }
         return menu.topRightShowing;
     } else {
-        RELEASE_ERRLOG("This should not happen");
+        LOG("This should not happen");
+        assert(false);
         return false;
     }
 }
@@ -259,8 +260,8 @@ static inline void _step_cpu_speed(int delta) {
     prefs_setFloatValue(PREF_DOMAIN_VM, PREF_CPU_SCALE, scale);
     prefs_sync(PREF_DOMAIN_VM);
 
-    if (video_animations->animation_showCPUSpeed) {
-        video_animations->animation_showCPUSpeed();
+    if (video_getAnimationDriver()->animation_showCPUSpeed) {
+        video_getAnimationDriver()->animation_showCPUSpeed();
     }
 
     timing_initialize();
@@ -443,7 +444,7 @@ static void gltouchmenu_setup(void) {
 
     isAvailable = true;
 
-    GL_ERRLOG("gltouchmenu_setup");
+    GL_MAYBELOG("gltouchmenu_setup");
 }
 
 static void gltouchmenu_render(void) {
@@ -480,7 +481,7 @@ static void gltouchmenu_render(void) {
     glUniform1i(texSamplerLoc, TEXTURE_ID_TOUCHMENU);
     glhud_renderDefault(menu.model);
 
-    GL_ERRLOG("gltouchmenu_render");
+    GL_MAYBELOG("gltouchmenu_render");
 }
 
 static void gltouchmenu_reshape(int w, int h, bool landscape) {
@@ -623,8 +624,8 @@ static void gltouchmenu_prefsChanged(const char *domain) {
 static void _init_gltouchmenu(void) {
     LOG("Registering OpenGL software touch menu");
 
-    video_animations->animation_showTouchMenu = &_animation_showTouchMenu;
-    video_animations->animation_hideTouchMenu = &_animation_hideTouchMenu;
+    video_getAnimationDriver()->animation_showTouchMenu = &_animation_showTouchMenu;
+    video_getAnimationDriver()->animation_hideTouchMenu = &_animation_hideTouchMenu;
 
     menu.prefsChanged = true;
 

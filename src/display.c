@@ -21,19 +21,8 @@
 
 #define DYNAMIC_SZ 11 // 7 pixels (as bytes) + 2pre + 2post
 
-typedef enum drawpage_mode_t {
-    DRAWPAGE_TEXT = 1,
-    DRAWPAGE_HIRES,
-} drawpage_mode_t;
-
-// framebuffers
-static uint8_t *video__fb = NULL;
-
 A2Color_s colormap[256] = { { 0 } };
-video_animation_s *video_animations = NULL;
-video_backend_s *video_backend = NULL;
-static pthread_t render_thread_id = 0;
-static pthread_mutex_t video_scan_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t display_scan_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static uint8_t video__wider_font[0x8000] = { 0 };
 static uint8_t video__font[0x4000] = { 0 };
@@ -42,13 +31,13 @@ static uint8_t video__int_font[3][0x4000] = { { 0 } }; // interface font
 static color_mode_t color_mode = COLOR_NONE;
 
 // Precalculated framebuffer offsets given VM addr
-unsigned int video__screen_addresses[8192] = { INT_MIN };
-uint8_t video__columns[8192] = { 0 };
+static unsigned int video__screen_addresses[8192] = { INT_MIN };
+static uint8_t video__columns[8192] = { 0 };
 
-uint8_t video__hires_even[0x800] = { 0 };
-uint8_t video__hires_odd[0x800] = { 0 };
+static uint8_t video__hires_even[0x800] = { 0 };
+static uint8_t video__hires_odd[0x800] = { 0 };
 
-volatile unsigned long _vid_dirty = 0;
+static volatile unsigned long _vid_dirty = 0;
 
 // Video constants -- sourced from AppleWin
 static const bool bVideoScannerNTSC = true;
@@ -68,17 +57,22 @@ static const int kVLine0State   = 0x100; // V[543210CBA] = 100000000
 static const int kVPresetLine   =   256; // line when V state presets
 static const int kVSyncLines    =     4; // lines per VSync duration
 
-uint8_t video__odd_colors[2] = { COLOR_LIGHT_PURPLE, COLOR_LIGHT_BLUE };
-uint8_t video__even_colors[2] = { COLOR_LIGHT_GREEN, COLOR_LIGHT_RED };
+static uint8_t video__odd_colors[2] = { COLOR_LIGHT_PURPLE, COLOR_LIGHT_BLUE };
+static uint8_t video__even_colors[2] = { COLOR_LIGHT_GREEN, COLOR_LIGHT_RED };
+
+// TODO FIXME : support linked list of callbacks here ...
+static display_update_fn textCallbackFn = NULL;
+static display_update_fn hiresCallbackFn = NULL;
+static display_update_fn modeCallbackFn = NULL;
 
 // 40col/80col/lores/hires/dhires line offsets
-unsigned short video__line_offset[TEXT_ROWS] = {
+static uint16_t video__line_offset[TEXT_ROWS] = {
   0x000, 0x080, 0x100, 0x180, 0x200, 0x280, 0x300, 0x380,
   0x028, 0x0A8, 0x128, 0x1A8, 0x228, 0x2A8, 0x328, 0x3A8,
   0x050, 0x0D0, 0x150, 0x1D0, 0x250, 0x2D0, 0x350, 0x3D0
 };
 
-uint8_t video__dhires1[256] = {
+static uint8_t video__dhires1[256] = {
     0x0,0x1,0x2,0x3,0x4,0x5,0x6,0x7,0x8,0x9,0xa,0xb,0xc,0xd,0xe,0xf,
     0x0,0x1,0x2,0x3,0x4,0x5,0x6,0x7,0x8,0x9,0xa,0xb,0xc,0xd,0xe,0xf,
     0x0,0x1,0x2,0x3,0x4,0x5,0x6,0x7,0x8,0x9,0xa,0xb,0xc,0xd,0xe,0xf,
@@ -89,7 +83,7 @@ uint8_t video__dhires1[256] = {
     0x0,0x1,0x2,0x3,0x4,0x5,0x6,0x7,0x8,0x9,0xa,0xb,0xc,0xd,0xe,0xf,
 };
 
-uint8_t video__dhires2[256] = {
+static uint8_t video__dhires2[256] = {
     0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x8,0x8,0x8,0x8,0x8,0x8,0x8,0x8,
     0x1,0x1,0x1,0x1,0x1,0x1,0x1,0x1,0x9,0x9,0x9,0x9,0x9,0x9,0x9,0x9,
     0x2,0x2,0x2,0x2,0x2,0x2,0x2,0x2,0xa,0xa,0xa,0xa,0xa,0xa,0xa,0xa,
@@ -337,34 +331,34 @@ static void _initialize_tables_video(void) {
     // initialize text/lores & hires graphics routines
     for (unsigned int y = 0; y < TEXT_ROWS; y++) {
         for (unsigned int x = 0; x < TEXT_COLS; x++) {
-            unsigned int idx = video__line_offset[y] + x + 0x400;
+            unsigned int idx = video__line_offset[y] + x;
             // text/lores pages
             if (y < 20) {
-                cpu65_vmem_w[idx      ] = video__write_2e_text0;
-                cpu65_vmem_w[idx+0x400] = video__write_2e_text1;
+                cpu65_vmem_w[idx+0x400] = video__write_2e_text0;
+                cpu65_vmem_w[idx+0x800] = video__write_2e_text1;
             } else {
-                cpu65_vmem_w[idx      ] = video__write_2e_text0_mixed;
-                cpu65_vmem_w[idx+0x400] = video__write_2e_text1_mixed;
+                cpu65_vmem_w[idx+0x400] = video__write_2e_text0_mixed;
+                cpu65_vmem_w[idx+0x800] = video__write_2e_text1_mixed;
             }
 
             // hires/dhires pages
             for (unsigned int i = 0; i < 8; i++) {
-                idx = 0x2000 + video__line_offset[ y ] + (0x400*i) + x;
+                idx = video__line_offset[ y ] + (0x400*i) + x;
                 if (y < 20) {
                     if (x & 1) {
-                        cpu65_vmem_w[idx       ] = video__write_2e_odd0;
-                        cpu65_vmem_w[idx+0x2000] = video__write_2e_odd1;
+                        cpu65_vmem_w[idx+0x2000] = video__write_2e_odd0;
+                        cpu65_vmem_w[idx+0x4000] = video__write_2e_odd1;
                     } else {
-                        cpu65_vmem_w[idx       ] = video__write_2e_even0;
-                        cpu65_vmem_w[idx+0x2000] = video__write_2e_even1;
+                        cpu65_vmem_w[idx+0x2000] = video__write_2e_even0;
+                        cpu65_vmem_w[idx+0x4000] = video__write_2e_even1;
                     }
                 } else {
                     if (x & 1) {
-                        cpu65_vmem_w[idx       ] = video__write_2e_odd0_mixed;
-                        cpu65_vmem_w[idx+0x2000] = video__write_2e_odd1_mixed;
+                        cpu65_vmem_w[idx+0x2000] = video__write_2e_odd0_mixed;
+                        cpu65_vmem_w[idx+0x4000] = video__write_2e_odd1_mixed;
                     } else {
-                        cpu65_vmem_w[idx       ] = video__write_2e_even0_mixed;
-                        cpu65_vmem_w[idx+0x2000] = video__write_2e_even1_mixed;
+                        cpu65_vmem_w[idx+0x2000] = video__write_2e_even0_mixed;
+                        cpu65_vmem_w[idx+0x4000] = video__write_2e_even1_mixed;
                     }
                 }
             }
@@ -400,38 +394,22 @@ static void _initialize_color() {
     colormap[ COLOR_FLASHING_WHITE].green = 255;
     colormap[ COLOR_FLASHING_WHITE].blue  = 255;
 
-    colormap[0x00].red = 0; colormap[0x00].green = 0;
-    colormap[0x00].blue = 0;   /* Black */
-    colormap[0x10].red = 195; colormap[0x10].green = 0;
-    colormap[0x10].blue = 48;  /* Magenta */
-    colormap[0x20].red = 0; colormap[0x20].green = 0;
-    colormap[0x20].blue = 130; /* Dark Blue */
-    colormap[0x30].red = 166; colormap[0x30].green = 52;
-    colormap[0x30].blue = 170; /* Purple */
-    colormap[0x40].red = 0; colormap[0x40].green = 146;
-    colormap[0x40].blue = 0;   /* Dark Green */
-    colormap[0x50].red = 105; colormap[0x50].green = 105;
-    colormap[0x50].blue = 105; /* Dark Grey*/
-    colormap[0x60].red = 24; colormap[0x60].green = 113;
-    colormap[0x60].blue = 255; /* Medium Blue */
-    colormap[0x70].red = 12; colormap[0x70].green = 190;
-    colormap[0x70].blue = 235; /* Light Blue */
-    colormap[0x80].red = 150; colormap[0x80].green = 85;
-    colormap[0x80].blue = 40; /* Brown */
-    colormap[0x90].red = 255; colormap[0xa0].green = 24;
-    colormap[0x90].blue = 44; /* Orange */
-    colormap[0xa0].red = 150; colormap[0xa0].green = 170;
-    colormap[0xa0].blue = 170; /* Light Gray */
-    colormap[0xb0].red = 255; colormap[0xb0].green = 158;
-    colormap[0xb0].blue = 150; /* Pink */
-    colormap[0xc0].red = 0; colormap[0xc0].green = 255;
-    colormap[0xc0].blue = 0; /* Green */
-    colormap[0xd0].red = 255; colormap[0xd0].green = 255;
-    colormap[0xd0].blue = 0; /* Yellow */
-    colormap[0xe0].red = 130; colormap[0xe0].green = 255;
-    colormap[0xe0].blue = 130; /* Aqua */
-    colormap[0xf0].red = 255; colormap[0xf0].green = 255;
-    colormap[0xf0].blue = 255; /* White */
+    colormap[IDX_BLACK    ] = (A2Color_s) { .red = 0,   .green = 0,   .blue = 0   };
+    colormap[IDX_MAGENTA  ] = (A2Color_s) { .red = 195, .green = 0,   .blue = 48  };
+    colormap[IDX_DARKBLUE ] = (A2Color_s) { .red = 0,   .green = 0,   .blue = 130 };
+    colormap[IDX_PURPLE   ] = (A2Color_s) { .red = 166, .green = 52,  .blue = 170 };
+    colormap[IDX_DARKGREEN] = (A2Color_s) { .red = 0,   .green = 146, .blue = 0   };
+    colormap[IDX_DARKGREY ] = (A2Color_s) { .red = 105, .green = 105, .blue = 105 };
+    colormap[IDX_MEDBLUE  ] = (A2Color_s) { .red = 24,  .green = 113, .blue = 255 };
+    colormap[IDX_LIGHTBLUE] = (A2Color_s) { .red = 12,  .green = 190, .blue = 235 };
+    colormap[IDX_BROWN    ] = (A2Color_s) { .red = 150, .green = 85,  .blue = 40  };
+    colormap[IDX_ORANGE   ] = (A2Color_s) { .red = 255, .green = 24,  .blue = 44  };
+    colormap[IDX_LIGHTGREY] = (A2Color_s) { .red = 150, .green = 170, .blue = 170 };
+    colormap[IDX_PINK     ] = (A2Color_s) { .red = 255, .green = 158, .blue = 150 };
+    colormap[IDX_GREEN    ] = (A2Color_s) { .red = 0,   .green = 255, .blue = 0   };
+    colormap[IDX_YELLOW   ] = (A2Color_s) { .red = 255, .green = 255, .blue = 0   };
+    colormap[IDX_AQUA     ] = (A2Color_s) { .red = 130, .green = 255, .blue = 130 };
+    colormap[IDX_WHITE    ] = (A2Color_s) { .red = 255, .green = 255, .blue = 255 };
 
     /* mirror of lores colormap optimized for dhires code */
     colormap[0x00].red = 0; colormap[0x00].green = 0;
@@ -486,24 +464,24 @@ static void video_prefsChanged(const char *domain) {
         val = COLOR_INTERP;
     }
     color_mode = (color_mode_t)val;
-    video_reset();
+    display_reset();
 }
 
-void video_reset(void) {
+void display_reset(void) {
     _initialize_hires_values();
     _initialize_tables_video();
     video_setDirty(A2_DIRTY_FLAG);
 }
 
-void video_loadfont(int first, int quantity, const uint8_t *data, int mode) {
+void display_loadFont(const uint8_t first, const uint8_t quantity, const uint8_t *data, font_mode_t mode) {
     uint8_t fg = 0;
     uint8_t bg = 0;
     switch (mode) {
-        case 2:
+        case FONT_MODE_INVERSE:
             fg = COLOR_BLACK;
             bg = COLOR_LIGHT_WHITE;
             break;
-        case 3:
+        case FONT_MODE_FLASH:
             fg = COLOR_FLASHING_WHITE;
             bg = COLOR_FLASHING_BLACK;
             break;
@@ -640,11 +618,15 @@ static inline void __plot_character40(const unsigned int font_off, uint8_t *fb_p
     _plot_char40(/*dst*/&fb_ptr, /*src*/&font_ptr);
 }
 
-static void _plot_character40(uint16_t off, int page, int bank) {
+static void _plot_character40(uint8_t col, uint8_t row, int page, int bank, uint8_t *fb_ptr) {
     uint16_t base = page ? 0x0800 : 0x0400;
+    uint16_t off = video__line_offset[row] + col;
     uint16_t ea = base+off;
     uint8_t b = apple_ii_64k[bank][ea];
-    __plot_character40(b<<7/* *128 */, video__fb+video__screen_addresses[off]);
+    __plot_character40(b<<7/* *128 */, fb_ptr+video__screen_addresses[off]);
+    if (textCallbackFn) {
+        textCallbackFn((pixel_delta_t){ .row = row, .col = col, .b = b, .cs = INVALID_COLORSCHEME });
+    }
 }
 
 static inline void __plot_character80(const unsigned int font_off, uint8_t *fb_ptr) {
@@ -659,16 +641,23 @@ static inline void __plot_character80(const unsigned int font_off, uint8_t *fb_p
     _plot_char80(/*dst*/&fb_ptr, /*src*/&font_ptr, SCANWIDTH);
 }
 
-static void _plot_character80(uint16_t off, int page, int bank) {
+static void _plot_character80(uint8_t col, uint8_t row, int page, int bank, uint8_t *fb_ptr) {
     uint16_t base = page ? 0x0800 : 0x0400;
+    uint16_t off = video__line_offset[row] + col;
     uint16_t ea = base+off;
     {
         uint8_t b = apple_ii_64k[1][ea];
-        __plot_character80(b<<6/* *64 */, video__fb+video__screen_addresses[off]);
+        __plot_character80(b<<6/* *64 */, fb_ptr+video__screen_addresses[off]);
+        if (textCallbackFn) {
+            textCallbackFn((pixel_delta_t){ .row = row, .col = (col<<1), .b = b, .cs = INVALID_COLORSCHEME });
+        }
     }
     {
         uint8_t b = apple_ii_64k[0][ea];
-        __plot_character80(b<<6/* *64 */, video__fb+video__screen_addresses[off]+7);
+        __plot_character80(b<<6/* *64 */, fb_ptr+video__screen_addresses[off]+7);
+        if (textCallbackFn) {
+            textCallbackFn((pixel_delta_t){ .row = row, .col = (col<<1)+1, .b = b, .cs = INVALID_COLORSCHEME });
+        }
     }
 }
 
@@ -697,11 +686,15 @@ static inline void __plot_block40(const uint8_t val, uint8_t *fb_ptr) {
     _plot_lores40(/*dst*/&fb_ptr, val32);
 }
 
-static void _plot_block40(uint16_t off, int page, int bank) {
+static void _plot_block40(uint8_t col, uint8_t row, int page, int bank, uint8_t *fb_ptr) {
     uint16_t base = page ? 0x0800 : 0x0400;
+    uint16_t off = video__line_offset[row] + col;
     uint16_t ea = base+off;
     uint8_t b = apple_ii_64k[bank][ea];
-    __plot_block40(b, video__fb+video__screen_addresses[off]);
+    __plot_block40(b, fb_ptr+video__screen_addresses[off]);
+    if (textCallbackFn) {
+        textCallbackFn((pixel_delta_t){ .row = row, .col = col, .b = b, .cs = COLOR16 });
+    }
 }
 
 static inline void __plot_block80(const uint8_t val, uint8_t *fb_ptr) {
@@ -741,8 +734,9 @@ static inline uint8_t __shift_block80(uint8_t b) {
     return b;
 }
 
-static void _plot_block80(uint16_t off, int page, int bank) {
+static void _plot_block80(uint8_t col, uint8_t row, int page, int bank, uint8_t *fb_ptr) {
     uint16_t base = page ? 0x0800 : 0x0400;
+    uint16_t off = video__line_offset[row] + col;
     uint16_t ea = base+off;
 
 #warning FIXME TODO INVESTIGATE : ... does RAMRD/80STORE/PAGE2 affect load order here?
@@ -751,20 +745,26 @@ static void _plot_block80(uint16_t off, int page, int bank) {
     {
         uint8_t b = apple_ii_64k[1][ea];
         b = __shift_block80(b);
-        uint8_t *fb = video__fb+video__screen_addresses[off];
+        uint8_t *fb = fb_ptr+video__screen_addresses[off];
         __plot_block80(b, fb);
+        if (textCallbackFn) {
+            textCallbackFn((pixel_delta_t){ .row = row, .col = (col<<1), .b = b, .cs = COLOR16 });
+        }
     }
 
     // plot odd half-block from main mem
     {
         uint8_t b = apple_ii_64k[0][ea];
-        uint8_t *fb = video__fb+video__screen_addresses[off] + 7;
+        uint8_t *fb = fb_ptr+video__screen_addresses[off] + 7;
         __plot_block80(b, fb);
+        if (textCallbackFn) {
+            textCallbackFn((pixel_delta_t){ .row = row, .col = (col<<1)+1, .b = b, .cs = COLOR16 });
+        }
     }
 }
 
-static void (*_textpage_plotter(uint32_t currswitches, uint32_t txtflags))(uint16_t, int, int) {
-    void (*plotFn)(uint16_t, int, int) = NULL;
+static void (*_textpage_plotter(uint32_t currswitches, uint32_t txtflags))(uint8_t, uint8_t, int, int, uint8_t*) {
+    void (*plotFn)(uint8_t, uint8_t, int, int, uint8_t*) = NULL;
 
     if (currswitches & txtflags) {
         plotFn = (currswitches & SS_80COL) ? _plot_character80 : _plot_character40;
@@ -783,7 +783,7 @@ static void (*_textpage_plotter(uint32_t currswitches, uint32_t txtflags))(uint1
                 plotFn = _plot_block80;
             } else {
                 /* ??? */
-                RELEASE_LOG("!!!!!!!!!!!! what mode is this? !!!!!!!!!!!!");
+                LOG("!!!!!!!!!!!! what mode is this? !!!!!!!!!!!!");
                 plotFn = _plot_block40;
 #warning FIXME TODO ... verify this lores40/lores80 mode ...
             }
@@ -793,7 +793,7 @@ static void (*_textpage_plotter(uint32_t currswitches, uint32_t txtflags))(uint1
     return plotFn;
 }
 
-static inline drawpage_mode_t _currentMainMode(uint32_t currswitches) {
+drawpage_mode_t display_currentDrawpageMode(uint32_t currswitches) {
     if (currswitches & SS_TEXT) {
         return DRAWPAGE_TEXT;
     } else  {
@@ -803,6 +803,10 @@ static inline drawpage_mode_t _currentMainMode(uint32_t currswitches) {
             return DRAWPAGE_TEXT; // (LORES)
         }
     }
+}
+
+static inline drawpage_mode_t _currentMainMode(uint32_t currswitches) {
+    return display_currentDrawpageMode(currswitches);
 }
 
 static inline drawpage_mode_t _currentMixedMode(uint32_t currswitches) {
@@ -868,16 +872,61 @@ GLUE_C_WRITE(video__write_2e_text1_mixed)
 // ----------------------------------------------------------------------------
 // Classic interface and printing HUD messages
 
-void interface_plotChar(uint8_t *fboff, int fb_pix_width, interface_colorscheme_t cs, uint8_t c) {
+static void _display_plotChar(uint8_t *fboff, const unsigned int fbPixWidth, const interface_colorscheme_t cs, const uint8_t c) {
     uint8_t *src = video__int_font[cs] + c * (FONT_GLYPH_X*FONT_GLYPH_Y);
-    _plot_char80(&fboff, &src, fb_pix_width);
-    _plot_char80(&fboff, &src, fb_pix_width);
-    _plot_char80(&fboff, &src, fb_pix_width);
-    _plot_char80(&fboff, &src, fb_pix_width);
-    _plot_char80(&fboff, &src, fb_pix_width);
-    _plot_char80(&fboff, &src, fb_pix_width);
-    _plot_char80(&fboff, &src, fb_pix_width);
-    _plot_char80(&fboff, &src, fb_pix_width);
+    _plot_char80(&fboff, &src, fbPixWidth);
+    _plot_char80(&fboff, &src, fbPixWidth);
+    _plot_char80(&fboff, &src, fbPixWidth);
+    _plot_char80(&fboff, &src, fbPixWidth);
+    _plot_char80(&fboff, &src, fbPixWidth);
+    _plot_char80(&fboff, &src, fbPixWidth);
+    _plot_char80(&fboff, &src, fbPixWidth);
+    _plot_char80(&fboff, &src, fbPixWidth);
+}
+
+void display_plotChar(uint8_t *fb, const uint8_t col, const uint8_t row, const interface_colorscheme_t cs, const uint8_t c) {
+    assert(col < 80);
+    assert(row < 24);
+
+    if (textCallbackFn) {
+        textCallbackFn((pixel_delta_t){ .row = row, .col = col, .b = c, .cs = cs });
+    }
+
+    if (fb) {
+        unsigned int off = row * SCANWIDTH * FONT_HEIGHT_PIXELS + col * FONT80_WIDTH_PIXELS + _INTERPOLATED_PIXEL_ADJUSTMENT_PRE;
+        _display_plotChar(fb+off, SCANWIDTH, cs, c);
+        video_setDirty(FB_DIRTY_FLAG);
+    }
+}
+
+static void _display_plotLine(uint8_t *fb, const unsigned int fbPixWidth, const unsigned int xAdjust, const uint8_t col, const uint8_t row, const interface_colorscheme_t cs, const char *line) {
+    for (uint8_t x=col; *line; x++, line++) {
+        char c = *line;
+
+        if (textCallbackFn) {
+            textCallbackFn((pixel_delta_t){ .row = row, .col = x, .b = c, .cs = cs });
+        }
+
+        if (fb) {
+            unsigned int off = row * fbPixWidth * FONT_HEIGHT_PIXELS + x * FONT80_WIDTH_PIXELS + xAdjust;
+            _display_plotChar(fb+off, fbPixWidth, cs, c);
+        }
+    }
+}
+
+void display_plotLine(uint8_t *fb, const uint8_t col, const uint8_t row, const interface_colorscheme_t cs, const char *message) {
+    _display_plotLine(fb, /*fbPixWidth:*/SCANWIDTH, /*xAdjust:*/_INTERPOLATED_PIXEL_ADJUSTMENT_PRE, col, row, cs, message);
+    video_setDirty(FB_DIRTY_FLAG);
+}
+
+void display_plotMessage(uint8_t *fb, const interface_colorscheme_t cs, const char *message, const uint8_t message_cols, const uint8_t message_rows) {
+    assert(message_cols < 80);
+    assert(message_rows < 24);
+
+    int fbPixWidth = (message_cols*FONT80_WIDTH_PIXELS);
+    for (int row=0, idx=0; row<message_rows; row++, idx+=message_cols+1) {
+        _display_plotLine(fb, fbPixWidth, /*xAdjust:*/0, /*col:*/0, row, cs, &message[ idx ]);
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -891,11 +940,11 @@ static inline void __plot_hires80_pixels(uint8_t idx, uint8_t *fb_ptr) {
     *((uint32_t *)(fb_ptr+SCANWIDTH)) = b;
 }
 
-static inline void __plot_hires80(uint16_t base, uint16_t ea) {
+static inline void __plot_hires80(uint16_t base, uint16_t ea, uint8_t *fb_ptr) {
     ea &= ~0x1;
 
     uint16_t memoff = ea - base;
-    uint8_t *fb_ptr = video__fb+video__screen_addresses[memoff];
+    fb_ptr = fb_ptr+video__screen_addresses[memoff];
     uint8_t col = video__columns[memoff];
 
     uint8_t b0 = 0x0;
@@ -960,10 +1009,10 @@ static inline void __plot_hires80(uint16_t base, uint16_t ea) {
     __plot_hires80_pixels(b, fb_ptr);
 }
 
-static void _plot_hires80(uint16_t off, int page, int bank, bool is_even) {
+static void _plot_hires80(uint16_t off, int page, int bank, bool is_even, uint8_t *fb_ptr) {
     uint16_t base = page ? 0x4000 : 0x2000;
     uint16_t ea = base+off;
-    __plot_hires80(base, ea);
+    __plot_hires80(base, ea, fb_ptr);
 }
 
 // ----------------------------------------------------------------------------
@@ -1010,12 +1059,12 @@ static inline void _plot_hires_pixels(uint8_t *dst, const uint8_t *src) {
     }
 }
 
-static void _plot_hires40(uint16_t off, int page, int bank, bool is_even) {
+static void _plot_hires40(uint16_t off, int page, int bank, bool is_even, uint8_t *fb_ptr) {
     uint16_t base = page ? 0x4000 : 0x2000;
     uint16_t ea = base+off;
     uint8_t b = apple_ii_64k[bank][ea];
 
-    uint8_t *fb_ptr = video__fb+video__screen_addresses[off];
+    fb_ptr = fb_ptr+video__screen_addresses[off];
 
     uint8_t _buf[DYNAMIC_SZ] = { 0 };
     uint8_t *color_buf = (uint8_t *)_buf; // <--- work around for -Wstrict-aliasing
@@ -1093,7 +1142,7 @@ static void _plot_hires40(uint16_t off, int page, int bank, bool is_even) {
     _plot_hires_pixels(fb_ptr-4, color_buf);
 }
 
-static void (*_hirespage_plotter(uint32_t currswitches))(uint16_t, int, int, bool) {
+static void (*_hirespage_plotter(uint32_t currswitches))(uint16_t, int, int, bool, uint8_t*) {
     return ((currswitches & SS_80COL) && (currswitches & SS_DHIRES)) ? _plot_hires80 : _plot_hires40;
 }
 
@@ -1195,93 +1244,6 @@ GLUE_C_WRITE(video__write_2e_odd1_mixed)
 
 // ----------------------------------------------------------------------------
 
-void video_init(void) {
-    assert(pthread_self() != cpu_thread_id);
-    LOG("(re)setting render_thread_id : %ld -> %ld", render_thread_id, pthread_self());
-    render_thread_id = pthread_self();
-
-    assert(!video__fb);
-    video__fb = MALLOC(SCANWIDTH*SCANHEIGHT*sizeof(uint8_t));
-    video_clear();
-
-    video_backend->init((void*)0);
-}
-
-void _video_setRenderThread(pthread_t id) {
-    LOG("setting render_thread_id : %ld -> %ld", render_thread_id, id);
-    render_thread_id = id;
-}
-
-bool video_isRenderThread(void) {
-    return (pthread_self() == render_thread_id);
-}
-
-void video_shutdown(void) {
-
-#if MOBILE_DEVICE
-    // WARNING : shutdown should occur on the render thread.  Platform code (iOS, Android) should ensure this is called
-    // from within a render pass...
-    assert(!render_thread_id || pthread_self() == render_thread_id);
-#endif
-
-    video_backend->shutdown();
-
-    if (pthread_self() == render_thread_id) {
-        FREE(video__fb);
-    }
-}
-
-void video_render(void) {
-    assert(pthread_self() == render_thread_id);
-    video_backend->render();
-}
-
-void video_main_loop(void) {
-    video_backend->main_loop();
-}
-
-void video_clear(void) {
-    memset(video__fb, 0x0, sizeof(uint8_t)*SCANWIDTH*SCANHEIGHT);
-    video_setDirty(A2_DIRTY_FLAG);
-}
-
-bool video_saveState(StateHelper_s *helper) {
-    bool saved = false;
-    int fd = helper->fd;
-
-    do {
-        uint8_t state = 0x0;
-        if (!helper->save(fd, &state, 1)) {
-            break;
-        }
-        LOG("SAVE (no-op) video__current_page = %02x", state);
-
-        saved = true;
-    } while (0);
-
-    return saved;
-}
-
-bool video_loadState(StateHelper_s *helper) {
-    bool loaded = false;
-    int fd = helper->fd;
-
-    do {
-        uint8_t state = 0x0;
-
-        if (!helper->load(fd, &state, 1)) {
-            break;
-        }
-        LOG("LOAD (no-op) video__current_page = %02x", state);
-
-        loaded = true;
-    } while (0);
-
-    return loaded;
-}
-
-// ----------------------------------------------------------------------------
-
 static inline void _currentPageAndBank(uint32_t currswitches, drawpage_mode_t mode, OUTPARM int *page, OUTPARM int *bank) {
     // UTAIIe : 5-25
     if (currswitches & SS_80STORE) {
@@ -1299,15 +1261,23 @@ static inline void _currentPageAndBank(uint32_t currswitches, drawpage_mode_t mo
     *bank = 0;
 }
 
-uint8_t *video_currentFramebuffer(void) {
-    return video__fb;
+void display_setUpdateCallback(drawpage_mode_t mode, display_update_fn updateFn) {
+    if (mode == DRAWPAGE_TEXT) {
+        textCallbackFn = updateFn;
+    } else if (mode == DRAWPAGE_HIRES) {
+        hiresCallbackFn = updateFn;
+    } else if (mode == DRAWPAGE_MODE_CHANGE) {
+        modeCallbackFn = updateFn;
+    } else {
+        assert(false);
+    }
 }
 
-uint8_t *video_scan(void) {
+void display_renderStagingFramebuffer(uint8_t *stagingFB) {
 
 #warning FIXME TODO ... this needs to scan memory in the same way as the actually //e video scanner
 
-    pthread_mutex_lock(&video_scan_mutex);
+    pthread_mutex_lock(&display_scan_mutex);
 
     int page = 0;
     int bank = 0;
@@ -1319,22 +1289,21 @@ uint8_t *video_scan(void) {
     _currentPageAndBank(mainswitches, mainDrawPageMode, &page, &bank);
 
     if (mainDrawPageMode == DRAWPAGE_TEXT) {
-        void (*textMainPlotFn)(uint16_t, int, int) = _textpage_plotter(mainswitches, SS_TEXT);
+        void (*textMainPlotFn)(uint8_t, uint8_t, int, int, uint8_t*) = _textpage_plotter(mainswitches, SS_TEXT);
         for (unsigned int y=0; y < TEXT_ROWS-4; y++) {
             for (unsigned int x=0; x < TEXT_COLS; x++) {
-                uint16_t off = video__line_offset[y] + x;
-                textMainPlotFn(off, page, bank);
+                textMainPlotFn(x, y, page, bank, stagingFB);
             }
         }
     } else {
         assert(!(mainswitches & SS_TEXT) && "TEXT should not be set");
         assert((mainswitches & SS_HIRES) && "HIRES should be set");
-        void (*hiresMainPlotFn)(uint16_t, int, int, bool) = _hirespage_plotter(mainswitches);
+        void (*hiresMainPlotFn)(uint16_t, int, int, bool, uint8_t*) = _hirespage_plotter(mainswitches);
         for (unsigned int y=0; y < TEXT_ROWS-4; y++) {
             for (unsigned int x=0; x < TEXT_COLS; x++) {
                 for (unsigned int i = 0; i < 8; i++) {
                     uint16_t off = video__line_offset[y] + (0x400*i) + x;
-                    hiresMainPlotFn(off, page, bank, /*even*/!(x & 1));
+                    hiresMainPlotFn(off, page, bank, /*even*/!(x & 1), stagingFB);
                 }
             }
         }
@@ -1347,23 +1316,22 @@ uint8_t *video_scan(void) {
     _currentPageAndBank(mixedswitches, mixedDrawPageMode, &page, &bank);
 
     if (mixedDrawPageMode == DRAWPAGE_TEXT) {
-        void (*textMixedPlotFn)(uint16_t, int, int) = _textpage_plotter(mixedswitches, (SS_TEXT|SS_MIXED));
+        void (*textMixedPlotFn)(uint8_t, uint8_t, int, int, uint8_t*) = _textpage_plotter(mixedswitches, (SS_TEXT|SS_MIXED));
         for (unsigned int y=TEXT_ROWS-4; y < TEXT_ROWS; y++) {
             for (unsigned int x=0; x < TEXT_COLS; x++) {
-                uint16_t off = video__line_offset[y] + x;
-                textMixedPlotFn(off, page, bank);
+                textMixedPlotFn(x, y, page, bank, stagingFB);
             }
         }
     } else {
         //assert(!(mixedswitches & SS_TEXT) && "TEXT should not be set"); // TEXT may have been reset from last sample?
         assert(!(mixedswitches & SS_MIXED) && "MIXED should not be set");
         assert((mixedswitches & SS_HIRES) && "HIRES should be set");
-        void (*hiresMixedPlotFn)(uint16_t, int, int, bool) = _hirespage_plotter(mixedswitches);
+        void (*hiresMixedPlotFn)(uint16_t, int, int, bool, uint8_t*) = _hirespage_plotter(mixedswitches);
         for (unsigned int y=TEXT_ROWS-4; y < TEXT_ROWS; y++) {
             for (unsigned int x=0; x < TEXT_COLS; x++) {
                 for (unsigned int i = 0; i < 8; i++) {
                     uint16_t off = video__line_offset[y] + (0x400*i) + x;
-                    hiresMixedPlotFn(off, page, bank, /*even*/!(x & 1));
+                    hiresMixedPlotFn(off, page, bank, /*even*/!(x & 1), stagingFB);
                 }
             }
         }
@@ -1371,12 +1339,10 @@ uint8_t *video_scan(void) {
 
     video_setDirty(FB_DIRTY_FLAG);
 
-    pthread_mutex_unlock(&video_scan_mutex);
-
-    return video__fb;
+    pthread_mutex_unlock(&display_scan_mutex);
 }
 
-void video_flashText(void) {
+void display_flashText(void) {
     static bool normal = false;
 
     normal = !normal;
@@ -1410,6 +1376,9 @@ bool video_isDirty(unsigned long flags) {
 }
 
 unsigned long video_setDirty(unsigned long flags) {
+    if (modeCallbackFn) {
+        modeCallbackFn((pixel_delta_t){ 0 });
+    }
     return __sync_fetch_and_or(&_vid_dirty, flags);
 }
 

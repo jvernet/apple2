@@ -13,6 +13,8 @@
  *
  */
 
+#define VIDEO_X11 1
+
 #include "common.h"
 #include "video/video.h"
 
@@ -31,7 +33,7 @@ static Display *display;
 static Window win;
 static GC gc;
 static unsigned int width, height;      /* window size */
-static unsigned int scale = 1;
+static unsigned int scale = 2;
 
 static int screen_num;
 static XVisualInfo visualinfo;
@@ -58,9 +60,8 @@ static int xshmeventtype;
 // pad pixels to uint32_t boundaries
 static int bitmap_pad = sizeof(uint32_t);
 
-static video_backend_s xvideo_backend = { 0 };
 static bool request_set_mode = false;
-static int request_mode = 0;
+static a2_video_mode_t request_mode = VIDEO_2X;
 
 typedef struct {
     unsigned long flags;
@@ -332,39 +333,55 @@ static int keysym_to_scancode(void) {
     return rc;
 }
 
+// copy Apple //e video memory into XImage uint32_t buffer
 static void post_image() {
-    // copy Apple //e video memory into XImage uint32_t buffer
-    uint8_t *fb = video_scan();
-    uint8_t index;
 
-    unsigned int count = SCANWIDTH * SCANHEIGHT;
-    for (unsigned int i=0, j=0; i<count; i++, j+=4)
-    {
-        index = *(fb + i);
-        *( (uint32_t*)(image->data + j) ) = (uint32_t)(
-            ((uint32_t)(colormap[index].red)   << red_shift)   |
-            ((uint32_t)(colormap[index].green) << green_shift) |
-            ((uint32_t)(colormap[index].blue)  << blue_shift)  |
-            ((uint32_t)0xff /* alpha */ << alpha_shift)
-            );
-        if (scale > 1)
+    static uint8_t fb[SCANWIDTH*SCANHEIGHT*sizeof(uint8_t)];
+#if INTERFACE_CLASSIC
+    interface_setStagingFramebuffer(fb);
+#endif
+    unsigned long wasDirty = 0UL;
+
+    // check if a2 video memory is dirty
+    wasDirty = video_clearDirty(A2_DIRTY_FLAG);
+    if (wasDirty) {
+        display_renderStagingFramebuffer(fb);
+    }
+
+    // now check/clear if we should redraw
+    wasDirty = video_clearDirty(FB_DIRTY_FLAG);
+    if (wasDirty) {
+        uint8_t index;
+
+        unsigned int count = SCANWIDTH * SCANHEIGHT;
+        for (unsigned int i=0, j=0; i<count; i++, j+=4)
         {
-            j+=4;
-
-            // duplicate pixel
+            index = *(fb + i);
             *( (uint32_t*)(image->data + j) ) = (uint32_t)(
-                ((uint32_t)(colormap[index].red)   << red_shift)   |
-                ((uint32_t)(colormap[index].green) << green_shift) |
-                ((uint32_t)(colormap[index].blue)  << blue_shift)  |
-                ((uint32_t)0xff /* alpha */ << alpha_shift)
-                );
-
-            if (((i+1) % SCANWIDTH) == 0)
+                    ((uint32_t)(colormap[index].red)   << red_shift)   |
+                    ((uint32_t)(colormap[index].green) << green_shift) |
+                    ((uint32_t)(colormap[index].blue)  << blue_shift)  |
+                    ((uint32_t)0xff /* alpha */ << alpha_shift)
+                    );
+            if (scale > 1)
             {
-                // duplicate entire row
-                int stride8 = SCANWIDTH<<3;//*8
-                memcpy(/* dest */image->data + j + 4, /* src */image->data + j + 4 - stride8, stride8);
-                j += stride8;
+                j+=4;
+
+                // duplicate pixel
+                *( (uint32_t*)(image->data + j) ) = (uint32_t)(
+                        ((uint32_t)(colormap[index].red)   << red_shift)   |
+                        ((uint32_t)(colormap[index].green) << green_shift) |
+                        ((uint32_t)(colormap[index].blue)  << blue_shift)  |
+                        ((uint32_t)0xff /* alpha */ << alpha_shift)
+                        );
+
+                if (((i+1) % SCANWIDTH) == 0)
+                {
+                    // duplicate entire row
+                    int stride8 = SCANWIDTH<<3;//*8
+                    memcpy(/* dest */image->data + j + 4, /* src */image->data + j + 4 - stride8, stride8);
+                    j += stride8;
+                }
             }
         }
     }
@@ -569,10 +586,9 @@ void video_set_mode(a2_video_mode_t mode) {
 static void _redo_image(void) {
     _destroy_image();
 
-    int mode = request_mode;
-    scale = mode;
-    if (mode == VIDEO_FULLSCREEN) {
-        scale = 1; // HACK FIXME for now ................
+    scale = (int)request_mode;
+    if (scale == VIDEO_FULLSCREEN) {
+        scale = 2; // HACK FIXME for now ................
     }
 
     width = SCANWIDTH*scale;
@@ -621,6 +637,10 @@ static void _redo_image(void) {
     _create_image();
 
     _size_hints_set_fixed();
+}
+
+static const char *xdriver_name(void) {
+    return "X11";
 }
 
 static void xdriver_init(void *context) {
@@ -730,10 +750,14 @@ static void xdriver_init(void *context) {
     fprintf(stderr, "red mask:%08x green mask:%08x blue mask:%08x\n", (uint32_t)visualinfo.red_mask, (uint32_t)visualinfo.blue_mask, (uint32_t)visualinfo.green_mask);
     fprintf(stderr, "redshift:%08d greenshift:%08d blueshift:%08d alphashift:%08d\n", red_shift, blue_shift, green_shift, alpha_shift);
 
+#if 1
+    scale = VIDEO_2X;
+#else
     scale = a2_video_mode;
     if (a2_video_mode == VIDEO_FULLSCREEN) {
         scale = 1; // HACK FIXME FOR NOW ...
     }
+#endif
 
     /* Note that in a real Xlib application, x and y would default to 0
      * but would be settable from the command line or resource database.
@@ -855,12 +879,8 @@ static void xdriver_init(void *context) {
 #endif
 }
 
-static void xdriver_shutdown(bool emulatorShuttingDown) {
+static void xdriver_shutdown(void) {
     _destroy_image();
-}
-
-static void xdriver_reshape(int width, int height) {
-    // no-op
 }
 
 static void xdriver_render(void) {
@@ -870,15 +890,15 @@ static void xdriver_render(void) {
 static void _init_xvideo(void) {
     LOG("Initializing X11 renderer");
 
-    assert((video_backend == NULL) && "there can only be one!");
-
+    static video_backend_s xvideo_backend = { 0 };
+    static video_animation_s xdriver_animations = { 0 };
+    xvideo_backend.name      = &xdriver_name;
     xvideo_backend.init      = &xdriver_init;
     xvideo_backend.main_loop = &xdriver_main_loop;
-    xvideo_backend.reshape   = &xdriver_reshape;
     xvideo_backend.render    = &xdriver_render;
     xvideo_backend.shutdown  = &xdriver_shutdown;
-
-    video_backend = &xvideo_backend;
+    xvideo_backend.anim      = &xdriver_animations;
+    video_registerBackend(&xvideo_backend, VID_PRIO_GRAPHICS_X);
 }
 
 static __attribute__((constructor)) void __init_xvideo(void) {
