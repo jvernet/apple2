@@ -14,13 +14,14 @@ noinst_HEADERS = src/common.h src/cpu.h src/disk.h src/glue.h src/vm.h \
 	src/timing.h src/uthash.h src/video/video.h src/zlib-helpers.h \
 	\
 	src/x86/glue-prologue.h \
+	src/x86/glue-offsets.h src/x86/glue-offsets32.h src/x86/glue-offsets64.h \
 	src/meta/debug.h src/meta/log.h src/meta/trace.h \
 	\
 	src/audio/alhelpers.h src/audio/AY8910.h src/audio/mockingboard.h \
 	src/audio/peripherals.h src/audio/soundcore.h src/audio/speaker.h \
 	src/audio/SSI263Phonemes.h
 
-noinst_PROGRAMS = genfont genrom
+noinst_PROGRAMS = genfont genrom glue_offsets
 
 ###############################################################################
 # Apple //ix and supporting sources
@@ -37,7 +38,6 @@ VIDEO_SRC = \
 	src/video/glhudmodel.c \
 	src/video/glalert.c \
 	src/video/ncvideo.c \
-	src/video/video.c \
 	src/video/xvideo.c \
 	src/video_util/matrixUtil.c \
 	src/video_util/modelUtil.c \
@@ -66,7 +66,7 @@ apple2ix_SOURCES = \
 	src/meta/darwin-shim.c \
 	src/meta/debug.l \
 	src/meta/debugger.c \
-	src/meta/lintrace.c \
+	src/meta/systrace.c \
 	src/meta/log.c \
 	src/meta/memmngt.c \
 	src/meta/opcodes.c \
@@ -75,6 +75,8 @@ apple2ix_SOURCES = \
 	src/rom.c \
 	src/test/sha1.c \
 	src/timing.c \
+	src/video/video.c \
+	src/video/ntsc.c \
 	src/vm.c \
 	src/zlib-helpers.c
 
@@ -86,6 +88,8 @@ apple2ix_DEPENDENCIES = @ASM_O@ @VIDEO_O@ @AUDIO_O@
 genfont_SOURCES = src/genfont.c
 
 genrom_SOURCES = src/genrom.c
+
+glue_offsets_SOURCES = src/glue-offsets.c
 
 src/font.c: src/font.txt genfont
 	./genfont < $< > $@
@@ -130,7 +134,7 @@ EXTRA_testdisk_SOURCES = $(ASM_SRC_x86) $(VIDEO_SRC) $(AUDIO_SRC)
 #######################################
 
 testdisplay_SOURCES = src/test/testdisplay.c $(A2_TEST_SOURCES)
-testdisplay_CFLAGS = $(A2_TEST_CFLAGS) -DTEST_DISPLAY=1
+testdisplay_CFLAGS = $(A2_TEST_CFLAGS) -DTEST_DISPLAY=1 -DVIDEO_TRACING=1
 testdisplay_CCASFLAGS = $(testdisplay_CFLAGS)
 testdisplay_LDFLAGS = $(apple2ix_LDFLAGS)
 testdisplay_LDADD = @testdisplay_ASM_O@ @testdisplay_VIDEO_O@ @testdisplay_AUDIO_O@ @X_LIBS@
@@ -150,7 +154,7 @@ EXTRA_testprefs_SOURCES = $(ASM_SRC_x86) $(VIDEO_SRC) $(AUDIO_SRC)
 #######################################
 
 testtrace_SOURCES = src/test/testtrace.c $(A2_TEST_SOURCES)
-testtrace_CFLAGS = $(A2_TEST_CFLAGS) -DTEST_TRACE=1 -DCPU_TRACING=1 -DDISK_TRACING=1 -DVM_TRACING=1 -DSPEAKER_TRACING=1 -DMB_TRACING=1
+testtrace_CFLAGS = $(A2_TEST_CFLAGS) -DTEST_TRACE=1 -DCPU_TRACING=1 -DDISK_TRACING=1 -DVM_TRACING=1 -DSPEAKER_TRACING=1 -DMB_TRACING=1 -DVIDEO_TRACING=1
 testtrace_CCASFLAGS = $(testtrace_CFLAGS)
 testtrace_LDFLAGS = $(apple2ix_LDFLAGS)
 testtrace_LDADD = @testtrace_ASM_O@ @testtrace_VIDEO_O@ @testtrace_AUDIO_O@ @X_LIBS@

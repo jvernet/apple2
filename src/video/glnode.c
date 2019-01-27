@@ -41,7 +41,7 @@ void glnode_registerNode(glnode_render_order_t order, GLNode node) {
     pthread_mutex_lock(&mutex);
 
     glnode_array_node_s *arrayNode = MALLOC(sizeof(glnode_array_node_s));
-    assert(arrayNode);
+    assert((uintptr_t)arrayNode);
     arrayNode->next = NULL;
     arrayNode->last = NULL;
     arrayNode->order = order;
@@ -216,7 +216,7 @@ static void glnode_renderNodes(void) {
 
 #if INTERFACE_TOUCH
 static int64_t glnode_onTouchEvent(interface_touch_event_t action, int pointer_count, int pointer_idx, float *x_coords, float *y_coords) {
-    SCOPE_TRACE_TOUCH("glnode onTouchEvent");
+    SCOPE_TRACE_INTERFACE("glnode onTouchEvent");
     glnode_array_node_s *p = tail;
     int64_t flags = 0x0;
     while (p) {
@@ -251,6 +251,15 @@ static void _init_glnode_manager(void) {
     glnode_backend.render    = &glnode_renderNodes;
     glnode_backend.shutdown  = &glnode_shutdownNodes;
     glnode_backend.anim      = &glnode_animations;
+
+#if INTERFACE_CLASSIC
+    glnode_backend.plotChar  = &display_plotChar;
+    glnode_backend.plotLine  = &display_plotLine;
+#endif
+
+    glnode_backend.flashText = &display_flashText;
+    glnode_backend.flushScanline = &display_flushScanline;
+    glnode_backend.frameComplete = &display_frameComplete;
 
 #if INTERFACE_TOUCH
     interface_onTouchEvent = &glnode_onTouchEvent;

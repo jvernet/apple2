@@ -85,8 +85,6 @@ static void gltouchmenu_applyPrefs(void);
 static inline void _present_menu(GLModel *parent) {
     GLModelHUDElement *hudMenu = (GLModelHUDElement *)parent->custom;
     memcpy(hudMenu->tpl, topMenuTemplate, sizeof(topMenuTemplate));
-
-    hudMenu->colorScheme = RED_ON_BLACK;
     glhud_setupDefault(parent);
 }
 
@@ -125,7 +123,7 @@ static inline void _hide_top_left(void) {
 static inline void _show_top_right(void) {
     topMenuTemplate[0][MENU_TEMPLATE_COLS-2] = MOUSETEXT_LEFT;
     topMenuTemplate[0][MENU_TEMPLATE_COLS-1] = ICONTEXT_MENU_SPROUT;
-    topMenuTemplate[1][MENU_TEMPLATE_COLS-2] = ICONTEXT_NONACTIONABLE;
+    topMenuTemplate[1][MENU_TEMPLATE_COLS-2] = MOUSETEXT_CURSOR1;
     topMenuTemplate[1][MENU_TEMPLATE_COLS-1] = MOUSETEXT_CHECKMARK;
     menu.topRightShowing = true;
     _present_menu(menu.model);
@@ -303,6 +301,14 @@ static int64_t _tap_menu_item(float x, float y) {
             prefs_save();
             break;
 
+        case MOUSETEXT_CURSOR0:
+        case MOUSETEXT_CURSOR1:
+            LOG("showing system keyboard...");
+            flags |= TOUCH_FLAGS_REQUEST_SYSTEM_KBD;
+            _hide_top_right();
+            prefs_save();
+            break;
+
         case ICONTEXT_MENU_TOUCHJOY:
             LOG("switching to joystick  ...");
             flags |= TOUCH_FLAGS_INPUT_DEVICE_CHANGE;
@@ -384,7 +390,7 @@ static void *_create_touchmenu_hud(GLModel *parent) {
 
     const unsigned int size = sizeof(topMenuTemplate);
     hudMenu->tpl = CALLOC(size, 1);
-    hudMenu->pixels = CALLOC(MENU_FB_WIDTH * MENU_FB_HEIGHT, 1);
+    hudMenu->pixels = CALLOC(MENU_FB_WIDTH * MENU_FB_HEIGHT * PIXEL_STRIDE, 1);
 
     _present_menu(parent);
 
@@ -610,6 +616,8 @@ static void gltouchmenu_applyPrefs(void) {
     long width            = prefs_parseLongValue (PREF_DOMAIN_INTERFACE, PREF_DEVICE_WIDTH,      &lVal, 10) ? lVal : (long)(SCANWIDTH*1.5);
     long height           = prefs_parseLongValue (PREF_DOMAIN_INTERFACE, PREF_DEVICE_HEIGHT,     &lVal, 10) ? lVal : (long)(SCANHEIGHT*1.5);
     bool isLandscape      = prefs_parseBoolValue (PREF_DOMAIN_INTERFACE, PREF_DEVICE_LANDSCAPE,  &bVal)     ? bVal : true;
+
+    glhud_currentColorScheme = prefs_parseLongValue(PREF_DOMAIN_INTERFACE, PREF_SOFTHUD_COLOR, &lVal, 10) ? (interface_colorscheme_t)lVal : RED_ON_BLACK;
 
     gltouchmenu_reshape(width, height, isLandscape);
 }

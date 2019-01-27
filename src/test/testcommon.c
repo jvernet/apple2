@@ -31,17 +31,10 @@ void test_type_input_deterministically(const char *input) {
 }
 
 void test_breakpoint(void *arg) {
-    fprintf(GREATEST_STDOUT, "DISPLAY NOTE: busy-spinning in test_breakpoint(), needs gdb/lldb intervention to continue...\n");
-    volatile bool debug_continue = false;
-    while (!debug_continue) {
-        struct timespec ts = { .tv_sec=0, .tv_nsec=33333333 };
-        nanosleep(&ts, NULL);
-    }
+    fprintf(GREATEST_STDOUT, "OOPS set a breakpoint in test_breakpoint() to diagnose test failure...\n");
 }
 
 void test_common_init(void) {
-    GREATEST_SET_BREAKPOINT_CB(test_breakpoint, NULL);
-
 #if __ANDROID__
     // tags help us wade through log soup
 #else
@@ -53,12 +46,14 @@ void test_common_init(void) {
 
     char *envvar = NULL;
     ASPRINTF(&envvar, "APPLE2IX_JSON=%s/.apple2.test.json", HOMEDIR);
-    assert(envvar);
+    assert((uintptr_t)envvar);
     putenv(envvar);
     LEAK(envvar);
 
     prefs_load();
-    prefs_setLongValue(PREF_DOMAIN_VIDEO, PREF_COLOR_MODE, COLOR);
+    prefs_setLongValue(PREF_DOMAIN_VIDEO, PREF_COLOR_MODE, COLOR_MODE_MONO);
+    prefs_setLongValue(PREF_DOMAIN_VIDEO, PREF_MONO_MODE, MONO_MODE_BW);
+    prefs_setBoolValue(PREF_DOMAIN_VIDEO, PREF_SHOW_HALF_SCANLINES, false);
     prefs_setBoolValue(PREF_DOMAIN_KEYBOARD, PREF_KEYBOARD_CAPS, true);
     prefs_setFloatValue(PREF_DOMAIN_VM, PREF_CPU_SCALE, (CPU_SCALE_FASTEST * 100.));
     prefs_setFloatValue(PREF_DOMAIN_VM, PREF_CPU_SCALE_ALT, (CPU_SCALE_FASTEST * 100.));
@@ -66,8 +61,7 @@ void test_common_init(void) {
 
     c_debugger_set_watchpoint(WATCHPOINT_ADDR);
 
-    fprintf(stderr, "NOTE : RUNNING WITH DISPLAY\n");
-    fprintf(stderr, "Will spinloop on failed tests for debugger intervention\n");
+    fprintf(stderr, "Break in test_breakpoint() to catch and diagnose test failures...\n");
     c_debugger_set_timeout(0);
 }
 
@@ -185,7 +179,7 @@ char **_copy_paths_main(const char *fileName) {
     };
 
     char **paths = CALLOC(1, sizeof(fmts));
-    assert(paths);
+    assert((uintptr_t)paths);
 
     do {
         const char *fmt = NULL;

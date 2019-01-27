@@ -78,14 +78,23 @@ void log_outputString(const char * const str);
 #   undef assert
 #   define assert(e) \
     do { \
-        if ((e)) { \
-            /* ... */ \
+        if (LIKELY((e))) { \
+            /* ... ALL GOOD ... */ \
         } else { \
-            LOG( "!!! ASSERT !!! : " #e ); \
-            sleep(1); \
+            /*LOG( "!!! ASSERT !!! : " #e); */ \
+            /*sleep(1); */ \
             __assert2(_MYFILE_, __LINE__, __func__, #e); \
         } \
     } while (0)
+#endif
+
+#if defined(NDEBUG)
+#   if defined(__ANDROID__)
+// HACK NOTE : keep assertions in Android release code to get better introspection into potential crashes
+#   else
+#       undef assert
+#       define assert(e)
+#   endif
 #endif
 
 #define LOG(...) \

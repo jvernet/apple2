@@ -26,7 +26,7 @@ static void testdisk_setup(void *arg) {
     apple_ii_64k[0][MIXSWITCH_ADDR] = 0x00;
     apple_ii_64k[0][WATCHPOINT_ADDR] = 0x00;
     apple_ii_64k[0][TESTOUT_ADDR] = 0x00;
-    joy_button0 = 0xff; // OpenApple
+    run_args.joy_button0 = 0xff; // OpenApple
     test_setup_boot_disk(TESTING_DISK, 1);
     if (test_do_reboot) {
         cpu65_interrupt(ResetSig);
@@ -40,14 +40,13 @@ static void testdisk_teardown(void *arg) {
 // Disk TESTS ...
 
 #if CONFORMANT_TRACKS
-#define EXPECTED_DISK_TRACE_FILE_SIZE 141348
-#define EXPECTED_DISK_TRACE_SHA "8E2415BB7F0A113BFE048FFE0C076AD4B377D22E"
+#   define EXPECTED_DISK_TRACE_FILE_SIZE 141348
+#   define EXPECTED_DISK_TRACE_SHA "8E2415BB7F0A113BFE048FFE0C076AD4B377D22E"
 #else
-#define EXPECTED_DISK_TRACE_FILE_SIZE 134290
-#define EXPECTED_DISK_TRACE_SHA "FA47CC59F0CC7E5B1E938FD54A3BD8DB6C930593"
+#   define EXPECTED_DISK_TRACE_FILE_SIZE 134290
+#   define EXPECTED_DISK_TRACE_SHA "FA47CC59F0CC7E5B1E938FD54A3BD8DB6C930593"
 #endif
 TEST test_boot_disk_bytes() {
-    srandom(0);
 
     const char *homedir = HOMEDIR;
     char *disk = NULL;
@@ -95,7 +94,6 @@ TEST test_boot_disk_bytes() {
 #define EXPECTED_DISK_TRACE_NIB_SHA "CE61D709A344778AB8A8DACED5A38D0D40F1E645"
 TEST test_boot_disk_bytes_nib() {
     test_setup_boot_disk(BLANK_NIB, 0);
-    srandom(0);
 
     const char *homedir = HOMEDIR;
     char *disk = NULL;
@@ -140,15 +138,14 @@ TEST test_boot_disk_bytes_nib() {
 }
 
 #if CONFORMANT_TRACKS
-#define EXPECTED_DISK_TRACE_PO_FILE_SIZE 141348
-#define EXPECTED_DISK_TRACE_PO_SHA "41C382A0A508F9A7935532ECFB7A1B6D53956A8D"
+#   define EXPECTED_DISK_TRACE_PO_FILE_SIZE 141348
+#   define EXPECTED_DISK_TRACE_PO_SHA "41C382A0A508F9A7935532ECFB7A1B6D53956A8D"
 #else
-#define EXPECTED_DISK_TRACE_PO_FILE_SIZE 134290
-#define EXPECTED_DISK_TRACE_PO_SHA "E85D7B357B02942772F46332953E59CAB67D85CD"
+#   define EXPECTED_DISK_TRACE_PO_FILE_SIZE 134290
+#   define EXPECTED_DISK_TRACE_PO_SHA "E85D7B357B02942772F46332953E59CAB67D85CD"
 #endif
 TEST test_boot_disk_bytes_po() {
     test_setup_boot_disk(BLANK_PO, 0);
-    srandom(0);
 
     const char *homedir = HOMEDIR;
     char *disk = NULL;
@@ -243,7 +240,7 @@ TEST test_read_null_bytes() {
     PASS();
 }
 
-#define SAVE_SHA1 "B721C61BD10E28F9B833C5F661AA60C73B2D9F74"
+#define SAVE_SHA1 "8B3F85062A7AFE4189918B6BD75AC73EB8CBB87C"
 TEST test_savehello_dsk() {
 
     test_setup_boot_disk(BLANK_DSK, 0);
@@ -259,12 +256,12 @@ TEST test_savehello_dsk() {
     c_debugger_go();
 
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    ASSERT_SHA(SAVE_SHA1);
+    WAIT_FOR_FB_SHA(SAVE_SHA1);
 
     REBOOT_TO_DOS();
     c_debugger_go();
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    ASSERT_SHA(BOOT_SCREEN);
+    WAIT_FOR_FB_SHA(BOOT_SCREEN);
 
     disk6_eject(0);
 
@@ -285,12 +282,12 @@ TEST test_savehello_nib() {
     c_debugger_go();
 
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    ASSERT_SHA(SAVE_SHA1);
+    WAIT_FOR_FB_SHA(SAVE_SHA1);
 
     REBOOT_TO_DOS();
     c_debugger_go();
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    ASSERT_SHA(BOOT_SCREEN);
+    WAIT_FOR_FB_SHA(BOOT_SCREEN);
 
     disk6_eject(0);
 
@@ -311,12 +308,12 @@ TEST test_savehello_po() {
     c_debugger_go();
 
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    ASSERT_SHA(SAVE_SHA1);
+    WAIT_FOR_FB_SHA(SAVE_SHA1);
 
     REBOOT_TO_DOS();
     c_debugger_go();
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    ASSERT_SHA(BOOT_SCREEN);
+    WAIT_FOR_FB_SHA(BOOT_SCREEN);
 
     disk6_eject(0);
 
@@ -338,7 +335,6 @@ TEST test_disk_bytes_savehello_dsk() {
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] != TEST_FINISHED);
     ASSERT(apple_ii_64k[0][TESTOUT_ADDR]    == 0x00);
 
-    srandom(0);
     const char *homedir = HOMEDIR;
     char *disk = NULL;
     ASPRINTF(&disk, "%s/a2_write_disk_test_dsk.txt", homedir);
@@ -354,7 +350,7 @@ TEST test_disk_bytes_savehello_dsk() {
     c_debugger_go();
 
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    ASSERT_SHA(SAVE_SHA1);
+    WAIT_FOR_FB_SHA(SAVE_SHA1);
 
     disk6_traceEnd();
 
@@ -387,7 +383,7 @@ TEST test_disk_bytes_savehello_dsk() {
     REBOOT_TO_DOS();
     c_debugger_go();
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    ASSERT_SHA(BOOT_SCREEN);
+    WAIT_FOR_FB_SHA(BOOT_SCREEN);
 
     disk6_eject(0);
 
@@ -432,7 +428,6 @@ TEST test_disk_bytes_savehello_nib() {
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] != TEST_FINISHED);
     ASSERT(apple_ii_64k[0][TESTOUT_ADDR]    == 0x00);
 
-    srandom(0);
     const char *homedir = HOMEDIR;
     char *disk = NULL;
     ASPRINTF(&disk, "%s/a2_write_disk_test_nib.txt", homedir);
@@ -448,7 +443,7 @@ TEST test_disk_bytes_savehello_nib() {
     c_debugger_go();
 
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    ASSERT_SHA(SAVE_SHA1);
+    WAIT_FOR_FB_SHA(SAVE_SHA1);
 
     disk6_traceEnd();
 
@@ -481,7 +476,7 @@ TEST test_disk_bytes_savehello_nib() {
     REBOOT_TO_DOS();
     c_debugger_go();
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    ASSERT_SHA(BOOT_SCREEN);
+    WAIT_FOR_FB_SHA(BOOT_SCREEN);
 
     disk6_eject(0);
 
@@ -526,7 +521,6 @@ TEST test_disk_bytes_savehello_po() {
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] != TEST_FINISHED);
     ASSERT(apple_ii_64k[0][TESTOUT_ADDR]    == 0x00);
 
-    srandom(0);
     const char *homedir = HOMEDIR;
     char *disk = NULL;
     ASPRINTF(&disk, "%s/a2_write_disk_test_po.txt", homedir);
@@ -542,7 +536,7 @@ TEST test_disk_bytes_savehello_po() {
     c_debugger_go();
 
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    ASSERT_SHA(SAVE_SHA1);
+    WAIT_FOR_FB_SHA(SAVE_SHA1);
 
     disk6_traceEnd();
 
@@ -575,7 +569,7 @@ TEST test_disk_bytes_savehello_po() {
     REBOOT_TO_DOS();
     c_debugger_go();
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    ASSERT_SHA(BOOT_SCREEN);
+    WAIT_FOR_FB_SHA(BOOT_SCREEN);
 
     disk6_eject(0);
 
@@ -623,7 +617,7 @@ TEST test_disk_bytes_savehello_po() {
         test_type_input("BSAVEJUNK7,A$2000,L$4000\r"); \
     } while (0)
 
-#define NOSPACE_SHA1 "2EA4D4B9F1C6797E476CD0FE59970CC243263B16"
+#define NOSPACE_SHA1 "9BF24D538E972A54FD4C14F411B43DE8986369D6"
 #define EXPECTED_OOS_DSK_SHA "D5C5A3FFB43F3C55E1C9E4ABD8580322415E9CE0"
 #if CONFORMANT_TRACKS
 #   define EXPECTED_OOS_DSK_TRACE_FILE_SIZE 4386397
@@ -639,7 +633,6 @@ TEST test_outofspace_dsk() {
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] != TEST_FINISHED);
     ASSERT(apple_ii_64k[0][TESTOUT_ADDR]    == 0x00);
 
-    srandom(0);
     const char *homedir = HOMEDIR;
     char *disk = NULL;
     ASPRINTF(&disk, "%s/a2_oos_dsk_test.txt", homedir);
@@ -655,7 +648,7 @@ TEST test_outofspace_dsk() {
     c_debugger_go();
 
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    ASSERT_SHA(NOSPACE_SHA1);
+    WAIT_FOR_FB_SHA(NOSPACE_SHA1);
 
     disk6_traceEnd();
 
@@ -688,7 +681,7 @@ TEST test_outofspace_dsk() {
     REBOOT_TO_DOS();
     c_debugger_go();
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    ASSERT_SHA(BOOT_SCREEN);
+    WAIT_FOR_FB_SHA(BOOT_SCREEN);
 
     disk6_eject(0);
 
@@ -738,12 +731,12 @@ TEST test_outofspace_nib() {
     c_debugger_go();
 
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    ASSERT_SHA(NOSPACE_SHA1);
+    WAIT_FOR_FB_SHA(NOSPACE_SHA1);
 
     REBOOT_TO_DOS();
     c_debugger_go();
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    ASSERT_SHA(BOOT_SCREEN);
+    WAIT_FOR_FB_SHA(BOOT_SCREEN);
 
     disk6_eject(0);
 
@@ -793,12 +786,12 @@ TEST test_outofspace_po() {
     c_debugger_go();
 
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    ASSERT_SHA(NOSPACE_SHA1);
+    WAIT_FOR_FB_SHA(NOSPACE_SHA1);
 
     REBOOT_TO_DOS();
     c_debugger_go();
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    ASSERT_SHA(BOOT_SCREEN);
+    WAIT_FOR_FB_SHA(BOOT_SCREEN);
 
     disk6_eject(0);
 
@@ -850,7 +843,6 @@ TEST test_bload_trace_dsk() {
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] != TEST_FINISHED);
     ASSERT(apple_ii_64k[0][TESTOUT_ADDR]    == 0x00);
 
-    srandom(0);
     const char *homedir = HOMEDIR;
     char *disk = NULL;
     ASPRINTF(&disk, "%s/a2_bload_trace_test_dsk.txt", homedir);
@@ -968,7 +960,6 @@ TEST test_bload_trace_nib() {
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] != TEST_FINISHED);
     ASSERT(apple_ii_64k[0][TESTOUT_ADDR]    == 0x00);
 
-    srandom(0);
     const char *homedir = HOMEDIR;
     char *disk = NULL;
     ASPRINTF(&disk, "%s/a2_bload_trace_test_nib.txt", homedir);
@@ -1086,7 +1077,6 @@ TEST test_bload_trace_po() {
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] != TEST_FINISHED);
     ASSERT(apple_ii_64k[0][TESTOUT_ADDR]    == 0x00);
 
-    srandom(0);
     const char *homedir = HOMEDIR;
     char *disk = NULL;
     ASPRINTF(&disk, "%s/a2_bload_trace_test_po.txt", homedir);
@@ -1194,7 +1184,7 @@ TEST test_bload_trace_po() {
     PASS();
 }
 
-#define INIT_SHA1 "10F15B516E4CF2FC5B1712951A6F9C3D90BF595C"
+#define INIT_SHA1 "552CB25B7B19FF08545548301C3F218965D5D38E"
 TEST test_inithello_dsk() {
 
     test_setup_boot_disk(BLANK_DSK, 0);
@@ -1209,12 +1199,12 @@ TEST test_inithello_dsk() {
     c_debugger_go();
 
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    ASSERT_SHA(INIT_SHA1);
+    WAIT_FOR_FB_SHA(INIT_SHA1);
 
     REBOOT_TO_DOS();
     c_debugger_go();
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    ASSERT_SHA(BOOT_SCREEN);
+    WAIT_FOR_FB_SHA(BOOT_SCREEN);
 
     disk6_eject(0);
 
@@ -1234,12 +1224,12 @@ TEST test_inithello_nib() {
     c_debugger_go();
 
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    ASSERT_SHA(INIT_SHA1);
+    WAIT_FOR_FB_SHA(INIT_SHA1);
 
     REBOOT_TO_DOS();
     c_debugger_go();
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    ASSERT_SHA(BOOT_SCREEN);
+    WAIT_FOR_FB_SHA(BOOT_SCREEN);
 
     disk6_eject(0);
 
@@ -1259,12 +1249,12 @@ TEST test_inithello_po() {
     c_debugger_go();
 
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    ASSERT_SHA(INIT_SHA1);
+    WAIT_FOR_FB_SHA(INIT_SHA1);
 
     REBOOT_TO_DOS();
     c_debugger_go();
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    ASSERT_SHA(BOOT_SCREEN);
+    WAIT_FOR_FB_SHA(BOOT_SCREEN);
 
     disk6_eject(0);
 
@@ -1377,8 +1367,8 @@ TEST test_data_stability_po() {
 }
 
 #define GZBAD_NIB "testgzheader.nib"
-#define GZBAD_NIB_LOAD_SHA1 "98EB8D2EF486E5BF888789A6FF9D4E3DEC7902B7"
-#define GZBAD_NIB_LOAD_SHA2 "764F580287564B5464BF98BC2026E110F06C9EA4"
+#define GZBAD_NIB_LOAD_SHA1 "E25F3524F852EFD043E2A036DA36779F1F68A8A2"
+#define GZBAD_NIB_LOAD_SHA2 "A82BBF38F79FBFA072C1061661E316CA8AF3B950"
 static int _test_disk_image_with_gzip_header(int readonly) {
 
     test_setup_boot_disk(GZBAD_NIB, readonly);
@@ -1396,10 +1386,7 @@ static int _test_disk_image_with_gzip_header(int readonly) {
     do {
         uint8_t md[SHA_DIGEST_LENGTH];
 
-        uint8_t fb = MALLOC(SCANWIDTH*SCANHEIGHT);
-        display_renderStagingFramebuffer(fb);
-        SHA1(fb, SCANWIDTH*SCANHEIGHT, md);
-        FREE(fb);
+        SHA1((uint8_t *)display_waitForNextCompleteFramebuffer(), SCANWIDTH*SCANHEIGHT*PIXEL_STRIDE, md);
 
         sha1_to_str(md, mdstr);
         bool matches_sha1 = (strcasecmp(mdstr, GZBAD_NIB_LOAD_SHA1) == 0);
@@ -1483,7 +1470,7 @@ TEST test_disk_invalid_gzipped_rw() {
 
 #if TEST_DISK_EDGE_CASES
 #define DROL_DSK "Drol.dsk.gz"
-#define DROL_CRACK_SCREEN_SHA "FD7332529E117F14DA3880BB36FE8E23C3704799"
+#define DROL_CRACK_SCREEN_SHA "ADC037D745304F17202D6F6BD6696AA443E8F8DC"
 TEST test_reinsert_edgecase() {
     test_setup_boot_disk(DROL_DSK, 0);
 
@@ -1492,7 +1479,7 @@ TEST test_reinsert_edgecase() {
     // First verify we hit the crackscreen
     c_debugger_set_timeout(10);
     c_debugger_go();
-    ASSERT_SHA(DROL_CRACK_SCREEN_SHA);
+    WAIT_FOR_FB_SHA(DROL_CRACK_SCREEN_SHA);
 
     // re-insert
     disk6_eject(0);
@@ -1504,12 +1491,10 @@ TEST test_reinsert_edgecase() {
     c_debugger_go();
     uint8_t md[SHA_DIGEST_LENGTH];
 
-    uint8_t fb = MALLOC(SCANWIDTH*SCANHEIGHT);
-    display_renderStagingFramebuffer(fb);
-    SHA1(fb, SCANWIDTH*SCANHEIGHT, md);
-    FREE(fb);
+    SHA1((uint8_t *)display_waitForNextCompleteFramebuffer(), SCANWIDTH*SCANHEIGHT*PIXEL_STRIDE, md);
 
     sha1_to_str(md, mdstr);
+    ASSERT(strcmp(mdstr, DROL_CRACK_SCREEN_SHA) != 0);
     ASSERT(strcmp(mdstr, BLANK_SCREEN) != 0);
 
     c_debugger_set_timeout(0);

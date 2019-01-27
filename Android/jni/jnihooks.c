@@ -294,11 +294,11 @@ void Java_org_deadc0de_apple2ix_Apple2Activity_nativeReboot(JNIEnv *env, jclass 
     if (resetState) {
         // joystick button settings should be balanced by c_joystick_reset() triggered on CPU thread
         if (resetState == 1) {
-            joy_button0 = 0xff;
-            joy_button1 = 0x0;
+            run_args.joy_button0 = 0xff;
+            run_args.joy_button1 = 0x0;
         } else {
-            joy_button0 = 0x0;
-            joy_button1 = 0xff;
+            run_args.joy_button0 = 0x0;
+            run_args.joy_button1 = 0xff;
         }
     }
     cpu65_interrupt(ResetSig);
@@ -337,7 +337,7 @@ void Java_org_deadc0de_apple2ix_Apple2View_nativeOnJoystickMove(JNIEnv *env, jcl
 jlong Java_org_deadc0de_apple2ix_Apple2View_nativeOnTouch(JNIEnv *env, jclass cls, jint action, jint pointerCount, jint pointerIndex, jfloatArray xCoords, jfloatArray yCoords) {
     //LOG(": %d/%d/%d :", action, pointerCount, pointerIndex);
 
-    SCOPE_TRACE_TOUCH("nativeOnTouch");
+    SCOPE_TRACE_INTERFACE("nativeOnTouch");
 
     if (UNLIKELY(appState != APP_RUNNING)) {
         return 0x0LL;
@@ -604,9 +604,11 @@ void Java_org_deadc0de_apple2ix_Apple2Preferences_nativePrefsSync(JNIEnv *env, j
         domain = (*env)->GetStringUTFChars(env, jDomain, 0);
     }
 
+#if !TEST_PREFS
     LOG("... domain: %s", domain);
     prefs_load();
     prefs_sync(domain);
+#endif
 
     if (jDomain) {
         (*env)->ReleaseStringUTFChars(env, jDomain, domain);

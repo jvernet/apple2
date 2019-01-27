@@ -41,6 +41,7 @@ CrashHandler_s *crashHandler = NULL;
 static void _init_common(void) {
     data_dir = STRDUP(CONFIG_DATADIR PATH_SEPARATOR PACKAGE_NAME);
     log_init();
+    srandom((unsigned int)time(NULL));
     LOG("Initializing common...");
 }
 
@@ -218,7 +219,7 @@ bool emulator_loadState(int fd, int fdA, int fdB) {
     assert(cpu_isPaused() && "should be paused to load state");
 #endif
 
-    video_setDirty(A2_DIRTY_FLAG);
+    //video_setDirty(A2_DIRTY_FLAG); -- A2_DIRTY_FLAG is now reserved exclusively for CPU thread (VM) operations
 
     do {
         int version = _load_magick(fd);
@@ -370,7 +371,7 @@ void emulator_registerStartupCallback(long order, startup_callback_f ctor) {
     pthread_mutex_lock(&mutex);
 
     module_ctor_node_s *node = MALLOC(sizeof(module_ctor_node_s));
-    assert(node);
+    assert((uintptr_t)node);
     node->next = NULL;
     node->order = order;
     node->ctor = ctor;

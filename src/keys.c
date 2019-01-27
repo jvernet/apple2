@@ -141,6 +141,11 @@ static int scode_map[MAP_SIZE] =
   /*x*/45, /*y*/21, /*z*/44, /*{*/26, /*|*/43, /*}*/27, /*~*/41, SCODE_DEL };   /* 120-127 */
 
 uint8_t keys_apple2ASCII(uint8_t c, OUTPARM font_mode_t *mode) {
+    font_mode_t ignored_mode;
+    if (mode == NULL) {
+        mode = &ignored_mode;
+    }
+
     if (c < 0x20) {
         *mode = FONT_MODE_INVERSE;
         return c + 0x40;                // Apple //e (0x00-0x1F) -> ASCII (0x40-0x5F)
@@ -148,7 +153,7 @@ uint8_t keys_apple2ASCII(uint8_t c, OUTPARM font_mode_t *mode) {
         *mode = FONT_MODE_INVERSE;
         return c;                       // Apple //e (0x20-0x3F) -> ASCII (0x20-0x3F)
     } else if (c < 0x60) {
-        if (/*altchar on:*/(softswitches & SS_ALTCHAR)) {
+        if (/*altchar on:*/(run_args.softswitches & SS_ALTCHAR)) {
             *mode = FONT_MODE_MOUSETEXT;
             return c+0x40;
         } else {
@@ -156,7 +161,7 @@ uint8_t keys_apple2ASCII(uint8_t c, OUTPARM font_mode_t *mode) {
             return c;                   // Apple //e (0x40-0x5F) -> ASCII (0x40-0x5F)
         }
     } else if (c < 0x80) {
-        if (/*altchar on:*/(softswitches & SS_ALTCHAR)) {
+        if (/*altchar on:*/(run_args.softswitches & SS_ALTCHAR)) {
             *mode = FONT_MODE_INVERSE;
             return c;                   // Apple //e (0x60-0x7F) -> ASCII (0x60-0x7F)
         } else {
@@ -238,10 +243,10 @@ void c_keys_handle_input(int scancode, int pressed, int is_cooked)
             switch (keymap[ scancode ])
             {
             case JB0:
-                joy_button0 = 0xff; /* open apple */
+                run_args.joy_button0 = 0xff; /* open apple */
                 break;
             case JB1:
-                joy_button1 = 0xff; /* closed apple */
+                run_args.joy_button1 = 0xff; /* closed apple */
                 break;
             default:
                 next_key = keymap[scancode];
@@ -254,10 +259,10 @@ void c_keys_handle_input(int scancode, int pressed, int is_cooked)
             switch (keymap[ scancode ])
             {
             case JB0:
-                joy_button0 = 0x00;
+                run_args.joy_button0 = 0x00;
                 break;
             case JB1:
-                joy_button1 = 0x00;
+                run_args.joy_button1 = 0x00;
                 break;
             default:
                 break;

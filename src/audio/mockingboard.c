@@ -849,7 +849,8 @@ static void SSI263_Write(uint8_t nDevice, uint8_t nReg, uint8_t nValue)
 
 //-------------------------------------
 
-static uint8_t Votrax2SSI263[64] = 
+#if 0 // ENABLE_SSI263
+static uint8_t Votrax2SSI263[64] =
 {
 	0x02,	// 00: EH3 jackEt -> E1 bEnt
 	0x0A,	// 01: EH2 Enlist -> EH nEst
@@ -919,6 +920,7 @@ static uint8_t Votrax2SSI263[64] =
 	0x00,	// 3E: PA1 no sound -> PA
 	0x00,	// 3F: STOP no sound -> PA
 };
+#endif
 
 #if 0 // ENABLE_SSI263
 static void Votrax_Write(uint8_t nDevice, uint8_t nValue)
@@ -954,6 +956,7 @@ static void MB_Update()
     {
         return;
     }
+    SCOPE_TRACE_AUDIO("MB_Update ...");
 #   if MB_TRACING
     if (mb_trace_fp) {
         fprintf(mb_trace_fp, "%s", "\tMB_Update()\n");
@@ -1036,7 +1039,7 @@ static void MB_Update()
 	unsigned long dwDSLockedBufferSize0 = 0;
 	int16_t *pDSLockedBuffer0 = NULL;
 	unsigned long dwCurrentPlayCursor;
-	int hr = MockingboardVoice->GetCurrentPosition(MockingboardVoice, &dwCurrentPlayCursor);
+	int hr = (int)MockingboardVoice->GetCurrentPosition(MockingboardVoice, &dwCurrentPlayCursor);
 #else
 	DWORD dwDSLockedBufferSize0, dwDSLockedBufferSize1;
 	SHORT *pDSLockedBuffer0, *pDSLockedBuffer1;
@@ -1241,6 +1244,7 @@ static void MB_Update()
             {
                 unsigned long modTwo = (dwDSLockedBufferSize0 % 2);
                 assert(modTwo == 0);
+                (void)modTwo;
             }
             memcpy(pDSLockedBuffer0, &g_nMixBuffer[bufIdx/sizeof(short)], dwDSLockedBufferSize0);
             MockingboardVoice->Unlock(MockingboardVoice, dwDSLockedBufferSize0);
@@ -1282,6 +1286,7 @@ static DWORD WINAPI SSI263Thread(LPVOID lpParameter)
 #else
 static void* SSI263Thread(void *lpParameter)
 {
+    TRACE_AUDIO_MARK("SSI263Thread ...");
         const unsigned long nsecWait = NANOSECONDS_PER_SECOND / audio_getCurrentBackend()->systemSettings.sampleRateHz;
         const struct timespec wait = { .tv_sec=0, .tv_nsec=nsecWait };
 
@@ -1503,13 +1508,15 @@ static bool MB_DSInit()
 	// Create single Mockingboard voice
 	//
 
+#if 0 // !APPLE2IX
 	unsigned long dwDSLockedBufferSize = 0;    // Size of the locked DirectSound buffer
 	int16_t* pDSLockedBuffer;
+#endif
 
 	if(!audio_isAvailable)
 		return false;
 
-	int hr = audio_createSoundBuffer(&MockingboardVoice);
+	int hr = (int)audio_createSoundBuffer(&MockingboardVoice);
 	LOG("MB_DSInit: DSGetSoundBuffer(), hr=0x%08X\n", (unsigned int)hr);
 	if(FAILED(hr))
 	{
@@ -1843,7 +1850,7 @@ static void MB_DSUninit()
 void MB_Initialize()
 {
 #if 1 // APPLE2IX
-    assert(pthread_self() == cpu_thread_id);
+    ASSERT_ON_CPU_THREAD();
     memset(SSI263Voice, 0x0, sizeof(AudioBuffer_s *) * 64);
 #endif
 	LOG("MB_Initialize: g_bDisableDirectSound=%d, g_bDisableDirectSoundMockingboard=%d\n", g_bDisableDirectSound, g_bDisableDirectSoundMockingboard);
@@ -1896,11 +1903,11 @@ void MB_Initialize()
 #if 1 // APPLE2IX
 // HACK functions for "soft" destroying backend audio resource (but keeping current state)
 void MB_SoftDestroy(void) {
-    assert(pthread_self() == cpu_thread_id);
+    ASSERT_ON_CPU_THREAD();
     MB_DSUninit();
 }
 void MB_SoftInitialize(void) {
-    assert(pthread_self() == cpu_thread_id);
+    ASSERT_ON_CPU_THREAD();
     MB_DSInit();
 }
 #endif
@@ -1923,7 +1930,7 @@ void MB_Reinitialize()
 void MB_Destroy()
 {
 #if 1 // APPLE2IX
-    assert(pthread_self() == cpu_thread_id);
+    ASSERT_ON_CPU_THREAD();
 #endif
 	MB_DSUninit();
 
@@ -2192,7 +2199,12 @@ static BYTE __stdcall MB_Write(WORD PC, WORD nAddr, BYTE bWrite, BYTE nValue, UL
 //-----------------------------------------------------------------------------
 
 #if 1 // APPLE2IX
-GLUE_C_READ(PhasorIO)
+uint8_t c_PhasorIOR (uint16_t);
+GLUE_C_WRITE(PhasorIOW)
+{
+    c_PhasorIOR(ea);
+}
+GLUE_C_READ(PhasorIOR)
 #else
 static BYTE __stdcall PhasorIO(WORD PC, WORD nAddr, BYTE bWrite, BYTE nValue, ULONG nCyclesLeft)
 #endif
@@ -2231,15 +2243,16 @@ void mb_io_initialize(unsigned int slot4, unsigned int slot5)
 }
 
 //typedef uint8_t (*iofunction)(uint16_t nPC, uint16_t nAddr, uint8_t nWriteFlag, uint8_t nWriteValue, unsigned long nCyclesLeft);
-typedef void (*iofunction)(void);
-static void RegisterIoHandler(unsigned int uSlot, iofunction IOReadC0, iofunction IOWriteC0, iofunction IOReadCx, iofunction IOWriteCx, void *unused_lpSlotParameter, uint8_t* unused_pExpansionRom)
+typedef void (*iowfunction)(uint16_t, uint8_t);
+typedef uint8_t (*iorfunction)(uint16_t);
+static void RegisterIoHandler(unsigned int uSlot, iorfunction IOReadC0, iowfunction IOWriteC0, iorfunction IOReadCx, iowfunction IOWriteCx, void *unused_lpSlotParameter, uint8_t* unused_pExpansionRom)
 {
 
     // card softswitches
     unsigned int base_addr = 0xC080 + (uSlot<<4); // uSlot == 4 => 0xC0C0 , uSlot == 5 => 0xC0D0
     if (IOReadC0)
     {
-        assert(IOWriteC0);
+        assert((uintptr_t)IOWriteC0);
         for (unsigned int i = 0; i < 16; i++)
         {
             cpu65_vmem_r[base_addr+i] = IOReadC0;
@@ -2272,7 +2285,7 @@ void MB_InitializeIO(char *unused_pCxRomPeripheral, unsigned int uSlot4, unsigne
 	if (g_Slot4 == CT_MockingboardC)
 		RegisterIoHandler(uSlot4, IO_Null, IO_Null, MB_Read, MB_Write, NULL, NULL);
 	else	// Phasor
-		RegisterIoHandler(uSlot4, PhasorIO, PhasorIO, MB_Read, MB_Write, NULL, NULL);
+		RegisterIoHandler(uSlot4, PhasorIOR, PhasorIOW, MB_Read, MB_Write, NULL, NULL);
 
 	if (g_Slot5 == CT_MockingboardC)
 		RegisterIoHandler(uSlot5, IO_Null, IO_Null, MB_Read, MB_Write, NULL, NULL);
@@ -2357,7 +2370,9 @@ void MB_UpdateCycles(ULONG uExecutedCycles)
 	if(g_SoundcardType == CT_Empty)
 		return;
 
-	timing_checkpoint_cycles();
+    SCOPE_TRACE_AUDIO("MB_UpdateCycles");
+
+	timing_checkpointCycles();
 	unsigned long uCycles = cycles_count_total - g_uLastCumulativeCycles;
 	g_uLastCumulativeCycles = cycles_count_total;
 #if MB_TRACING
@@ -2374,6 +2389,9 @@ void MB_UpdateCycles(ULONG uExecutedCycles)
 	_ASSERT(uCycles < 0x10000);
 #endif
 	uint16_t nClocks = (uint16_t) uCycles;
+        if (nClocks == 0) {
+            return;
+        }
 
 	for(int i=0; i<NUM_SY6522; i++)
 	{

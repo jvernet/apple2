@@ -13,6 +13,9 @@
 
 #include <regex.h>
 
+// HACK NOTE : display.c "fbDone" buffer is the crtModel->texPixels to avoid a memcpy
+#define FB_PIXELS_PASS_THRU 1
+
 static int viewportX = 0;
 static int viewportY = 0;
 static int viewportWidth = SCANWIDTH*1.5;
@@ -155,6 +158,11 @@ static void glvideo_init(void) {
     // ----------------------------
     // Create Cathode Ray Tube (CRT) model ... which currently is just a simple texture quad model ...
 
+#if FB_PIXELS_PASS_THRU
+    if (crtModel) {
+        crtModel->texPixels = NULL;
+    }
+#endif
     mdlDestroyModel(&crtModel);
     glActiveTexture(TEXTURE_ACTIVE_FRAMEBUFFER);
 #warning HACK FIXME TODO ^^^^^^^ is glActiveTexture() call needed here?
@@ -169,6 +177,10 @@ static void glvideo_init(void) {
             .tex_h = SCANHEIGHT,
             .texcoordUsageHint = GL_DYNAMIC_DRAW, // but texture (Apple //e framebuffer) does
         }, (GLCustom){ 0 });
+#if FB_PIXELS_PASS_THRU
+    FREE(crtModel->texPixels);
+    crtModel->texPixels = display_getCurrentFramebuffer();
+#endif
 
     // ----------------------------
     // Load/setup shaders
@@ -242,7 +254,11 @@ static void glvideo_init(void) {
     // Check for errors to make sure all of our setup went ok
     GL_MAYBELOG("finished initialization");
 
+#if __APPLE__
+    if (1) {
+#else
     if (glCheckFramebufferStatus != NULL) {
+#endif
         GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
         if (status != GL_FRAMEBUFFER_COMPLETE) {
             ERRQUIT("framebuffer status: %04X", status);
@@ -255,6 +271,11 @@ static void glvideo_shutdown(void) {
 
     // Cleanup all OpenGL objects
 
+#if FB_PIXELS_PASS_THRU
+    if (crtModel) {
+        crtModel->texPixels = NULL;
+    }
+#endif
     mdlDestroyModel(&crtModel);
 
     // detach and delete the main shaders
@@ -311,43 +332,33 @@ static void glvideo_render(void) {
     glUniformMatrix4fv(uniformMVPIdx, 1, GL_FALSE, mvpIdentity);
 #endif
 
-    static uint8_t fb[SCANWIDTH*SCANHEIGHT*sizeof(uint8_t)];
-#if INTERFACE_CLASSIC
-    interface_setStagingFramebuffer(fb);
-#endif
-    unsigned long wasDirty = 0UL;
-    if (!cpu_isPaused()) {
-        // check if a2 video memory is dirty
-        wasDirty = video_clearDirty(A2_DIRTY_FLAG);
-        if (wasDirty) {
-            display_renderStagingFramebuffer(fb);
-        }
-    }
-
-    wasDirty = video_clearDirty(FB_DIRTY_FLAG);
-    char *pixels = (char *)crtModel->texPixels;
-    if (wasDirty) {
-        SCOPE_TRACE_VIDEO("pixel convert");
-        // Update texture from indexed-color Apple //e internal framebuffer
-        unsigned int count = SCANWIDTH * SCANHEIGHT;
-        for (unsigned int i=0, j=0; i<count; i++, j+=sizeof(PIXEL_TYPE)) {
-            uint8_t index = *(fb + i);
-            *( (PIXEL_TYPE*)(pixels + j) ) = (PIXEL_TYPE)(
-                                                      ((PIXEL_TYPE)(colormap[index].red)   << SHIFT_R) |
-                                                      ((PIXEL_TYPE)(colormap[index].green) << SHIFT_G) |
-                                                      ((PIXEL_TYPE)(colormap[index].blue)  << SHIFT_B) |
-                                                      ((PIXEL_TYPE)MAX_SATURATION          << SHIFT_A)
-                                                      );
-        }
-    }
-
     glActiveTexture(TEXTURE_ACTIVE_FRAMEBUFFER);
     glBindTexture(GL_TEXTURE_2D, crtModel->textureName);
     glUniform1i(texSamplerLoc, TEXTURE_ID_FRAMEBUFFER);
+
+    unsigned long wasDirty = (video_clearDirty(FB_DIRTY_FLAG) & FB_DIRTY_FLAG);
+    if (!wasDirty) {
+        // Framebuffer is not dirty, so stall here to wait for cpu thread to (potentially) complete the video frame ...
+        // This seems to improve "stuttering" of Dagen Brock's Flappy Bird
+        SCOPE_TRACE_VIDEO("sleep");
+
+        struct timespec deltat = {
+            .tv_sec = 0,
+            .tv_nsec = NANOSECONDS_PER_SECOND / 240,
+        };
+        nanosleep(&deltat, NULL); // approx 4.714ms
+
+        wasDirty = (video_clearDirty(FB_DIRTY_FLAG) & FB_DIRTY_FLAG);
+    }
+
     if (wasDirty) {
         SCOPE_TRACE_VIDEO("glvideo texImage2D");
         _HACKAROUND_GLTEXIMAGE2D_PRE(TEXTURE_ACTIVE_FRAMEBUFFER, crtModel->textureName);
-        glTexImage2D(GL_TEXTURE_2D, /*level*/0, TEX_FORMAT_INTERNAL, SCANWIDTH, SCANHEIGHT, /*border*/0, TEX_FORMAT, TEX_TYPE, (GLvoid *)&pixels[0]);
+#if !FB_PIXELS_PASS_THRU
+        void *fb = display_getCurrentFramebuffer();
+        memcpy(/*dest:*/crtModel->texPixels, /*src:*/fb, (SCANWIDTH*SCANHEIGHT*sizeof(PIXEL_TYPE)));
+#endif
+        glTexImage2D(GL_TEXTURE_2D, /*level*/0, TEX_FORMAT_INTERNAL, SCANWIDTH, SCANHEIGHT, /*border*/0, TEX_FORMAT, TEX_TYPE, crtModel->texPixels);
     }
 
     // Bind our vertex array object
@@ -445,7 +456,7 @@ static void glvideo_applyPrefs(void) {
     long height           = prefs_parseLongValue (PREF_DOMAIN_INTERFACE,   PREF_DEVICE_HEIGHT,     &lVal, 10) ? lVal : (long)(SCANHEIGHT*1.5);
     bool isLandscape      = prefs_parseBoolValue (PREF_DOMAIN_INTERFACE,   PREF_DEVICE_LANDSCAPE,  &bVal)     ? bVal : true;
 
-    glvideo_reshape(width, height, isLandscape);
+    glvideo_reshape((int)width, (int)height, isLandscape);
 }
 
 static void glvideo_prefsChanged(const char *domain) {

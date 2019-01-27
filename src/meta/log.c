@@ -25,7 +25,7 @@ bool do_logging = true;
 bool do_std_logging = true;
 
 static int logFd = -1;
-static int logSiz = 0;
+static off_t logSiz = 0;
 static const unsigned int logRotateSize = 1024 * 1024;
 static const unsigned int logRotateCount = 4;
 
@@ -55,8 +55,8 @@ static void _log_rotate(bool performRotation) {
 
             ASPRINTF(&logPath0, LOG_PATH_TEMPLATE, data_dir, PATH_SEPARATOR, (i-1));
             ASPRINTF(&logPath1, LOG_PATH_TEMPLATE, data_dir, PATH_SEPARATOR, i);
-            assert(logPath0);
-            assert(logPath1);
+            assert((uintptr_t)logPath0);
+            assert((uintptr_t)logPath1);
 
             int ret = -1;
             TEMP_FAILURE_RETRY(ret = rename(logPath0, logPath1));
@@ -68,13 +68,13 @@ static void _log_rotate(bool performRotation) {
 
     char *logPath = NULL;
     ASPRINTF(&logPath, LOG_PATH_TEMPLATE, data_dir, PATH_SEPARATOR, 0);
-    assert(logPath);
+    assert((uintptr_t)logPath);
 
     TEMP_FAILURE_RETRY(logFd = open(logPath, O_WRONLY|O_CREAT|xflag, S_IRUSR|S_IWUSR));
 
     logSiz = lseek(logFd, 0L, SEEK_END);
 
-    log_outputString("-------------------------------------------------------------------------------");
+    //log_outputString("-------------------------------------------------------------------------------"); -- do not write to logfile here unless lock is recursive
 
     FREE(logPath);
 }
@@ -117,8 +117,8 @@ void log_outputString(const char * const str) {
 
     pthread_mutex_lock(&log_mutex);
 
-    int expected_bytescount = strlen(str);
-    int bytescount = 0;
+    size_t expected_bytescount = strlen(str);
+    size_t bytescount = 0;
 
     do {
         ssize_t byteswritten = 0;

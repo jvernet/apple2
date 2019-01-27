@@ -20,12 +20,6 @@
 int64_t (*interface_onTouchEvent)(interface_touch_event_t action, int pointer_count, int pointer_idx, float *x_coords, float *y_coords) = NULL;
 #endif
 
-static uint8_t *stagingFB = NULL;
-
-static bool isShowing = false;
-
-static char disk_path[PATH_MAX] = { 0 };
-
 // 2015/04/12 : This was legacy code for rendering the menu interfaces on desktop Linux. Portions here are resurrected
 // to render HUD messages on desktop and mobile.  Nothing special or pretty here, but has "just worked" for 20+ years ;-)
 
@@ -124,7 +118,7 @@ static void _translate_screen_x_y(char *screen, const int xlen, const int ylen) 
     }
 }
 
-void interface_plotMessage(uint8_t *fb, const interface_colorscheme_t cs, char *message, const uint8_t message_cols, const uint8_t message_rows) {
+void interface_plotMessage(PIXEL_TYPE *fb, const interface_colorscheme_t cs, char *message, const uint8_t message_cols, const uint8_t message_rows) {
     _translate_screen_x_y(message, message_cols, message_rows);
     display_plotMessage(fb, cs, message, message_cols, message_rows);
 }
@@ -134,19 +128,19 @@ void interface_plotMessage(uint8_t *fb, const interface_colorscheme_t cs, char *
 
 #if INTERFACE_CLASSIC
 
-void interface_setStagingFramebuffer(uint8_t *fb) {
-    stagingFB = fb;
-}
+static bool isShowing = false;
 
-static void _interface_plotMessageCentered(uint8_t *fb, int fb_cols, int fb_rows, interface_colorscheme_t cs, char *message, const int message_cols, const int message_rows) {
+static char disk_path[PATH_MAX] = { 0 };
+
+static void _interface_plotMessageCentered(int fb_cols, int fb_rows, interface_colorscheme_t cs, char *message, const int message_cols, const int message_rows) {
     _translate_screen_x_y(message, message_cols, message_rows);
     int col = (fb_cols - message_cols) >> 1;
     int row = (fb_rows - message_rows) >> 1;
-    int fb_pix_width = (fb_cols*FONT80_WIDTH_PIXELS)+INTERPOLATED_PIXEL_ADJUSTMENT;
+    int fb_pix_width = (fb_cols*FONT80_WIDTH_PIXELS)+_FB_WIDTH_EXTRA;
     assert(fb_pix_width == SCANWIDTH);
     int row_max = row + message_rows;
     for (int idx=0; row<row_max; row++, idx+=message_cols+1) {
-        display_plotLine(fb, col, row, cs, &message[idx]);
+        video_getCurrentBackend()->plotLine(col, row, cs, &message[idx]);
     }
 }
 
@@ -183,8 +177,7 @@ static void pad_string(char *s, const char c, const int len) {
 }
 
 void c_interface_print( int x, int y, const interface_colorscheme_t cs, const char *s ) {
-    display_plotLine(stagingFB, /*col:*/x, /*row:*/y, cs, s);
-    video_setDirty(FB_DIRTY_FLAG);
+    video_getCurrentBackend()->plotLine(/*col:*/x, /*row:*/y, cs, s);
 }
 
 /* -------------------------------------------------------------------------
@@ -205,8 +198,7 @@ void c_interface_translate_screen( char screen[24][INTERFACE_SCREEN_X+1] ) {
 }
 
 void c_interface_print_submenu_centered( char *submenu, const int message_cols, const int message_rows ) {
-    _interface_plotMessageCentered(stagingFB, INTERFACE_SCREEN_X, TEXT_ROWS, RED_ON_BLACK, submenu, message_cols, message_rows);
-    video_setDirty(FB_DIRTY_FLAG);
+    _interface_plotMessageCentered(INTERFACE_SCREEN_X, TEXT_ROWS, RED_ON_BLACK, submenu, message_cols, message_rows);
 }
 
 /* ------------------------------------------------------------------------- */
@@ -290,7 +282,7 @@ void c_interface_exit(int ch)
     }
     else
     {
-        video_setDirty(A2_DIRTY_FLAG);
+        video_setDirty(FB_DIRTY_FLAG);
     }
 }
 
@@ -533,8 +525,8 @@ void c_interface_select_diskette( int drive )
                   "|                                      |",
                   "||||||||||||||||||||||||||||||||||||||||" };
 
-                submenu[ 2 ][ 14 ] = MOUSETEXT_UP;
-                submenu[ 2 ][ 20 ] = MOUSETEXT_DOWN;
+                submenu[ 2 ][ 14 ] = (char)MOUSETEXT_UP;
+                submenu[ 2 ][ 20 ] = (char)MOUSETEXT_DOWN;
                 c_interface_print_submenu_centered(submenu[0], DISKHELP_SUBMENU_W, DISKHELP_SUBMENU_H);
                 while ((ch = c_mygetch(1)) == -1)
                 {
@@ -758,8 +750,8 @@ void c_interface_parameters()
     /* reset the x position, so we don't lose our cursor if path changes */
     cur_x = 0;
 
-    screen[ 2 ][ 33 ] = MOUSETEXT_OPENAPPLE;
-    screen[ 2 ][ 46 ] = MOUSETEXT_CLOSEDAPPLE;
+    screen[ 2 ][ 33 ] = (char)MOUSETEXT_OPENAPPLE;
+    screen[ 2 ][ 46 ] = (char)MOUSETEXT_CLOSEDAPPLE;
 
     c_interface_translate_screen( screen );
     c_interface_print_screen( screen );
@@ -808,8 +800,8 @@ void c_interface_parameters()
                 break;
 
             case OPT_COLOR:
-                sprintf(temp, "%s", (color_mode == COLOR) ? "Color       " :
-                        (color_mode == COLOR_INTERP) ? "Interpolated" : "Black/White ");
+                sprintf(temp, "%s", (color_mode == COLOR_MODE_COLOR) ? "Color       " :
+                        (color_mode == COLOR_MODE_INTERP) ? "Interpolated" : "Black/White ");
                 break;
 
             case OPT_JOYSTICK:
@@ -867,26 +859,26 @@ void c_interface_parameters()
                     {
                         if (temp[ j ] == '\0')
                         {
-                            display_plotChar(stagingFB, /*col:*/INTERFACE_PATH_MIN + j, /*row:*/5+i, GREEN_ON_BLACK, ' ' );
+                            video_getCurrentBackend()->plotChar(/*col:*/INTERFACE_PATH_MIN + j, /*row:*/5+i, GREEN_ON_BLACK, ' ' );
                             j++;
                             break;
                         }
                         else
                         {
-                            display_plotChar(stagingFB, /*col:*/INTERFACE_PATH_MIN + j, /*row:*/5+i, /*cs:*/GREEN_ON_BLACK, temp[j]);
+                            video_getCurrentBackend()->plotChar(/*col:*/INTERFACE_PATH_MIN + j, /*row:*/5+i, /*cs:*/GREEN_ON_BLACK, temp[j]);
                         }
                     }
                     else
                     {
                         if (temp[ j ] == '\0')
                         {
-                            display_plotChar(stagingFB, /*col:*/INTERFACE_PATH_MIN + j, /*row:*/5+i, (option == OPT_PATH ? GREEN_ON_BLUE : GREEN_ON_BLACK), ' ' );
+                            video_getCurrentBackend()->plotChar(/*col:*/INTERFACE_PATH_MIN + j, /*row:*/5+i, (option == OPT_PATH ? GREEN_ON_BLUE : GREEN_ON_BLACK), ' ' );
                             j++;
                             break;
                         }
                         else
                         {
-                            display_plotChar(stagingFB, /*col:*/INTERFACE_PATH_MIN + j, /*row:*/5+i, (option == OPT_PATH ? GREEN_ON_BLUE : GREEN_ON_BLACK), temp[j]);
+                            video_getCurrentBackend()->plotChar(/*col:*/INTERFACE_PATH_MIN + j, /*row:*/5+i, (option == OPT_PATH ? GREEN_ON_BLUE : GREEN_ON_BLACK), temp[j]);
                         }
 
                     }
@@ -894,7 +886,7 @@ void c_interface_parameters()
 
                 for (; j < INTERFACE_PATH_MAX; j++)
                 {
-                    display_plotChar(stagingFB, /*col:*/INTERFACE_PATH_MIN + j, /*row:*/5+i, GREEN_ON_BLACK, ' ');
+                    video_getCurrentBackend()->plotChar(/*col:*/INTERFACE_PATH_MIN + j, /*row:*/5+i, GREEN_ON_BLACK, ' ');
                 }
             }
         }
@@ -1091,7 +1083,6 @@ void c_interface_parameters()
         else if ((ch == kESC) || c_keys_is_interface_key(ch))
         {
             timing_initialize();
-            display_reset();
             vm_reinitializeAudio();
             c_joystick_reset();
 #if !TESTING
@@ -1124,10 +1115,10 @@ void c_interface_parameters()
               "| Ctrl-LeftAlt-End Reboots //e         |",
               "| Pause/Brk : Pause Emulator           |",
               "||||||||||||||||||||||||||||||||||||||||" };
-            submenu[ 1 ][ 14 ] = MOUSETEXT_UP;
-            submenu[ 1 ][ 20 ] = MOUSETEXT_DOWN;
-            submenu[ 3 ][ 14 ] = MOUSETEXT_LEFT;
-            submenu[ 3 ][ 20 ] = MOUSETEXT_RIGHT;
+            submenu[ 1 ][ 14 ] = (char)MOUSETEXT_UP;
+            submenu[ 1 ][ 20 ] = (char)MOUSETEXT_DOWN;
+            submenu[ 3 ][ 14 ] = (char)MOUSETEXT_LEFT;
+            submenu[ 3 ][ 20 ] = (char)MOUSETEXT_RIGHT;
 
             c_interface_print_submenu_centered(submenu[0], MAINHELP_SUBMENU_W, MAINHELP_SUBMENU_H);
             while ((ch = c_mygetch(1)) == -1)
@@ -1305,11 +1296,11 @@ void c_interface_credits()
 #define SCROLL_AREA_Y 5
 #define SCROLL_AREA_HEIGHT 16
 
-    screen[ 2 ][ 33 ] = MOUSETEXT_OPENAPPLE;
-    screen[ 2 ][ 46 ] = MOUSETEXT_CLOSEDAPPLE;
+    screen[ 2 ][ 33 ] = (char)MOUSETEXT_OPENAPPLE;
+    screen[ 2 ][ 46 ] = (char)MOUSETEXT_CLOSEDAPPLE;
 
-    screen[ 22 ][ 18 ] = MOUSETEXT_UP;
-    screen[ 22 ][ 20 ] = MOUSETEXT_DOWN;
+    screen[ 22 ][ 18 ] = (char)MOUSETEXT_UP;
+    screen[ 22 ][ 20 ] = (char)MOUSETEXT_DOWN;
 
 #define SCROLL_LENGTH 58
 #define SCROLL_WIDTH (INTERFACE_SCREEN_X+1-(SCROLL_AREA_X*2))
@@ -1392,8 +1383,8 @@ void c_interface_credits()
         if (!count)
         {
             mt_idx = (mt_idx+1) % 2;
-            credits[ 3 ][ 20 ] = MOUSETEXT_BEGIN + mt_idx;
-            credits[ 3 ][ 55 ] = MOUSETEXT_BEGIN + ((mt_idx+1) % 2);
+            credits[ 3 ][ 20 ] = (char)(MOUSETEXT_BEGIN + mt_idx);
+            credits[ 3 ][ 55 ] = (char)(MOUSETEXT_BEGIN + ((mt_idx+1) % 2));
         }
 
         for (int i=0, p=pos; i<SCROLL_AREA_HEIGHT; i++)
@@ -1463,15 +1454,15 @@ void c_interface_keyboard_layout()
       "|                           (Press any key to exit)                            |",
       "||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||" };
 
-    screen[ 6 ][ 68 ] = MOUSETEXT_UP;
-    screen[ 7 ][ 67 ] = MOUSETEXT_LEFT;
-    screen[ 7 ][ 69 ] = MOUSETEXT_RIGHT;
-    screen[ 8 ][ 68 ] = MOUSETEXT_DOWN;
+    screen[ 6 ][ 68 ] = (char)MOUSETEXT_UP;
+    screen[ 7 ][ 67 ] = (char)MOUSETEXT_LEFT;
+    screen[ 7 ][ 69 ] = (char)MOUSETEXT_RIGHT;
+    screen[ 8 ][ 68 ] = (char)MOUSETEXT_DOWN;
 
-    screen[ 8 ][ 25 ] = MOUSETEXT_OPENAPPLE;
-    screen[ 8 ][ 47 ] = MOUSETEXT_CLOSEDAPPLE;
-    screen[ 11 ][ 14 ] = MOUSETEXT_OPENAPPLE;
-    screen[ 12 ][ 15 ] = MOUSETEXT_CLOSEDAPPLE;
+    screen[ 8 ][ 25 ] = (char)MOUSETEXT_OPENAPPLE;
+    screen[ 8 ][ 47 ] = (char)MOUSETEXT_CLOSEDAPPLE;
+    screen[ 11 ][ 14 ] = (char)MOUSETEXT_OPENAPPLE;
+    screen[ 12 ][ 15 ] = (char)MOUSETEXT_CLOSEDAPPLE;
 
     c_interface_translate_screen(screen);
     c_interface_print_screen( screen );
@@ -1497,6 +1488,7 @@ typedef struct interface_key_s {
 
 static void *interface_thread(void *data)
 {
+    SCOPE_TRACE_INTERFACE("interface_thread ...");
     interface_thread_id = pthread_self();
 
     cpu_pause();
@@ -1538,7 +1530,7 @@ static void *interface_thread(void *data)
 
     case kF7:
         isShowing = true;
-        c_interface_debugging(stagingFB);
+        c_interface_debugging();
         break;
 
     case kF8:

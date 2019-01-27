@@ -441,6 +441,9 @@ static void _nc_initColors(void) {
     init_pair(1+GREEN_ON_BLACK,     COLOR_GREEN, COLOR_BLACK    );
     init_pair(1+GREEN_ON_BLUE,      COLOR_GREEN, COLOR_BLUE     );
     init_pair(1+RED_ON_BLACK,       COLOR_RED,   COLOR_BLACK    );
+    init_pair(1+BLUE_ON_BLACK,      COLOR_BLUE,  COLOR_BLACK    );
+    init_pair(1+WHITE_ON_BLACK,     COLOR_WHITE, COLOR_BLACK    );
+
     init_pair(1+BLACK_ON_RED,       COLOR_BLACK, COLOR_RED      );
 
     // 16 COLORS:
@@ -718,7 +721,7 @@ static void _nc_modeChange(pixel_delta_t pixel) {
     }
 
     WINDOW *winPrev = winCurr;
-    uint32_t currswitches = softswitches;
+    uint32_t currswitches = run_args.softswitches;
     if ((currswitches & SS_TEXT) && !(currswitches & SS_MIXED)) {
         winCurr = (currswitches & SS_80COL) ? winTxt80 : winTxt40;
     } else {

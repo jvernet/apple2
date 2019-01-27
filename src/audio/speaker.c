@@ -31,6 +31,9 @@
 
 #define SPKR_SILENT_STEP 1
 
+// TODO FIXME : still need to investigate better way to fix audio glitches when fast-loading (auto-adjusting speed) ...
+#define HACKISHLY_REDUCE_AUDIO_GLITCHES_FOR_FAST_LOADING 1
+
 static unsigned long bufferTotalSize = 0;
 static unsigned long bufferSizeIdealMin = 0;
 static unsigned long bufferSizeIdealMax = 0;
@@ -40,7 +43,7 @@ static bool speaker_isAvailable = false;
 
 static int16_t *samples_buffer = NULL; // holds max 1 second of samples
 static int16_t *remainder_buffer = NULL; // holds enough to create one sample (averaged)
-static unsigned int samples_buffer_idx = 0;
+static unsigned long samples_buffer_idx = 0;
 static unsigned int remainder_buffer_size = 0;
 static unsigned long remainder_buffer_size_max = 0;
 static unsigned int remainder_buffer_idx = 0;
@@ -203,9 +206,13 @@ static void _speaker_update(/*bool toggled*/) {
             if (NUM_CHANNELS == 2) {
                 samples_buffer[samples_buffer_idx++] = speaker_data;
             }
-#if !defined(ANDROID)
+#if HACKISHLY_REDUCE_AUDIO_GLITCHES_FOR_FAST_LOADING
             if (speaker_going_silent && speaker_data) {
-                speaker_data -= SPKR_SILENT_STEP;
+                if (speaker_data < 0) {
+                    speaker_data += SPKR_SILENT_STEP;
+                } else {
+                    speaker_data -= SPKR_SILENT_STEP;
+                }
             }
 #endif
             --num_samples;
@@ -257,7 +264,7 @@ static void _submit_samples_buffer_fullspeed(void) {
         return;
     }
 
-    unsigned int num_samples_pad = (bufferSizeIdealMax - bytes_queued) / sizeof(int16_t);
+    unsigned long num_samples_pad = (bufferSizeIdealMax - bytes_queued) / sizeof(int16_t);
     if (num_samples_pad == 0) {
         return;
     }
@@ -282,7 +289,7 @@ static void _submit_samples_buffer_fullspeed(void) {
 // Submits samples from the samples_buffer to the audio system backend when running at a normal scaled-speed.  This also
 // generates cycles feedback to the main CPU timing routine depending on the needs of the streaming audio (more or less
 // data).
-static unsigned int _submit_samples_buffer(const unsigned long num_channel_samples) {
+static unsigned long _submit_samples_buffer(const unsigned long num_channel_samples) {
 
     assert(num_channel_samples);
 
@@ -319,7 +326,7 @@ static unsigned int _submit_samples_buffer(const unsigned long num_channel_sampl
     // copy samples to audio system backend
     //
 
-    const unsigned int bytes_free = bufferTotalSize - bytes_queued;
+    const unsigned long bytes_free = bufferTotalSize - bytes_queued;
     unsigned long requested_samples = num_channel_samples;
     unsigned long requested_buffer_size = num_channel_samples * sizeof(int16_t);
 
@@ -369,7 +376,7 @@ static unsigned int _submit_samples_buffer(const unsigned long num_channel_sampl
 // speaker public API functions
 
 void speaker_destroy(void) {
-    assert(pthread_self() == cpu_thread_id);
+    ASSERT_ON_CPU_THREAD();
     speaker_isAvailable = false;
     audio_destroySoundBuffer(&speakerBuffer);
     FREE(samples_buffer);
@@ -377,7 +384,7 @@ void speaker_destroy(void) {
 }
 
 void speaker_init(void) {
-    assert(pthread_self() == cpu_thread_id);
+    ASSERT_ON_CPU_THREAD();
 
     long err = 0;
     speaker_isAvailable = false;
@@ -443,7 +450,9 @@ void speaker_flush(void) {
         return;
     }
 
-    assert(pthread_self() == cpu_thread_id);
+    ASSERT_ON_CPU_THREAD();
+
+    timing_checkpointCycles();
 
     if (is_fullspeed) {
         cycles_quiet_time = cycles_count_total;
@@ -463,7 +472,7 @@ void speaker_flush(void) {
                 // After 0.2sec of //e cycles time set inactive flag (allows auto-switch to full speed for fast disk access)
                 speaker_recently_active = false;
             } else if ((speaker_data != 0) && (cycles_count_total - cycles_quiet_time > cycles_diff)) {
-#if defined(ANDROID)
+#if !HACKISHLY_REDUCE_AUDIO_GLITCHES_FOR_FAST_LOADING
                 // OpenSLES seems to be able to pause output without the nasty pops that I hear with OpenAL on Linux
                 // desktop.  So this speaker_going_silent hack is not needed.  There is also a noticeable glitch in
                 // OpenSLES when this codepath is enabled.
@@ -481,7 +490,7 @@ void speaker_flush(void) {
     }
     _speaker_update(/*toggled:false*/);
 
-    unsigned int samples_used = 0;
+    unsigned long samples_used = 0;
     if (is_fullspeed) {
         assert(!samples_buffer_idx && "should be all quiet samples");
         _submit_samples_buffer_fullspeed();
@@ -512,9 +521,9 @@ double speaker_cyclesPerSample(void) {
 
 GLUE_C_READ(speaker_toggle)
 {
-    assert(pthread_self() == cpu_thread_id);
+    ASSERT_ON_CPU_THREAD();
 
-    timing_checkpoint_cycles();
+    timing_checkpointCycles();
 
 #if SPEAKER_TRACING
     // output cycle count delta when toggled
@@ -533,11 +542,9 @@ GLUE_C_READ(speaker_toggle)
     speaker_accessed_since_last_flush = true;
     speaker_recently_active = true;
 
-#if !defined(MOBILE_DEVICE)
     if (timing_shouldAutoAdjustSpeed()) {
         is_fullspeed = false;
     }
-#endif
 
     if (speaker_isAvailable) {
         _speaker_update(/*toggled:true*/);
@@ -545,11 +552,7 @@ GLUE_C_READ(speaker_toggle)
 
     if (!is_fullspeed) {
         if (speaker_data == speaker_amplitude) {
-#ifdef ANDROID
             speaker_data = -speaker_amplitude;
-#else
-            speaker_data = 0;
-#endif
         } else {
             speaker_data = speaker_amplitude;
         }

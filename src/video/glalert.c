@@ -35,7 +35,6 @@ static void *_create_alert(GLModel *parent) {
     parent->custom = glhud_createDefault();
     GLModelHUDElement *hudElement = (GLModelHUDElement *)parent->custom;
     if (hudElement) {
-        hudElement->colorScheme = RED_ON_BLACK;
         hudElement->blackIsTransparent = false;
         hudElement->opaquePixelHalo = false;
     }
@@ -53,7 +52,7 @@ static inline void _set_alpha(unsigned int dstIdx) {
 }
 
 static void _alertToModel(char *message, unsigned int messageCols, unsigned int messageRows) {
-    assert(message);
+    assert((uintptr_t)message);
 
     isEnabled = false;
 
@@ -93,11 +92,8 @@ static void _alertToModel(char *message, unsigned int messageCols, unsigned int 
         hudElement->tpl = message;
         hudElement->pixWidth = fbWidth;
         hudElement->pixHeight = fbHeight;
-        hudElement->pixels = MALLOC(fbWidth * fbHeight);
-        if (!hudElement->pixels) {
-            LOG("OOPS cannot create animation message intermediate framebuffer!");
-            break;
-        }
+        hudElement->pixels = MALLOC(fbWidth * fbHeight * PIXEL_STRIDE);
+        assert((uintptr_t)(hudElement->pixels));
         glhud_setupDefault(messageModel);
 
         if (1) {
@@ -266,7 +262,7 @@ static void _animation_showPaused(void) {
     static char pausedTemplate[PAUSED_ANIMATION_ROWS][PAUSED_ANIMATION_COLS+1] = {
         " @ ",
     };
-    pausedTemplate[0][1] = MOUSETEXT_HOURGLASS;
+    pausedTemplate[0][1] = (char)MOUSETEXT_HOURGLASS;
     _animation_showMessage(pausedTemplate[0], PAUSED_ANIMATION_COLS, PAUSED_ANIMATION_ROWS);
 }
 
@@ -321,17 +317,17 @@ static void _animation_showDiskChosen(int drive) {
             "DD  ",
             " >1L",
         };
-        diskInsertedTemplate[2][3] = ICONTEXT_UNLOCK;
+        diskInsertedTemplate[2][3] = (char)ICONTEXT_UNLOCK;
         template = diskInsertedTemplate[0];
     }
 
     const unsigned int x = (shownCols+1);// stride
-    (template+x*0)[0] = ICONTEXT_DISK_UL;
-    (template+x*0)[1] = ICONTEXT_DISK_UR;
-    (template+x*1)[0] = ICONTEXT_DISK_LL;
-    (template+x*1)[1] = ICONTEXT_DISK_LR;
+    (template+x*0)[0] = (char)ICONTEXT_DISK_UL;
+    (template+x*0)[1] = (char)ICONTEXT_DISK_UR;
+    (template+x*1)[0] = (char)ICONTEXT_DISK_LL;
+    (template+x*1)[1] = (char)ICONTEXT_DISK_LR;
 
-    (template+x*2)[1] = ICONTEXT_GOTO;
+    (template+x*2)[1] = (char)ICONTEXT_GOTO;
     (template+x*2)[2] = (drive == 0) ? '1' : '2';
 
     _animation_showMessage(template, shownCols, DISK_ANIMATION_ROWS);
@@ -390,11 +386,15 @@ static void alert_applyPrefs(void) {
     long height           = prefs_parseLongValue (PREF_DOMAIN_INTERFACE, PREF_DEVICE_HEIGHT,     &lVal, 10) ? lVal : (long)(SCANHEIGHT*1.5);
     bool isLandscape      = prefs_parseBoolValue (PREF_DOMAIN_INTERFACE, PREF_DEVICE_LANDSCAPE,  &bVal)     ? bVal : true;
 
-    alert_reshape(width, height, isLandscape);
+    alert_reshape((int)width, (int)height, isLandscape);
 }
 
 static void alert_prefsChanged(const char *domain) {
     prefsChanged = true;
+
+    // HACK NOTE : on startup, ensure that we have the correct color scheme before drawing anything
+    long lVal = 0;
+    glhud_currentColorScheme = prefs_parseLongValue(PREF_DOMAIN_INTERFACE, PREF_SOFTHUD_COLOR, &lVal, 10) ? (interface_colorscheme_t)lVal : RED_ON_BLACK;
 }
 
 static void _init_glalert(void) {

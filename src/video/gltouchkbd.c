@@ -161,19 +161,36 @@ static void _rerender_character(int col, int row) {
     const unsigned int dstPointStride = pixelSize * glyphScale;
     const unsigned int dstRowStride = fb_w * dstPointStride;
     const unsigned int texSubRowStride = dstRowStride + (dstRowStride * (glyphScale-1));
-    const unsigned int indexedIdx = (row * fb_w * FONT_HEIGHT_PIXELS) + (col * FONT80_WIDTH_PIXELS);
     unsigned int texIdx = ((row * fb_w * FONT_HEIGHT_PIXELS * /*1 row:*/glyphScale) + (col * FONT80_WIDTH_PIXELS)) * dstPointStride;
 
     for (unsigned int i=0; i<FONT_HEIGHT_PIXELS; i++, texIdx+=texSubRowStride) {
         for (unsigned int j=0; j<FONT80_WIDTH_PIXELS; j++, texIdx+=dstPointStride) {
             // HACK : red <-> green swap of texture data
             PIXEL_TYPE rgba = *((PIXEL_TYPE *)(kbd.model->texPixels + texIdx));
-            PIXEL_TYPE r = (rgba >> SHIFT_R) & MAX_SATURATION;
-            PIXEL_TYPE g = (rgba >> SHIFT_G) & MAX_SATURATION;
+            uint8_t r = (rgba >> SHIFT_R) & MAX_SATURATION;
+            uint8_t g = (rgba >> SHIFT_G) & MAX_SATURATION;
+            uint8_t b = (rgba >> SHIFT_B) & MAX_SATURATION;
+            uint8_t a = (rgba >> SHIFT_A) & MAX_SATURATION;
+
 #if USE_RGBA4444
 #error fixme
 #else
-            rgba = ( ((rgba>>SHIFT_B)<<SHIFT_B) | (r << SHIFT_G) | (g << SHIFT_R) );
+            if ((glhud_currentColorScheme == RED_ON_BLACK) || (glhud_currentColorScheme == GREEN_ON_BLACK)) {
+                rgba = ( (r << SHIFT_G) | (g << SHIFT_R) | (b << SHIFT_B) | (a << SHIFT_A) );
+            } else if (glhud_currentColorScheme == BLUE_ON_BLACK) {
+                rgba = ( (r << SHIFT_R) | (g << SHIFT_B) | (b << SHIFT_G) | (a << SHIFT_A) );
+            } else /*if (glhud_currentColorScheme == WHITE_ON_BLACK)*/ {
+                if (a == MAX_SATURATION) {
+                    if (r) {
+                        r = 0x0;
+                        b = 0x0;
+                    } else {
+                        r = MAX_SATURATION;
+                        b = MAX_SATURATION;
+                    }
+                    rgba = ( (r << SHIFT_R) | (g << SHIFT_G) | (b << SHIFT_B) | (a << SHIFT_A) );
+                }
+            }
 #endif
             // scale texture data 1x, 2x, ...
             unsigned int dstIdx = texIdx;
@@ -251,7 +268,6 @@ static inline void _switch_keyboard(GLModel *parent, uint8_t *template) {
     memcpy(hudKeyboard->tpl, template, sizeof(kbdTemplateUCase/* assuming all the same size */));
 
     // setup normal color pixels
-    hudKeyboard->colorScheme = RED_ON_BLACK;
     glhud_setupDefault(parent);
 
     // find the CTRL visual(s) and render them engaged
@@ -300,8 +316,8 @@ static inline int64_t _tap_key_at_point(float x, float y) {
     _rerender_selected(kbd.selectedCol, kbd.selectedRow);
 
     if (!_is_point_on_keyboard(x, y)) {
-        joy_button0 = 0x0;
-        joy_button1 = 0x0;
+        run_args.joy_button0 = 0x0;
+        run_args.joy_button1 = 0x0;
         kbd.selectedCol = -1;
         kbd.selectedRow = -1;
         return false;
@@ -322,6 +338,7 @@ static inline int64_t _tap_key_at_point(float x, float y) {
     bool handled = true;
     bool isASCII = false;
     bool isCTRL = false;
+    int64_t flags = 0x0LL;
     switch (key) {
         case ICONTEXT_LOWERCASE:
             key = 0;
@@ -390,13 +407,19 @@ static inline int64_t _tap_key_at_point(float x, float y) {
             break;
 
         case MOUSETEXT_OPENAPPLE:
-            joy_button0 = joy_button0 ? 0x0 : 0x80;
+            run_args.joy_button0 = run_args.joy_button0 ? 0x0 : 0x80;
             scancode = SCODE_L_ALT;
             break;
 
         case MOUSETEXT_CLOSEDAPPLE:
-            joy_button1 = joy_button1 ? 0x0 : 0x80;
+            run_args.joy_button1 = run_args.joy_button1 ? 0x0 : 0x80;
             scancode = SCODE_R_ALT;
+            break;
+
+        case MOUSETEXT_CURSOR0:
+        case MOUSETEXT_CURSOR1:
+            key = 0;
+            flags |= TOUCH_FLAGS_REQUEST_SYSTEM_KBD;
             break;
 
         case ICONTEXT_MENU_SPROUT:
@@ -454,7 +477,9 @@ static inline int64_t _tap_key_at_point(float x, float y) {
     _rerender_selected(kbd.selectedCol, kbd.selectedRow);
 
     // return the key+scancode+handled
-    int64_t flags = (handled ? TOUCH_FLAGS_HANDLED : 0x0LL);
+    if (handled) {
+        flags |= TOUCH_FLAGS_HANDLED;
+    }
 
     key = key & 0xff;
     scancode = scancode & 0xff;
@@ -486,7 +511,7 @@ static void *_create_touchkbd_hud(GLModel *parent) {
 
     const unsigned int size = sizeof(kbdTemplateUCase/* assuming all the same dimensions */);
     hudKeyboard->tpl = MALLOC(size);
-    hudKeyboard->pixels = MALLOC(KBD_FB_WIDTH * KBD_FB_HEIGHT);
+    hudKeyboard->pixels = MALLOC(KBD_FB_WIDTH * KBD_FB_HEIGHT * PIXEL_STRIDE);
 
     uint8_t *template = NULL;
     long lVal = 0;
@@ -508,9 +533,6 @@ static void *_create_touchkbd_hud(GLModel *parent) {
     }
 
     memcpy(hudKeyboard->tpl, template, sizeof(kbdTemplateUCase/* assuming all the same dimensions */));
-
-    // setup normal color pixels
-    hudKeyboard->colorScheme = RED_ON_BLACK;
 
     glhud_setupDefault(parent);
 
@@ -535,7 +557,7 @@ static void gltouchkbd_shutdown(void) {
 }
 
 static void gltouchkbd_setup(void) {
-    LOG("gltouchkbd_setup ... %u", sizeof(kbd));
+    LOG("gltouchkbd_setup ... %lu", (unsigned long)sizeof(kbd));
 
     gltouchkbd_shutdown();
 
@@ -686,6 +708,7 @@ static int64_t gltouchkbd_onTouchEvent(interface_touch_event_t action, int point
                 if (trackingIndex == pointer_idx) {
                     int64_t handledAndData = _tap_key_at_point(x, y);
                     flags |= ((handledAndData & TOUCH_FLAGS_HANDLED) ? (TOUCH_FLAGS_HANDLED|TOUCH_FLAGS_KEY_TAP) : 0x0LL);
+                    flags |= (handledAndData & TOUCH_FLAGS_REQUEST_SYSTEM_KBD);
                     flags |= (handledAndData & TOUCH_FLAGS_ASCII_AND_SCANCODE_MASK);
                     trackingIndex = TRACKING_NONE;
                 }
@@ -713,14 +736,13 @@ static void _loadAltKbd(const char *kbdPath) {
 
     json_unescapeSlashes((char **)&kbdPath);
     int tokCount = json_createFromFile(kbdPath, &jsonRef);
-    JSON_s parsedData = { 0 };
 
     do {
         if (tokCount < 0) {
             break;
         }
 
-        parsedData = (JSON_s)(*jsonRef);
+        JSON_s parsedData = (JSON_s)(*jsonRef);
 
         // we are expecting a very specific layout ... abort if anything is not correct
         int idx=0;
@@ -906,8 +928,6 @@ static void gltouchkbd_applyPrefs(void) {
         kbd.selectedRow = -1;
 
         if (kbd.model) {
-            GLModelHUDElement *hudKeyboard = (GLModelHUDElement *)kbd.model->custom;
-            hudKeyboard->colorScheme = RED_ON_BLACK;
             glhud_setupDefault(kbd.model);
         }
 
@@ -925,6 +945,8 @@ static void gltouchkbd_applyPrefs(void) {
     long width            = prefs_parseLongValue (PREF_DOMAIN_INTERFACE, PREF_DEVICE_WIDTH,      &lVal, 10) ? lVal : (long)(SCANWIDTH*1.5);
     long height           = prefs_parseLongValue (PREF_DOMAIN_INTERFACE, PREF_DEVICE_HEIGHT,     &lVal, 10) ? lVal : (long)(SCANHEIGHT*1.5);
     bool isLandscape      = prefs_parseBoolValue (PREF_DOMAIN_INTERFACE, PREF_DEVICE_LANDSCAPE,  &bVal)     ? bVal : true;
+
+    glhud_currentColorScheme = prefs_parseLongValue(PREF_DOMAIN_INTERFACE, PREF_SOFTHUD_COLOR, &lVal, 10) ? (interface_colorscheme_t)lVal : RED_ON_BLACK;
 
     gltouchkbd_reshape(width, height, isLandscape);
 }
@@ -1026,6 +1048,9 @@ static void _initialize_keyboard_templates(void) {
 
     kbdTemplateUCase[MAINROW+3][0] = ICONTEXT_GOTO;
     kbdTemplateLCase[MAINROW+3][0] = ICONTEXT_GOTO;
+
+    kbdTemplateUCase[MAINROW+3][2] = MOUSETEXT_CURSOR1;
+    kbdTemplateLCase[MAINROW+3][2] = MOUSETEXT_CURSOR1;
 
     kbdTemplateUCase[MAINROW+3][3] = ICONTEXT_LEFTSPACE;
     kbdTemplateLCase[MAINROW+3][3] = ICONTEXT_LEFTSPACE;

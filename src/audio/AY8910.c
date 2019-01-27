@@ -173,7 +173,7 @@ void sound_ay_init( CAY8910 *_this )
 	_this->ay_env_internal_tick = _this->ay_env_tick = _this->ay_env_period = 0;
 	_this->ay_tone_subcycles = _this->ay_env_subcycles = 0;
 	for( f = 0; f < 3; f++ )
-		_this->ay_tone_tick[f] = _this->ay_tone_high[f] = 0, _this->ay_tone_period[f] = 1;
+        _this->ay_tone_tick[f] = _this->ay_tone_high[f] = 0; _this->ay_tone_period[f] = 1;
 
 	_this->ay_change_count = 0;
 }
@@ -237,7 +237,14 @@ static void sound_init( CAY8910 *_this, const char *device, unsigned long nSampl
 
 //  sound_generator_freq =
 //    settings_current.sound_hifi ? HIFI_FREQ : settings_current.sound_freq;
+#ifdef APPLE2IX
+  sound_generator_freq = (int)nSampleRate;
+  if (UNLIKELY(nSampleRate > INT_MAX)) {
+      assert(0);
+  }
+#else
   sound_generator_freq = nSampleRate;
+#endif
   sound_generator_framesiz = sound_generator_freq / (int)hz;
 
 #if 0
@@ -365,6 +372,7 @@ sound_unpause( void )
 #endif
 
 
+#if !defined(APPLE2IX)
 static void sound_end( CAY8910 *_this )
 {
 #if 0
@@ -399,6 +407,7 @@ static void sound_end( CAY8910 *_this )
     }
 #endif
 }
+#endif
 
 
 #if 0

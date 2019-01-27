@@ -130,7 +130,7 @@
     <string name="mockingboard_disabled_title">Mockingboard désactivé</string>
     <string name="mockingboard_disabled_mesg">Le Mockingboard ne peut être activé</string>
     <string name="mockingboard_enable">Activer le Mockingboard</string>
-    <string name="mockingboard_enable_summary">Révision C dans Slot 4/5 (redémarrage possible)</string>
+    <string name="mockingboard_enable_summary">Révision C dans Slot 4/5 (redémarrage possible) (may consume extra battery)</string>
     <string name="mockingboard_volume">Volume du Mockingboard</string>
     <string name="mockingboard_volume_summary">Placer le volume du Mockingboard</string>
     <string name="no">Non</string>
@@ -141,7 +141,7 @@
     <string name="preferences_reset_warning">Vous perdrez toutes vos options de configuration</string>
     <string name="quit">Quitter</string>
     <string name="quit_reboot">Rebooter ou quitter l\'émulateur…</string>
-    <string name="quit_reboot_choice">Rebooter ou quitter?</string>
+    <string name="quit_reboot_choice">Rebooter ou quitter?&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#13;&#10;…</string>
     <string name="reboot">Rebooter</string>
     <string name="restore">Restauration rapide</string>
     <string name="save">Sauvegarde rapide</string>
@@ -160,8 +160,8 @@
     <string name="touch_menu_enable_summary">Activation soft des bouton du menu dans les coins en haut de l\'écran</string>
     <string name="video_configure">Configuration de la vidéo…</string>
     <string name="video_configure_summary">Configuration des couleurs</string>
-    <string name="color_configure">Configure color</string>
-    <string name="color_configure_summary">Color mode</string>
+    <string name="color_configure">Video display mode</string>
+    <string name="color_configure_summary">Video display emulation mode</string>
     <string name="joystick_azimuth_visible">Show joystick/keypad heading</string>
     <string name="joystick_azimuth_visible_summary">Shows current axis direction and magnitude</string>
     <string name="mode_landscape">Landscape</string>
@@ -179,5 +179,27 @@
     <string name="reset_self_test">Self Test</string>
     <string name="reset_preferences">Reset settings</string>
     <string name="reset_soft">Soft</string>
+    <string name="touch_device_color">Configure touch device color</string>
+    <string name="touch_device_color_summary">Configure color of HUD elements</string>
+    <string name="state_not_restored">Error restoring state…</string>
+    <string name="storage">/storage/</string>
+    <string name="touch_device_color_configure">Configure HUD color…</string>
+    <string name="color_red_on_black">Red on black</string>
+    <string name="color_green_on_black">Green on black</string>
+    <string name="color_blue_on_black">Blue on black</string>
+    <string name="color_white_on_black">White on black</string>
+    <string name="color_monitor">Color Monitor</string>
+    <string name="color_tv_mono">Monochrome TV</string>
+    <string name="color_tv">Color TV</string>
+    <string name="show_half_scanlines">Show half scanlines</string>
+    <string name="mono_configure">Monocolor mode</string>
+    <string name="mono_configure_summary">Configure monochrome color</string>
+    <string name="color_green">Green screen</string>
+    <string name="color_mono">Monochrome</string>
+    <string name="disk_fast_operation">Disk fast loading (EXPERIMENTAL)</string>
+    <string name="disk_fast_operation_summary">Quickly load disk images (may negatively affect device battery life)</string>
+    <string name="show_half_scanlines_summary">Renders pixel vertical divisions</string>
+    <string name="release_notes">Release notes</string>
+    <string name="release_notes_summary">View notes for this release</string>
 
 </resources>

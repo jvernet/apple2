@@ -20,13 +20,11 @@
 extern void copy_and_pad_string(char *dest, const char* src, const char c, const int len, const char cap);
 #endif
 
-joystick_mode_t joy_mode = JOY_PCJOY;
+joystick_mode_t joy_mode = JOY_MODE_DEFAULT;
 
 /* parameters for generic and keyboard-simulated joysticks */
 uint16_t joy_x = HALF_JOY_RANGE;
 uint16_t joy_y = HALF_JOY_RANGE;
-uint8_t joy_button0 = 0;
-uint8_t joy_button1 = 0;
 bool joy_clip_to_radius = false;
 
 #ifdef KEYPAD_JOYSTICK
@@ -39,8 +37,15 @@ void (*joydriver_resetJoystick)(void) = NULL;
 static void joystick_prefsChanged(const char *domain) {
     assert(strcmp(domain, PREF_DOMAIN_JOYSTICK) == 0);
 
-#ifdef KEYPAD_JOYSTICK
     long lVal = 0;
+
+    if (prefs_parseLongValue(domain, PREF_JOYSTICK_MODE, &lVal, /*base:*/10)) {
+        joy_mode = getJoyMode(lVal);
+    }
+
+    prefs_parseBoolValue(domain, PREF_JOYSTICK_CLIP_TO_RADIUS, &joy_clip_to_radius);
+
+#ifdef KEYPAD_JOYSTICK
     prefs_parseLongValue(domain, PREF_JOYSTICK_KPAD_STEP, &lVal, /*base:*/10);
     joy_step = (short)lVal;
     if (joy_step < 1) {
@@ -114,8 +119,8 @@ static void c_calibrate_pc_joystick()
         x_last = x_plot;
         y_last = y_plot;
 
-        joymenu[CALIBRATE_JOYMENU_H-4][8]  = joy_button0 ? 'X' : ' ';
-        joymenu[CALIBRATE_JOYMENU_H-4][15] = joy_button1 ? 'X' : ' ';
+        joymenu[CALIBRATE_JOYMENU_H-4][8]  = run_args.joy_button0 ? 'X' : ' ';
+        joymenu[CALIBRATE_JOYMENU_H-4][15] = run_args.joy_button1 ? 'X' : ' ';
 
         snprintf(temp, TEMPSIZE, "%04x", (short)(joy_x));
         copy_and_pad_string(&joymenu[CALIBRATE_JOYMENU_H-4][24], temp, ' ', 5, ' ');
@@ -167,10 +172,10 @@ static void c_calibrate_keypad_joystick()
       "|  Alt btn1:@ Alt btn2:@     x:@@ y:@@ |",
       "||||||||||||||||||||||||||||||||||||||||" };
 
-    submenu[8][29]  = MOUSETEXT_BEGIN + 0x0b;
-    submenu[9][27]  = MOUSETEXT_BEGIN + 0x08;
-    submenu[9][31]  = MOUSETEXT_BEGIN + 0x15;
-    submenu[10][29] = MOUSETEXT_BEGIN + 0x0a;
+    submenu[8][29]  = (char)(MOUSETEXT_BEGIN + 0x0b);
+    submenu[9][27]  = (char)(MOUSETEXT_BEGIN + 0x08);
+    submenu[9][31]  = (char)(MOUSETEXT_BEGIN + 0x15);
+    submenu[10][29] = (char)(MOUSETEXT_BEGIN + 0x0a);
 
     joy_x = HALF_JOY_RANGE;
     joy_y = HALF_JOY_RANGE;
@@ -182,8 +187,8 @@ static void c_calibrate_keypad_joystick()
     char temp[TEMPSIZE];
     for (;;)
     {
-        submenu[KEYPAD_SUBMENU_H-2][12] = joy_button0 ? 'X' : ' ';
-        submenu[KEYPAD_SUBMENU_H-2][23] = joy_button1 ? 'X' : ' ';
+        submenu[KEYPAD_SUBMENU_H-2][12] = run_args.joy_button0 ? 'X' : ' ';
+        submenu[KEYPAD_SUBMENU_H-2][23] = run_args.joy_button1 ? 'X' : ' ';
 
         snprintf(temp, TEMPSIZE, "%02x", (uint8_t)joy_x);
         copy_and_pad_string(&submenu[KEYPAD_SUBMENU_H-2][31], temp, ' ', 3, ' ');
@@ -268,12 +273,13 @@ void c_calibrate_joystick()
 // race, but hopefully much less likely to trigger).
 static void *_joystick_resetDelayed(void *ctx) {
     (void)ctx;
+    SCOPE_TRACE_INTERFACE("_joystick_resetDelayed");
 
     // delay
     sleep(1);
 
-    joy_button0 = 0x0;
-    joy_button1 = 0x0;
+    run_args.joy_button0 = 0x0;
+    run_args.joy_button1 = 0x0;
 
     return NULL;
 }
@@ -286,8 +292,8 @@ void c_joystick_reset(void)
 
 #if TESTING
     // For "testdisk" determinism, these need to be reset immediately
-    joy_button0 = 0x0;
-    joy_button1 = 0x0;
+    run_args.joy_button0 = 0x0;
+    run_args.joy_button1 = 0x0;
 #else
     pthread_t pid;
     pthread_create(&pid, NULL, (void *)&_joystick_resetDelayed, (void *)NULL);
@@ -339,11 +345,11 @@ uint8_t joydriver_getAxisY(void) {
 
 // set button 0 pressed
 void joydriver_setButton0Pressed(bool pressed) {
-    joy_button0 = (pressed) ? 0x80 : 0x0;
+    run_args.joy_button0 = (pressed) ? 0x80 : 0x0;
 }
 
 // set button 1 pressed
 void joydriver_setButton1Pressed(bool pressed) {
-    joy_button1 = (pressed) ? 0x80 : 0x0;
+    run_args.joy_button1 = (pressed) ? 0x80 : 0x0;
 }
 

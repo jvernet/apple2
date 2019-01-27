@@ -336,44 +336,23 @@ static int keysym_to_scancode(void) {
 // copy Apple //e video memory into XImage uint32_t buffer
 static void post_image() {
 
-    static uint8_t fb[SCANWIDTH*SCANHEIGHT*sizeof(uint8_t)];
-#if INTERFACE_CLASSIC
-    interface_setStagingFramebuffer(fb);
-#endif
-    unsigned long wasDirty = 0UL;
-
-    // check if a2 video memory is dirty
-    wasDirty = video_clearDirty(A2_DIRTY_FLAG);
-    if (wasDirty) {
-        display_renderStagingFramebuffer(fb);
-    }
-
     // now check/clear if we should redraw
-    wasDirty = video_clearDirty(FB_DIRTY_FLAG);
+    unsigned long wasDirty = (video_clearDirty(FB_DIRTY_FLAG) & FB_DIRTY_FLAG);
     if (wasDirty) {
-        uint8_t index;
+        PIXEL_TYPE *fb = display_getCurrentFramebuffer();
 
-        unsigned int count = SCANWIDTH * SCANHEIGHT;
-        for (unsigned int i=0, j=0; i<count; i++, j+=4)
-        {
-            index = *(fb + i);
-            *( (uint32_t*)(image->data + j) ) = (uint32_t)(
-                    ((uint32_t)(colormap[index].red)   << red_shift)   |
-                    ((uint32_t)(colormap[index].green) << green_shift) |
-                    ((uint32_t)(colormap[index].blue)  << blue_shift)  |
-                    ((uint32_t)0xff /* alpha */ << alpha_shift)
-                    );
-            if (scale > 1)
+        if (scale <= 1) {
+            memcpy(/*dst:*/image->data, /*src:*/fb, SCANWIDTH*SCANHEIGHT*bitmap_pad);
+        } else {
+            unsigned int count = SCANWIDTH * SCANHEIGHT;
+            for (unsigned int i=0, j=0; i<count; i++, j+=4)
             {
+                PIXEL_TYPE pixel = *(fb + i);
+                *( (uint32_t*)(image->data + j) ) = pixel;
                 j+=4;
 
                 // duplicate pixel
-                *( (uint32_t*)(image->data + j) ) = (uint32_t)(
-                        ((uint32_t)(colormap[index].red)   << red_shift)   |
-                        ((uint32_t)(colormap[index].green) << green_shift) |
-                        ((uint32_t)(colormap[index].blue)  << blue_shift)  |
-                        ((uint32_t)0xff /* alpha */ << alpha_shift)
-                        );
+                *( (uint32_t*)(image->data + j) ) = pixel;
 
                 if (((i+1) % SCANWIDTH) == 0)
                 {
@@ -898,6 +877,18 @@ static void _init_xvideo(void) {
     xvideo_backend.render    = &xdriver_render;
     xvideo_backend.shutdown  = &xdriver_shutdown;
     xvideo_backend.anim      = &xdriver_animations;
+
+#if INTERFACE_CLASSIC
+    xvideo_backend.plotChar  = &display_plotChar;
+    xvideo_backend.plotLine  = &display_plotLine;
+#endif
+
+    xvideo_backend.flashText = &display_flashText;
+    xvideo_backend.flushScanline
+                             = &display_flushScanline;
+    xvideo_backend.frameComplete
+                             = &display_frameComplete;
+
     video_registerBackend(&xvideo_backend, VID_PRIO_GRAPHICS_X);
 }
 

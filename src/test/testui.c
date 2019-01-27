@@ -23,7 +23,7 @@ static void testui_setup(void *arg) {
     apple_ii_64k[0][MIXSWITCH_ADDR] = 0x00;
     apple_ii_64k[0][WATCHPOINT_ADDR] = 0x00;
     if (test_do_reboot) {
-        joy_button0 = 0xff; // OpenApple
+        run_args.joy_button0 = 0xff; // OpenApple
         cpu65_interrupt(ResetSig);
     }
 }
@@ -69,32 +69,32 @@ static int _assert_blank_boot(void) {
     ASSERT(disk6.disk[0].skew_table == skew_table_6_do);
 
     // VM ...
-    ASSERT(softswitches  == 0x000140d1);
+    ASSERT(run_args.softswitches  == 0x000100d1);
     ASSERT_SHA_BIN("97AADDDF5D20B793C4558A8928227F0B52565A98", apple_ii_64k[0], /*len:*/sizeof(apple_ii_64k));
     ASSERT_SHA_BIN("2C82E33E964936187CA1DABF71AE6148916BD131", language_card[0], /*len:*/sizeof(language_card));
     ASSERT_SHA_BIN("36F1699537024EC6017A22641FF0EC277AFFD49D", language_banks[0], /*len:*/sizeof(language_banks));
-    ASSERT(base_ramrd    == apple_ii_64k[0]);
-    ASSERT(base_ramwrt   == apple_ii_64k[0]);
-    ASSERT(base_textrd   == apple_ii_64k[0]);
-    ASSERT(base_textwrt  == apple_ii_64k[0]);
-    ASSERT(base_hgrrd    == apple_ii_64k[0]);
-    ASSERT(base_hgrwrt   == apple_ii_64k[0]);
-    ASSERT(base_stackzp  == apple_ii_64k[0]);
-    ASSERT(base_c3rom    == apple_ii_64k[1]);
-    ASSERT(base_cxrom    == (void *)&iie_read_peripheral_card);
-    ASSERT(base_d000_rd  == apple_ii_64k[0]);
-    ASSERT(base_d000_wrt == language_banks[0] - 0xD000);
-    ASSERT(base_e000_rd  == apple_ii_64k[0]);
-    ASSERT(base_e000_wrt == language_card[0] - 0xE000);
+    ASSERT(run_args.base_ramrd    == apple_ii_64k[0]);
+    ASSERT(run_args.base_ramwrt   == apple_ii_64k[0]);
+    ASSERT(run_args.base_textrd   == apple_ii_64k[0]);
+    ASSERT(run_args.base_textwrt  == apple_ii_64k[0]);
+    ASSERT(run_args.base_hgrrd    == apple_ii_64k[0]);
+    ASSERT(run_args.base_hgrwrt   == apple_ii_64k[0]);
+    ASSERT(run_args.base_stackzp  == apple_ii_64k[0]);
+    ASSERT(run_args.base_c3rom    == apple_ii_64k[1]);
+    ASSERT(run_args.base_cxrom    == (void *)&iie_read_peripheral_card);
+    ASSERT(run_args.base_d000_rd  == apple_ii_64k[0]);
+    ASSERT(run_args.base_d000_wrt == language_banks[0] - 0xD000);
+    ASSERT(run_args.base_e000_rd  == apple_ii_64k[0]);
+    ASSERT(run_args.base_e000_wrt == language_card[0] - 0xE000);
 
     // CPU ...
-    ASSERT(cpu65_pc      == 0xE783);
-    ASSERT(cpu65_ea      == 0x1F33);
-    ASSERT(cpu65_a       == 0xFF);
-    ASSERT(cpu65_f       == 0x37);
-    ASSERT(cpu65_x       == 0xFF);
-    ASSERT(cpu65_y       == 0x00);
-    ASSERT(cpu65_sp      == 0xF6);
+    ASSERT(run_args.cpu65_pc      == 0xE783);
+    ASSERT(run_args.cpu65_ea      == 0x1F33);
+    ASSERT(run_args.cpu65_a       == 0xFF);
+    ASSERT(run_args.cpu65_f       == 0x37);
+    ASSERT(run_args.cpu65_x       == 0xFF);
+    ASSERT(run_args.cpu65_y       == 0x00);
+    ASSERT(run_args.cpu65_sp      == 0xF6);
 
     PASS();
 }
@@ -126,6 +126,8 @@ static int _get_fds(JSON_ref jsonData, int *fdA, int *fdB) {
         TEMP_FAILURE_RETRY(*fdB = open(pathB, readOnlyB ? O_RDONLY : O_RDWR));
         FREE(pathB);
     }
+
+    return 0;
 }
 
 TEST test_save_state_1() {
@@ -144,6 +146,8 @@ TEST test_save_state_1() {
 
     bool ret = emulator_saveState(fd);
     ASSERT(ret);
+
+    WAIT_FOR_FB_SHA(BOOT_SCREEN);
 
     TEMP_FAILURE_RETRY(close(fd));
 
@@ -183,10 +187,10 @@ TEST test_load_state_1() {
     ret = emulator_loadState(fdState, fdA, fdB);
     ASSERT(ret);
 
-    ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] != TEST_FINISHED);
-    ASSERT_SHA(BOOT_SCREEN);
-
     _assert_blank_boot();
+
+    ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] != TEST_FINISHED);
+    WAIT_FOR_FB_SHA(BOOT_SCREEN);
 
     TEMP_FAILURE_RETRY(close(fdState));
     TEMP_FAILURE_RETRY(close(fdA));
@@ -248,9 +252,6 @@ TEST test_load_A2VM_good1() {
     ret = emulator_loadState(fdState, fdA, fdB);
     ASSERT(ret);
 
-    // ASSERT framebuffer matches expected
-    ASSERT_SHA("9C654FEF2A672E16D89ED2FB80C593CD2005A026");
-
     // Disk6 ... AVOID ASSERT()ing for non-portable things
     ASSERT(disk6.motor_off == 1);
     ASSERT(disk6.drive == 0);
@@ -275,32 +276,35 @@ TEST test_load_A2VM_good1() {
     //ASSERT(disk6.disk[0].skew_table == skew_table_6_do);
 
     // VM ...
-    ASSERT(softswitches  == 0x000343d1);
+    ASSERT(run_args.softswitches  == 0x000343d1);
     ASSERT_SHA_BIN("2E3C6163EEAA817B02B00766B9E118D3197D16AF", apple_ii_64k[0], /*len:*/sizeof(apple_ii_64k));
     ASSERT_SHA_BIN("2C82E33E964936187CA1DABF71AE6148916BD131", language_card[0], /*len:*/sizeof(language_card));
     ASSERT_SHA_BIN("36F1699537024EC6017A22641FF0EC277AFFD49D", language_banks[0], /*len:*/sizeof(language_banks));
-    ASSERT(base_ramrd    == apple_ii_64k[0]);
-    ASSERT(base_ramwrt   == apple_ii_64k[0]);
-    ASSERT(base_textrd   == apple_ii_64k[0]);
-    ASSERT(base_textwrt  == apple_ii_64k[0]);
-    ASSERT(base_hgrrd    == apple_ii_64k[0]);
-    ASSERT(base_hgrwrt   == apple_ii_64k[0]);
-    ASSERT(base_stackzp  == apple_ii_64k[0]);
-    ASSERT(base_c3rom    == apple_ii_64k[1]);
-    ASSERT(base_cxrom    == (void *)&iie_read_peripheral_card);
-    ASSERT(base_d000_rd  == apple_ii_64k[0]);
-    ASSERT(base_d000_wrt == language_banks[0] - 0xD000);
-    ASSERT(base_e000_rd  == apple_ii_64k[0]);
-    ASSERT(base_e000_wrt == language_card[0] - 0xE000);
+    ASSERT(run_args.base_ramrd    == apple_ii_64k[0]);
+    ASSERT(run_args.base_ramwrt   == apple_ii_64k[0]);
+    ASSERT(run_args.base_textrd   == apple_ii_64k[0]);
+    ASSERT(run_args.base_textwrt  == apple_ii_64k[0]);
+    ASSERT(run_args.base_hgrrd    == apple_ii_64k[0]);
+    ASSERT(run_args.base_hgrwrt   == apple_ii_64k[0]);
+    ASSERT(run_args.base_stackzp  == apple_ii_64k[0]);
+    ASSERT(run_args.base_c3rom    == apple_ii_64k[1]);
+    ASSERT(run_args.base_cxrom    == (void *)&iie_read_peripheral_card);
+    ASSERT(run_args.base_d000_rd  == apple_ii_64k[0]);
+    ASSERT(run_args.base_d000_wrt == language_banks[0] - 0xD000);
+    ASSERT(run_args.base_e000_rd  == apple_ii_64k[0]);
+    ASSERT(run_args.base_e000_wrt == language_card[0] - 0xE000);
 
     // CPU ...
-    ASSERT(cpu65_pc      == 0xC83D);
-    ASSERT(cpu65_ea      == 0x004E);
-    ASSERT(cpu65_a       == 0x0D);
-    ASSERT(cpu65_f       == 0x35);
-    ASSERT(cpu65_x       == 0x09);
-    ASSERT(cpu65_y       == 0x01);
-    ASSERT(cpu65_sp      == 0xEA);
+    ASSERT(run_args.cpu65_pc      == 0xC83D);
+    ASSERT(run_args.cpu65_ea      == 0x004E);
+    ASSERT(run_args.cpu65_a       == 0x0D);
+    ASSERT(run_args.cpu65_f       == 0x35);
+    ASSERT(run_args.cpu65_x       == 0x09);
+    ASSERT(run_args.cpu65_y       == 0x01);
+    ASSERT(run_args.cpu65_sp      == 0xEA);
+
+    // ASSERT framebuffer matches expected
+    WAIT_FOR_FB_SHA("8BF579CC23A8A6D5E13F5BA3CEEE9DA7714F72B6");
 
     TEMP_FAILURE_RETRY(close(fdState));
     TEMP_FAILURE_RETRY(close(fdA));
@@ -362,9 +366,6 @@ TEST test_load_A2V2_good1() {
     ret = emulator_loadState(fdState, fdA, fdB);
     ASSERT(ret);
 
-    // ASSERT framebuffer matches expected
-    ASSERT_SHA("B1CB1C5811B9C629BB077F857CC41DFA8A283E96");
-
     // Disk6 ... AVOID ASSERT()ing for non-portable things
     ASSERT(disk6.motor_off == 1);
     ASSERT(disk6.drive == 0);
@@ -389,32 +390,32 @@ TEST test_load_A2V2_good1() {
     //ASSERT(disk6.disk[0].skew_table == skew_table_6_do);
 
     // VM ...
-    ASSERT(softswitches  == 0x000140f5);
+    ASSERT(run_args.softswitches  == 0x000140f5);
     ASSERT_SHA_BIN("3B41CCC86A7FCE2A95F1D7A5C4BF7E2AC7A11323", apple_ii_64k[0], /*len:*/sizeof(apple_ii_64k));
     ASSERT_SHA_BIN("54C8611AA3FD1813B1BEE45EF7F4B2303C51C679", language_card[0], /*len:*/sizeof(language_card));
     ASSERT_SHA_BIN("36F1699537024EC6017A22641FF0EC277AFFD49D", language_banks[0], /*len:*/sizeof(language_banks));
-    ASSERT(base_ramrd    == apple_ii_64k[0]);
-    ASSERT(base_ramwrt   == apple_ii_64k[0]);
-    ASSERT(base_textrd   == apple_ii_64k[0]);
-    ASSERT(base_textwrt  == apple_ii_64k[0]);
-    ASSERT(base_hgrrd    == apple_ii_64k[0]);
-    ASSERT(base_hgrwrt   == apple_ii_64k[0]);
-    ASSERT(base_stackzp  == apple_ii_64k[0]);
-    ASSERT(base_c3rom    == apple_ii_64k[1]);
-    ASSERT(base_cxrom    == (void *)&iie_read_peripheral_card);
-    ASSERT(base_d000_rd == language_banks[0]-0xD000);
-    ASSERT(base_d000_wrt == language_banks[0]-0xD000);
-    ASSERT(base_e000_rd  == language_card[0]-0xE000);
-    ASSERT(base_e000_wrt == language_card[0]-0xE000);
+    ASSERT(run_args.base_ramrd    == apple_ii_64k[0]);
+    ASSERT(run_args.base_ramwrt   == apple_ii_64k[0]);
+    ASSERT(run_args.base_textrd   == apple_ii_64k[0]);
+    ASSERT(run_args.base_textwrt  == apple_ii_64k[0]);
+    ASSERT(run_args.base_hgrrd    == apple_ii_64k[0]);
+    ASSERT(run_args.base_hgrwrt   == apple_ii_64k[0]);
+    ASSERT(run_args.base_stackzp  == apple_ii_64k[0]);
+    ASSERT(run_args.base_c3rom    == apple_ii_64k[1]);
+    ASSERT(run_args.base_cxrom    == (void *)&iie_read_peripheral_card);
+    ASSERT(run_args.base_d000_rd == language_banks[0]-0xD000);
+    ASSERT(run_args.base_d000_wrt == language_banks[0]-0xD000);
+    ASSERT(run_args.base_e000_rd  == language_card[0]-0xE000);
+    ASSERT(run_args.base_e000_wrt == language_card[0]-0xE000);
 
     // CPU ...
-    ASSERT(cpu65_pc      == 0xF6EA);
-    ASSERT(cpu65_ea      == 0x0018);
-    ASSERT(cpu65_a       == 0x05);
-    ASSERT(cpu65_f       == 0x33);
-    ASSERT(cpu65_x       == 0x10);
-    ASSERT(cpu65_y       == 0x02);
-    ASSERT(cpu65_sp      == 0xFA);
+    ASSERT(run_args.cpu65_pc      == 0xF6EA);
+    ASSERT(run_args.cpu65_ea      == 0x0018);
+    ASSERT(run_args.cpu65_a       == 0x05);
+    ASSERT(run_args.cpu65_f       == 0x33);
+    ASSERT(run_args.cpu65_x       == 0x10);
+    ASSERT(run_args.cpu65_y       == 0x02);
+    ASSERT(run_args.cpu65_sp      == 0xFA);
 
     // Timing ...
     long scaleFactor = (long)(cpu_scale_factor * 100.);
@@ -427,6 +428,9 @@ TEST test_load_A2V2_good1() {
 #include "test/a2v2-good1-mb.h"
     size_t mbSiz = sizeof(mbData);
     mb_testAssertA2V2(mbData, mbSiz);
+
+    // ASSERT framebuffer matches expected
+    WAIT_FOR_FB_SHA("3FB6BF44F5A7A6742550B33B627FFC5F06BAEC94");
 
     TEMP_FAILURE_RETRY(close(fdState));
     TEMP_FAILURE_RETRY(close(fdA));
@@ -488,9 +492,6 @@ TEST test_load_A2V2_good2() {
     ret = emulator_loadState(fdState, fdA, fdB);
     ASSERT(ret);
 
-    // ASSERT framebuffer matches expected
-    ASSERT_SHA("7A60972EF2E95956249454402A42C12E7C8FBF7A");
-
     // Disk6 ... AVOID ASSERT()ing for non-portable things
     ASSERT(disk6.motor_off == 1);
     ASSERT(disk6.drive == 0);
@@ -515,32 +516,32 @@ TEST test_load_A2V2_good2() {
     //ASSERT(disk6.disk[0].skew_table == skew_table_6_do);
 
     // VM ...
-    ASSERT(softswitches  == 0x000140f4);
+    ASSERT(run_args.softswitches  == 0x000140f4);
     ASSERT_SHA_BIN("CAD59B53F04DE501A76E0C04750155C838EADAE2", apple_ii_64k[0], /*len:*/sizeof(apple_ii_64k));
     ASSERT_SHA_BIN("B3268356F9F4F4ACAE2F4FF49D4FED1D36535DDA", language_card[0], /*len:*/sizeof(language_card));
     ASSERT_SHA_BIN("0B6E45306506F92554102485CE9B500C6779D145", language_banks[0], /*len:*/sizeof(language_banks));
-    ASSERT(base_ramrd    == apple_ii_64k[0]);
-    ASSERT(base_ramwrt   == apple_ii_64k[0]);
-    ASSERT(base_textrd   == apple_ii_64k[0]);
-    ASSERT(base_textwrt  == apple_ii_64k[0]);
-    ASSERT(base_hgrrd    == apple_ii_64k[0]);
-    ASSERT(base_hgrwrt   == apple_ii_64k[0]);
-    ASSERT(base_stackzp  == apple_ii_64k[0]);
-    ASSERT(base_c3rom    == apple_ii_64k[1]);
-    ASSERT(base_cxrom    == (void *)&iie_read_peripheral_card);
-    ASSERT(base_d000_rd == language_banks[0]-0xD000);
-    ASSERT(base_d000_wrt == language_banks[0]-0xD000);
-    ASSERT(base_e000_rd  == language_card[0]-0xE000);
-    ASSERT(base_e000_wrt == language_card[0]-0xE000);
+    ASSERT(run_args.base_ramrd    == apple_ii_64k[0]);
+    ASSERT(run_args.base_ramwrt   == apple_ii_64k[0]);
+    ASSERT(run_args.base_textrd   == apple_ii_64k[0]);
+    ASSERT(run_args.base_textwrt  == apple_ii_64k[0]);
+    ASSERT(run_args.base_hgrrd    == apple_ii_64k[0]);
+    ASSERT(run_args.base_hgrwrt   == apple_ii_64k[0]);
+    ASSERT(run_args.base_stackzp  == apple_ii_64k[0]);
+    ASSERT(run_args.base_c3rom    == apple_ii_64k[1]);
+    ASSERT(run_args.base_cxrom    == (void *)&iie_read_peripheral_card);
+    ASSERT(run_args.base_d000_rd == language_banks[0]-0xD000);
+    ASSERT(run_args.base_d000_wrt == language_banks[0]-0xD000);
+    ASSERT(run_args.base_e000_rd  == language_card[0]-0xE000);
+    ASSERT(run_args.base_e000_wrt == language_card[0]-0xE000);
 
     // CPU ...
-    ASSERT(cpu65_pc      == 0x8474);
-    ASSERT(cpu65_ea      == 0x8474);
-    ASSERT(cpu65_a       == 0x00);
-    ASSERT(cpu65_f       == 0x73);
-    ASSERT(cpu65_x       == 0x04);
-    ASSERT(cpu65_y       == 0x21);
-    ASSERT(cpu65_sp      == 0xF1);
+    ASSERT(run_args.cpu65_pc      == 0x8474);
+    ASSERT(run_args.cpu65_ea      == 0x8474);
+    ASSERT(run_args.cpu65_a       == 0x00);
+    ASSERT(run_args.cpu65_f       == 0x73);
+    ASSERT(run_args.cpu65_x       == 0x04);
+    ASSERT(run_args.cpu65_y       == 0x21);
+    ASSERT(run_args.cpu65_sp      == 0xF1);
 
     // Timing ...
     long scaleFactor = (long)(cpu_scale_factor * 100.);
@@ -553,6 +554,9 @@ TEST test_load_A2V2_good2() {
 #include "test/a2v2-good2-mb.h"
     size_t mbSiz = sizeof(mbData);
     mb_testAssertA2V2(mbData, mbSiz);
+
+    // ASSERT framebuffer matches expected
+    WAIT_FOR_FB_SHA("FD20698466B30B5BE9DA298731B6B5AC2C94C56D");
 
     TEMP_FAILURE_RETRY(close(fdState));
     TEMP_FAILURE_RETRY(close(fdA));
@@ -614,9 +618,6 @@ TEST test_load_A2V2_good3() {
     ret = emulator_loadState(fdState, fdA, fdB);
     ASSERT(ret);
 
-    // ASSERT framebuffer matches expected
-    ASSERT_SHA("D92EECDF3C7446097F3E884412D7911DDD968287");
-
     // Disk6 ... AVOID ASSERT()ing for non-portable things ... in particular this a2state file contains Droid content://
     // paths that will not be valid (even on the original device), so the disk6_insert() call will have failed.
     // emulator_stateRestore() will have logged the fault but continued optimistically
@@ -637,32 +638,32 @@ TEST test_load_A2V2_good3() {
     ASSERT(!disk6.disk[1].track_dirty);
 
     // VM ...
-    ASSERT(softswitches  == 0x000140f4);
+    ASSERT(run_args.softswitches  == 0x000140f4);
     ASSERT_SHA_BIN("16A730D3E709F096B693EA4029FC68672CE454B8", apple_ii_64k[0], /*len:*/sizeof(apple_ii_64k));
     ASSERT_SHA_BIN("DF3EE367193484A6A1C28C2BAE0EFEF42E6D19BB", language_card[0], /*len:*/sizeof(language_card));
     ASSERT_SHA_BIN("343C30374074AB3AEE22581A6477736121390B18", language_banks[0], /*len:*/sizeof(language_banks));
-    ASSERT(base_ramrd    == apple_ii_64k[0]);
-    ASSERT(base_ramwrt   == apple_ii_64k[0]);
-    ASSERT(base_textrd   == apple_ii_64k[0]);
-    ASSERT(base_textwrt  == apple_ii_64k[0]);
-    ASSERT(base_hgrrd    == apple_ii_64k[0]);
-    ASSERT(base_hgrwrt   == apple_ii_64k[0]);
-    ASSERT(base_stackzp  == apple_ii_64k[0]);
-    ASSERT(base_c3rom    == apple_ii_64k[1]);
-    ASSERT(base_cxrom    == (void *)&iie_read_peripheral_card);
-    ASSERT(base_d000_rd == language_banks[0]-0xD000);
-    ASSERT(base_d000_wrt == language_banks[0]-0xD000);
-    ASSERT(base_e000_rd  == language_card[0]-0xE000);
-    ASSERT(base_e000_wrt == language_card[0]-0xE000);
+    ASSERT(run_args.base_ramrd    == apple_ii_64k[0]);
+    ASSERT(run_args.base_ramwrt   == apple_ii_64k[0]);
+    ASSERT(run_args.base_textrd   == apple_ii_64k[0]);
+    ASSERT(run_args.base_textwrt  == apple_ii_64k[0]);
+    ASSERT(run_args.base_hgrrd    == apple_ii_64k[0]);
+    ASSERT(run_args.base_hgrwrt   == apple_ii_64k[0]);
+    ASSERT(run_args.base_stackzp  == apple_ii_64k[0]);
+    ASSERT(run_args.base_c3rom    == apple_ii_64k[1]);
+    ASSERT(run_args.base_cxrom    == (void *)&iie_read_peripheral_card);
+    ASSERT(run_args.base_d000_rd == language_banks[0]-0xD000);
+    ASSERT(run_args.base_d000_wrt == language_banks[0]-0xD000);
+    ASSERT(run_args.base_e000_rd  == language_card[0]-0xE000);
+    ASSERT(run_args.base_e000_wrt == language_card[0]-0xE000);
 
     // CPU ...
-    ASSERT(cpu65_pc      == 0x0E9C);
-    ASSERT(cpu65_ea      == 0x0EB9);
-    ASSERT(cpu65_a       == 0x00);
-    ASSERT(cpu65_f       == 0xB0);
-    ASSERT(cpu65_x       == 0x05);
-    ASSERT(cpu65_y       == 0x04);
-    ASSERT(cpu65_sp      == 0xE0);
+    ASSERT(run_args.cpu65_pc      == 0x0E9C);
+    ASSERT(run_args.cpu65_ea      == 0x0EB9);
+    ASSERT(run_args.cpu65_a       == 0x00);
+    ASSERT(run_args.cpu65_f       == 0xB0);
+    ASSERT(run_args.cpu65_x       == 0x05);
+    ASSERT(run_args.cpu65_y       == 0x04);
+    ASSERT(run_args.cpu65_sp      == 0xE0);
 
     // Timing ...
     long scaleFactor = (long)(cpu_scale_factor * 100.);
@@ -675,6 +676,9 @@ TEST test_load_A2V2_good3() {
 #include "test/a2v2-good3-mb.h"
     size_t mbSiz = sizeof(mbData);
     mb_testAssertA2V2(mbData, mbSiz);
+
+    // ASSERT framebuffer matches expected
+    WAIT_FOR_FB_SHA("70BFB1572C377578EAAB31AC09C4C383366628BD");
 
     TEMP_FAILURE_RETRY(close(fdState));
     TEMP_FAILURE_RETRY(close(fdA));
@@ -744,8 +748,6 @@ static void *test_thread(void *dummyptr) {
 void test_ui(int _argc, char **_argv) {
     test_argc = _argc;
     test_argv = _argv;
-
-    srandom(time(NULL));
 
     test_common_init();
 

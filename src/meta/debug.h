@@ -80,10 +80,11 @@ struct opcode_struct
 extern const struct opcode_struct *opcodes;
 
 #ifdef INTERFACE_CLASSIC
-void c_interface_debugging(uint8_t *stagingFB);
+void c_interface_debugging(void);
 #endif
 
 void debugger_setInputText(const char *text, const bool deterministically);
+void debugger_setBreakCallback(bool(*cb)(void));
 void c_debugger_go(void);
 bool c_debugger_should_break(void);
 void c_debugger_set_timeout(const unsigned int secs);

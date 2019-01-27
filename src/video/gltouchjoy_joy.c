@@ -55,8 +55,8 @@ static inline void _reset_axis_state(void) {
 }
 
 static inline void _reset_buttons_state(void) {
-    joy_button0 = 0x0;
-    joy_button1 = 0x0;
+    run_args.joy_button0 = 0x0;
+    run_args.joy_button1 = 0x0;
 }
 
 static void touchjoy_resetState(void) {
@@ -82,6 +82,7 @@ static struct timespec *_tap_wait(void) {
 }
 
 static void *_button_tap_delayed_thread(void *dummyptr) {
+    TRACE_INTERFACE_MARK("_button_tap_delayed_thread ...");
     LOG(">>> [DELAYEDTAP] thread start ...");
 
     pthread_mutex_lock(&joys.tapDelayMutex);
@@ -167,8 +168,8 @@ static void *_button_tap_delayed_thread(void *dummyptr) {
                 assert(timedOut);
                 // touch-down-and-hold
                 TOUCH_JOY_GESTURE_LOG(">>> [DELAYEDTAP] long touch ...");
-                joy_button0 = touchPrevEvent->currJoyButtonValue0;
-                joy_button1 = touchPrevEvent->currJoyButtonValue1;
+                run_args.joy_button0 = touchPrevEvent->currJoyButtonValue0;
+                run_args.joy_button1 = touchPrevEvent->currJoyButtonValue1;
                 joys.buttonDrawCallback(touchPrevEvent->currButtonDisplayChar);
                 continue;
             }
@@ -177,16 +178,16 @@ static void *_button_tap_delayed_thread(void *dummyptr) {
             if (touchCurrEvent->event == TOUCH_MOVE) {
                 // dragging ...
                 TOUCH_JOY_GESTURE_LOG(">>> [DELAYEDTAP] move ...");
-                joy_button0 = touchCurrEvent->currJoyButtonValue0;
-                joy_button1 = touchCurrEvent->currJoyButtonValue1;
+                run_args.joy_button0 = touchCurrEvent->currJoyButtonValue0;
+                run_args.joy_button1 = touchCurrEvent->currJoyButtonValue1;
                 joys.buttonDrawCallback(touchCurrEvent->currButtonDisplayChar);
                 FREE(touchPrevEvent);
                 touchPrevEvent = touchCurrEvent;
             } else if (touchCurrEvent->event == TOUCH_UP) {
                 // tap
                 TOUCH_JOY_GESTURE_LOG(">>> [DELAYEDTAP] touch up ...");
-                joy_button0 = touchPrevEvent->currJoyButtonValue0;
-                joy_button1 = touchPrevEvent->currJoyButtonValue1;
+                run_args.joy_button0 = touchPrevEvent->currJoyButtonValue0;
+                run_args.joy_button1 = touchPrevEvent->currJoyButtonValue1;
                 joys.buttonDrawCallback(touchPrevEvent->currButtonDisplayChar);
                 timedOut = 0;
                 break;
@@ -378,20 +379,20 @@ static uint8_t *touchjoy_rosetteChars(void) {
 static void _init_gltouchjoy_joy(void) {
     LOG("Registering OpenGL software touch joystick (joystick variant)");
 
-    happyHappyJoyJoy.variant = &touchjoy_variant,
-    happyHappyJoyJoy.resetState = &touchjoy_resetState,
-    happyHappyJoyJoy.setup = &touchjoy_setup,
-    happyHappyJoyJoy.shutdown = &touchjoy_shutdown,
+    happyHappyJoyJoy.variant = &touchjoy_variant;
+    happyHappyJoyJoy.resetState = &touchjoy_resetState;
+    happyHappyJoyJoy.setup = &touchjoy_setup;
+    happyHappyJoyJoy.shutdown = &touchjoy_shutdown;
 
     happyHappyJoyJoy.prefsChanged = &touchjoy_prefsChanged;
 
-    happyHappyJoyJoy.buttonDown = &touchjoy_buttonDown,
-    happyHappyJoyJoy.buttonMove = &touchjoy_buttonMove,
-    happyHappyJoyJoy.buttonUp = &touchjoy_buttonUp,
+    happyHappyJoyJoy.buttonDown = &touchjoy_buttonDown;
+    happyHappyJoyJoy.buttonMove = &touchjoy_buttonMove;
+    happyHappyJoyJoy.buttonUp = &touchjoy_buttonUp;
 
-    happyHappyJoyJoy.axisDown = &touchjoy_axisDown,
-    happyHappyJoyJoy.axisMove = &touchjoy_axisMove,
-    happyHappyJoyJoy.axisUp = &touchjoy_axisUp,
+    happyHappyJoyJoy.axisDown = &touchjoy_axisDown;
+    happyHappyJoyJoy.axisMove = &touchjoy_axisMove;
+    happyHappyJoyJoy.axisUp = &touchjoy_axisUp;
 
     happyHappyJoyJoy.rosetteChars = &touchjoy_rosetteChars;
 

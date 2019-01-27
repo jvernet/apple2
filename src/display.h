@@ -12,46 +12,134 @@
 #ifndef _DISPLAY_H_
 #define _DISPLAY_H_
 
-/*
- * Color structure
- */
-typedef struct A2Color_s {
-    uint8_t red;
-    uint8_t green;
-    uint8_t blue;
-} A2Color_s;
+#if USE_RGBA4444
+#error HACK FIXME TODO : 2018/09/23 currently untested
+#   define PIXEL_TYPE uint16_t
+#   define MAX_SATURATION 0xf
+#   define SHIFT_R 12
+#   define SHIFT_G 8
+#   define SHIFT_B 4
+#   define SHIFT_A 0
+#   define RGB_MASK 0xFFF0
+#else
+// assuming RGBA8888 ...
+#   define PIXEL_TYPE uint32_t
+#   define MAX_SATURATION 0xff
+#   define SHIFT_R 0
+#   define SHIFT_G 8
+#   define SHIFT_B 16
+#   define SHIFT_A 24
+#   define RGB_MASK 0xFFFFFF
+#endif
 
-#define IDX_BLACK     0x00
-#define IDX_MAGENTA   0x10
-#define IDX_DARKBLUE  0x20
-#define IDX_PURPLE    0x30
-#define IDX_DARKGREEN 0x40
-#define IDX_DARKGREY  0x50
-#define IDX_MEDBLUE   0x60
-#define IDX_LIGHTBLUE 0x70
-#define IDX_BROWN     0x80
-#define IDX_ORANGE    0x90
-#define IDX_LIGHTGREY 0xa0
-#define IDX_PINK      0xb0
-#define IDX_GREEN     0xc0
-#define IDX_YELLOW    0xd0
-#define IDX_AQUA      0xe0
-#define IDX_WHITE     0xf0
+#define PIXEL_STRIDE (sizeof(PIXEL_TYPE))
 
 /*
- * Reference to the internal 8bit-indexed color format
+ * Scanline data
  */
-extern A2Color_s colormap[];
+typedef struct scan_data_t {
+    uint8_t *scanline;      // CYCLES_VIS<<1 == 80
+    uint32_t softswitches;
+    unsigned int scanrow;   // 0 >= x < 192
+    unsigned int scancol;   // 0 >  x <= 80
+    unsigned int scanend;   // 0 >= x < 80
+} scan_data_t;
+
+#define IDX_BLACK     0x00 // 0000
+#define IDX_MAGENTA   0x01 // 0001
+#define IDX_DARKBLUE  0x02 // 0010
+#define IDX_PURPLE    0x03 // 0011 - HIRES40
+#define IDX_DARKGREEN 0x04 // 0100
+#define IDX_DARKGREY  0x05 // 0101
+#define IDX_MEDBLUE   0x06 // 0110 - HIRES40
+#define IDX_LIGHTBLUE 0x07 // 0111
+#define IDX_BROWN     0x08 // 1000
+#define IDX_ORANGE    0x09 // 1001 - HIRES40
+#define IDX_LIGHTGREY 0x0a // 1010
+#define IDX_PINK      0x0b // 1011
+#define IDX_GREEN     0x0c // 1100 - HIRES40
+#define IDX_YELLOW    0x0d // 1101
+#define IDX_AQUA      0x0e // 1110
+#define IDX_WHITE     0x0f // 1111
+
+// Colors duplicated and muted at this offset
+#define IDX_LUMINANCE_HALF 0x40
+
+// Interface colors
+#define IDX_ICOLOR_R  0x21
+#define IDX_ICOLOR_G  0x22
+#define IDX_ICOLOR_B  0x23
+
+typedef enum interface_colorscheme_t {
+    GREEN_ON_BLACK = 0,
+    GREEN_ON_BLUE,
+    RED_ON_BLACK,
+    BLUE_ON_BLACK,
+    WHITE_ON_BLACK,
+
+    // WARNING : changing here requires updating display.c ncvideo.c
+
+    BLACK_ON_RED,
+
+    // 16 COLORS -- ncvideo.c
+    BLACK_ON_BLACK,
+    BLACK_ON_MAGENTA,
+    BLACK_ON_DARKBLUE,
+    BLACK_ON_PURPLE,
+    BLACK_ON_DARKGREEN,
+    BLACK_ON_DARKGREY,
+    BLACK_ON_MEDBLUE,
+    BLACK_ON_LIGHTBLUE,
+    BLACK_ON_BROWN,
+    BLACK_ON_ORANGE,
+    BLACK_ON_LIGHTGREY,
+    BLACK_ON_PINK,
+    BLACK_ON_GREEN,
+    BLACK_ON_YELLOW,
+    BLACK_ON_AQUA,
+    BLACK_ON_WHITE,
+
+    NUM_INTERFACE_COLORSCHEMES,
+    COLOR16 = 0x80,
+    INVALID_COLORSCHEME = 0xFF,
+} interface_colorscheme_t;
 
 /*
  * Color options
  */
 typedef enum color_mode_t {
-    COLOR_NONE = 0,
-    COLOR,
-    COLOR_INTERP,
-    NUM_COLOROPTS
+    // original modes ...
+    COLOR_MODE_MONO = 0,
+    COLOR_MODE_COLOR,
+    COLOR_MODE_INTERP,
+    // NTSC color modes ...
+    COLOR_MODE_COLOR_MONITOR,
+    COLOR_MODE_MONO_TV,
+    COLOR_MODE_COLOR_TV,
+    NUM_COLOROPTS,
 } color_mode_t;
+
+#define COLOR_MODE_DEFAULT COLOR_MODE_COLOR_TV
+static inline color_mode_t getColorMode(long lVal) {
+    if (lVal < 0 || lVal >= NUM_COLOROPTS) {
+        lVal = COLOR_MODE_DEFAULT;
+    }
+    return (color_mode_t)lVal;
+}
+
+typedef enum mono_mode_t {
+    MONO_MODE_BW = 0,
+    MONO_MODE_GREEN,
+    NUM_MONOOPTS,
+} mono_mode_t;
+
+#define MONO_MODE_DEFAULT MONO_MODE_BW
+static inline mono_mode_t getMonoMode(long lVal) {
+    if (lVal < 0 || lVal >= NUM_MONOOPTS) {
+        lVal = MONO_MODE_DEFAULT;
+    }
+    return (mono_mode_t)lVal;
+}
 
 /*
  * Font mode
@@ -68,37 +156,10 @@ typedef enum font_mode_t {
  * Graphics mode
  */
 typedef enum drawpage_mode_t {
-    DRAWPAGE_TEXT = 1,
+    DRAWPAGE_TEXT = 0,
     DRAWPAGE_HIRES,
-    DRAWPAGE_MODE_CHANGE,
     NUM_DRAWPAGE_MODES,
 } drawpage_mode_t;
-
-/*
- * Pixel deltas
- */
-typedef struct pixel_delta_t {
-    uint8_t row; // row
-    uint8_t col; // col
-    uint8_t b;   // byte
-    uint8_t cs;  // colorscheme (interface updates only)
-} pixel_delta_t;
-
-/*
- * Text/hires callback
- */
-typedef void (*display_update_fn)(pixel_delta_t);
-
-/*
- * Setup the display. This may be called multiple times in a run, and is
- * used when graphics parameters may have changed.
- *
- * This function is responsible for inserting any needed video-specific hooks
- * into the 6502 memory indirection table.  It should *not* hook the
- * soft-switches.
- *
- */
-void display_reset(void);
 
 /*
  * Set the font used by the display.  QTY characters are loaded starting
@@ -126,58 +187,64 @@ void display_flashText(void);
 
 // ----------------------------------------------------------------------------
 
+#if INTERFACE_CLASSIC
 /*
- * Plot character into staging framebuffer.
- *
- *  - Framebuffer may be NULL or should be exactly SCANWIDTH*SCANHEIGHT*sizeof(uint8_t) size
- *  - Pixels in the framebuffer are 8bit indexed color into the colormap array
- *  - Triggers text update callback
+ * Plot character into interface framebuffer.
  *  - This should only be called from video backends/interface
  */
-void display_plotChar(uint8_t *fb, const uint8_t col, const uint8_t row, const interface_colorscheme_t cs, const uint8_t c);
+void display_plotChar(const uint8_t col, const uint8_t row, const interface_colorscheme_t cs, const uint8_t c);
 
 /*
- * Plot NULL_terminated string into staging framebuffer.
+ * Plot NULL_terminated string into interface framebuffer.
  *  - See display_plotChar() ...
- *
  */
-void display_plotLine(uint8_t *fb, const uint8_t col, const uint8_t row, const interface_colorscheme_t cs, const char *message);
+void display_plotLine(const uint8_t col, const uint8_t row, const interface_colorscheme_t cs, const char *message);
+#endif
 
 /*
- * Plot multi-line message into staging framebuffer.
+ * Plot multi-line message into given framebuffer (not the interface framebuffer).
  *  - See display_plotChar() ...
  */
-void display_plotMessage(uint8_t *fb, const interface_colorscheme_t cs, const char *message, const uint8_t message_cols, const uint8_t message_rows);
+void display_plotMessage(PIXEL_TYPE *fb, const interface_colorscheme_t cs, const char *message, const uint8_t message_cols, const uint8_t message_rows);
+
+/*
+ * Get video line offset for TEXT mode row
+ */
+uint16_t display_getVideoLineOffset(uint8_t txtRow);
+
+// ----------------------------------------------------------------------------
+// video generation
+
+/*
+ * Called by video backend to get the current complete staging framebuffer.
+ *  - Framebuffer is exactly SCANWIDTH*SCANHEIGHT*sizeof(PIXEL_TYPE)
+ */
+PIXEL_TYPE *display_getCurrentFramebuffer(void) CALL_ON_UI_THREAD;
+
+/*
+ * Handler for toggling text flashing
+ */
+void display_flashText(void) CALL_ON_CPU_THREAD;
+
+/*
+ * Handler for video scanner scanline completion
+ */
+void display_flushScanline(scan_data_t *scandata) CALL_ON_CPU_THREAD;
+
+/*
+ * Handler called when entire frame is complete
+ */
+void display_frameComplete(void) CALL_ON_CPU_THREAD;
+
+#if TESTING
+/*
+ * Wait for frame complete and return staging framebuffer.
+ */
+PIXEL_TYPE *display_waitForNextCompleteFramebuffer(void);
+#endif
 
 // ----------------------------------------------------------------------------
 
-/*
- * Current dominant screen mode, TEXT or MIXED/HIRES
- */
-drawpage_mode_t display_currentDrawpageMode(uint32_t currswitches);
-
-/*
- * Set TEXT/HIRES update callback(s).
- */
-void display_setUpdateCallback(drawpage_mode_t mode, display_update_fn updateFn);
-
-/*
- * Flushes currently set Apple //e video memory into staging framebuffer.
- *
- *  - Framebuffer should be exactly SCANWIDTH*SCANHEIGHT*sizeof(uint8_t) size
- *  - Pixels in the framebuffer are 8bit indexed color into the colormap array
- *  - This should only be called from video backends or testsuite
- */
-void display_renderStagingFramebuffer(uint8_t *stagingFB);
-
-// ----------------------------------------------------------------------------
-
-/*
- * VBL routines
- */
-uint16_t video_scanner_get_address(bool *vblBarOut);
-uint8_t floating_bus(void);
-uint8_t floating_bus_hibit(const bool hibit);
 
 #define TEXT_ROWS 24
 #define BEGIN_MIX 20
@@ -191,11 +258,10 @@ uint8_t floating_bus_hibit(const bool hibit);
 #define _SCANWIDTH (TEXT_COLS * FONT_WIDTH_PIXELS)  // 560
 #define SCANHEIGHT (TEXT_ROWS * FONT_HEIGHT_PIXELS) // 384
 
-// Extra bytes on each side of internal framebuffers for color interpolation hack
-#define _INTERPOLATED_PIXEL_ADJUSTMENT_PRE 4
-#define _INTERPOLATED_PIXEL_ADJUSTMENT_POST 4
-#define INTERPOLATED_PIXEL_ADJUSTMENT (_INTERPOLATED_PIXEL_ADJUSTMENT_PRE+_INTERPOLATED_PIXEL_ADJUSTMENT_POST)
-#define SCANWIDTH (_SCANWIDTH+INTERPOLATED_PIXEL_ADJUSTMENT)
+// Extra bytes on each side of internal framebuffer to allow overdraw for NTSC modes
+#define _FB_OFF                 4
+#define _FB_WIDTH_EXTRA         (_FB_OFF<<1)
+#define SCANWIDTH               (_SCANWIDTH+_FB_WIDTH_EXTRA) // 568
 
 #define FONT_GLYPH_X (7+/*unused*/1)            // generated font.c uses a single byte (8bits) per font glyph line
 #define FONT_GLYPH_Y (FONT_HEIGHT_PIXELS>>1)    // ... 8 bytes total for whole glyph
@@ -211,6 +277,8 @@ uint8_t floating_bus_hibit(const bool hibit);
 #define MOUSETEXT_CLOSEDAPPLE   (MOUSETEXT_BEGIN+0x00)
 #define MOUSETEXT_HOURGLASS     (MOUSETEXT_BEGIN+0x03)
 #define MOUSETEXT_CHECKMARK     (MOUSETEXT_BEGIN+0x04)
+#define MOUSETEXT_CURSOR0       (MOUSETEXT_BEGIN+0x16)
+#define MOUSETEXT_CURSOR1       (MOUSETEXT_BEGIN+0x17)
 
 #define ICONTEXT_BEGIN          0xA0 // offset + 0x22 length
 #define ICONTEXT_MENU_BEGIN     ICONTEXT_BEGIN
@@ -245,42 +313,6 @@ uint8_t floating_bus_hibit(const bool hibit);
 
 #define ICONTEXT_LEFT_TAB       (ICONTEXT_KBD_BEGIN+0x..)
 #define ICONTEXT_RIGHT_TAB      (ICONTEXT_KBD_BEGIN+0x..)
-
-#define COLOR_BLACK             0
-
-#define COLOR_DARK_RED          35
-#define COLOR_MEDIUM_RED        36
-#define COLOR_LIGHT_RED         37      /* hgr used */
-
-#define COLOR_DARK_GREEN        38
-#define COLOR_MEDIUM_GREEN      39
-#define COLOR_LIGHT_GREEN       40      /* hgr used */
-
-#define COLOR_DARK_YELLOW       41
-#define COLOR_MEDIUM_YELLOW     42
-#define COLOR_LIGHT_YELLOW      43
-
-#define COLOR_DARK_BLUE         44
-#define COLOR_MEDIUM_BLUE       45
-#define COLOR_LIGHT_BLUE        46      /* hgr used */
-
-#define COLOR_DARK_PURPLE       47
-#define COLOR_MEDIUM_PURPLE     48
-#define COLOR_LIGHT_PURPLE      49      /* hgr used */
-
-#define COLOR_DARK_CYAN         50
-#define COLOR_MEDIUM_CYAN       51
-#define COLOR_LIGHT_CYAN        52
-
-#define COLOR_DARK_WHITE        53
-#define COLOR_MEDIUM_WHITE      54
-#define COLOR_LIGHT_WHITE       55
-
-#define COLOR_FLASHING_BLACK    56
-#define COLOR_FLASHING_WHITE    57
-#define COLOR_FLASHING_UNGREEN  58
-#define COLOR_FLASHING_GREEN    59
-
 
 /* ----------------------------------
     generic graphics globals

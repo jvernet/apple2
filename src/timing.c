@@ -9,59 +9,26 @@
  *
  */
 
-/*
- * 65c02 CPU timing support. Source inspired/derived from AppleWin.
- *
- * Simplified timing loop for each execution period:
- *
- * ..{...+....[....|..................|.........]....^....|....^....^....}......
- *  ti  MBB       CHK                CHK            MBE  CHX  SPK  MBX  tj   ZZZ
- *
- *      - ti  : timing sample begin (lock out interface thread)
- *      - tj  : timing sample end   (unlock interface thread)
- *      -  [  : cpu65_run()
- *      -  ]  : cpu65_run() finished
- *      - CHK : incoming timing_checkpoint_cycles() call from IO (bumps cycles_count_total)
- *      - CHX : update remainder of timing_checkpoint_cycles() for execution period
- *      - MBB : Mockingboard begin
- *      - MBE : Mockingboard end/flush (output)
- *      - MBX : Mockingboard end video frame (output)
- *      - SPK : Speaker output
- *      - ZZZ : housekeeping+sleep (or not)
- *
- */
-
 #include "common.h"
 
-#define DEBUG_TIMING (!defined(NDEBUG) && 0) // enable to print timing stats
+#define DEBUG_TIMING 0 // enable to print timing stats
 #if DEBUG_TIMING
 #   define TIMING_LOG(...) LOG(__VA_ARGS__)
 #else
 #   define TIMING_LOG(...)
 #endif
 
-#define DISK_MOTOR_QUIET_NSECS 2000000
-
-// VBL constants?
-#define uCyclesPerLine 65 // 25 cycles of HBL & 40 cycles of HBL'
-#define uVisibleLinesPerFrame (64*3) // 192
-#define uLinesPerFrame (262) // 64 in each third of the screen & 70 in VBL
-#define dwClksPerFrame (uCyclesPerLine * uLinesPerFrame) // 17030
+#define DISK_MOTOR_QUIET_NSECS (NANOSECONDS_PER_SECOND>2)
 
 // cycle counting
 double cycles_persec_target = CLK_6502;
 unsigned long cycles_count_total = 0;           // Running at spec ~1MHz, this will approach overflow in ~4000secs (for 32bit architectures)
+unsigned int cycles_video_frame = 0;
 int cycles_speaker_feedback = 0;
-int32_t cpu65_cycles_to_execute = 0;            // cycles-to-execute by cpu65_run()
-int32_t cpu65_cycle_count = 0;                  // cycles currently excuted by cpu65_run()
-int32_t irqCheckTimeout = IRQ_CHECK_CYCLES;
 static int32_t cycles_checkpoint_count = 0;
-static unsigned int g_dwCyclesThisFrame = 0;
 
 // scaling and speed adjustments
-#if !MOBILE_DEVICE
 static bool auto_adjust_speed = true;
-#endif
 static bool is_paused = false;
 static unsigned long _pause_spinLock = 0;
 
@@ -71,10 +38,10 @@ bool is_fullspeed = false;
 bool alt_speed_enabled = false;
 
 // misc
-volatile uint8_t emul_reinitialize = 1;
 static bool emul_reinitialize_audio = false;
 static bool emul_pause_audio = false;
 static bool emul_resume_audio = false;
+static bool emul_video_dirty = false;
 static bool cpu_shutting_down = false;
 pthread_t cpu_thread_id = 0;
 pthread_mutex_t interface_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -144,12 +111,15 @@ static
 #endif
 void reinitialize(void) {
 #if !TESTING
-    assert(pthread_self() == cpu_thread_id);
+    ASSERT_ON_CPU_THREAD();
 #endif
 
     cycles_count_total = 0;
-    g_dwCyclesThisFrame = 0;
-    irqCheckTimeout = IRQ_CHECK_CYCLES;
+    cycles_video_frame = 0;
+#if !TEST_CPU
+    video_scannerReset();
+#endif
+
 #if TESTING
     extern unsigned long (*testing_getCyclesCount)(void);
     if (testing_getCyclesCount) {
@@ -158,10 +128,6 @@ void reinitialize(void) {
 #endif
 
     vm_initialize();
-
-    softswitches = SS_TEXT | SS_IOUDIS | SS_C3ROM | SS_LCWRT | SS_LCSEC;
-
-    video_setDirty(A2_DIRTY_FLAG);
 
     cpu65_init();
 
@@ -172,11 +138,7 @@ void reinitialize(void) {
 
 void timing_initialize(void) {
 #if !TESTING
-#   if (TARGET_OS_MAC || TARGET_OS_PHONE)
-#       warning FIXME TODO : this assert is firing on iOS port ... but the assert is valid ... fix soon 
-#   else
     assert(cpu_isPaused() || (pthread_self() == cpu_thread_id));
-#   endif
 #endif
     _timing_initialize(alt_speed_enabled ? cpu_altscale_factor : cpu_scale_factor);
 }
@@ -189,18 +151,19 @@ void timing_toggleCPUSpeed(void) {
 
 static void timing_reinitializeAudio(void) {
     SPINLOCK_ACQUIRE(&_pause_spinLock);
-    assert(pthread_self() != cpu_thread_id);
+    ASSERT_NOT_ON_CPU_THREAD();
 #if !TESTING
     assert(cpu_isPaused());
 #endif
     emul_reinitialize_audio = true;
     emul_pause_audio = false;
     emul_resume_audio = false;
+    emul_video_dirty = false;
     SPINLOCK_RELINQUISH(&_pause_spinLock);
 }
 
 void cpu_pause(void) {
-    assert(pthread_self() != cpu_thread_id);
+    ASSERT_NOT_ON_CPU_THREAD();
 
     SPINLOCK_ACQUIRE(&_pause_spinLock);
     do {
@@ -220,7 +183,7 @@ void cpu_pause(void) {
 }
 
 void cpu_resume(void) {
-    assert(pthread_self() != cpu_thread_id);
+    ASSERT_NOT_ON_CPU_THREAD();
 
     SPINLOCK_ACQUIRE(&_pause_spinLock);
     do {
@@ -231,10 +194,11 @@ void cpu_resume(void) {
         // CPU thread will be unblocked to acquire interface_mutex
         if (!emul_reinitialize_audio) {
             emul_resume_audio = true;
+            emul_video_dirty = true;
         }
         LOG("RESUMING CPU...");
-        pthread_mutex_unlock(&interface_mutex);
         is_paused = false;
+        pthread_mutex_unlock(&interface_mutex);
     } while (0);
     SPINLOCK_RELINQUISH(&_pause_spinLock);
 }
@@ -243,25 +207,27 @@ bool cpu_isPaused(void) {
     return is_paused;
 }
 
-#if !MOBILE_DEVICE
+#if TESTING
+void timing_setVideoDirty(void) {
+    emul_video_dirty = true;
+}
+#endif
+
 bool timing_shouldAutoAdjustSpeed(void) {
     double speed = alt_speed_enabled ? cpu_altscale_factor : cpu_scale_factor;
     return auto_adjust_speed && (speed <= CPU_SCALE_FASTEST_PIVOT);
 }
-#endif
 
 static void *cpu_thread(void *dummyptr) {
 
 #ifndef NDEBUG // Spamsung Galaxy Y running Gingerbread triggers this, wTf?!
-    assert(pthread_self() == cpu_thread_id);
+    ASSERT_ON_CPU_THREAD();
 #endif
 
     LOG("cpu_thread : initialized...");
 
     struct timespec deltat = { 0 };
-#if !MOBILE_DEVICE
     struct timespec disk_motor_time = { 0 };
-#endif
     struct timespec t0 = { 0 }; // the target timer
     struct timespec ti = { 0 }; // actual before time sample
     struct timespec tj = { 0 }; // actual after time sample
@@ -281,9 +247,10 @@ static void *cpu_thread(void *dummyptr) {
     speaker_init();
     MB_Initialize();
 
+    run_args.emul_reinitialize = 1;
+
 cpu_runloop:
-    do
-    {
+    do {
         LOG("CPUTHREAD %lu LOCKING FOR MAYBE INITIALIZING AUDIO ...", (unsigned long)cpu_thread_id);
         pthread_mutex_lock(&interface_mutex);
         if (emul_reinitialize_audio) {
@@ -302,7 +269,7 @@ cpu_runloop:
         pthread_mutex_unlock(&interface_mutex);
         LOG("UNLOCKING FOR MAYBE INITIALIZING AUDIO ...");
 
-        if (emul_reinitialize) {
+        if (run_args.emul_reinitialize) {
             reinitialize();
         }
 
@@ -311,7 +278,8 @@ cpu_runloop:
         clock_gettime(CLOCK_MONOTONIC, &t0);
 
         do {
-            SCOPE_TRACE_CPU("CPU mainloop");
+            ////SCOPE_TRACE_CPU("CPU mainloop");
+
             // -LOCK----------------------------------------------------------------------------------------- SAMPLE ti
             if (UNLIKELY(emul_pause_audio)) {
                 emul_pause_audio = false;
@@ -322,11 +290,14 @@ cpu_runloop:
                 emul_resume_audio = false;
                 audio_resume();
             }
+            if (UNLIKELY(emul_video_dirty)) {
+                emul_video_dirty = false;
+                video_setDirty(A2_DIRTY_FLAG);
+            }
             clock_gettime(CLOCK_MONOTONIC, &ti);
 
             deltat = timespec_diff(t0, ti, &negative);
-            if (deltat.tv_sec)
-            {
+            if (deltat.tv_sec) {
                 if (!is_fullspeed) {
                     TIMING_LOG("NOTE : serious divergence from target time ...");
                 }
@@ -337,36 +308,36 @@ cpu_runloop:
             drift_adj_nsecs = negative ? ~deltat.tv_nsec : deltat.tv_nsec;
 
             // set up increment & decrement counters
-            cpu65_cycles_to_execute = (cycles_persec_target / 1000); // cycles_persec_target * EXECUTION_PERIOD_NSECS / NANOSECONDS_PER_SECOND
+            run_args.cpu65_cycles_to_execute = (cycles_persec_target / 1000); // cycles_persec_target * EXECUTION_PERIOD_NSECS / NANOSECONDS_PER_SECOND
             if (!is_fullspeed) {
-                cpu65_cycles_to_execute += cycles_speaker_feedback;
+                run_args.cpu65_cycles_to_execute += cycles_speaker_feedback;
             }
-            if (cpu65_cycles_to_execute < 0)
-            {
-                cpu65_cycles_to_execute = 0;
+            if (run_args.cpu65_cycles_to_execute < 0) {
+                run_args.cpu65_cycles_to_execute = 0;
             }
 
             MB_StartOfCpuExecute();
             if (is_debugging) {
-                debugging_cycles = cpu65_cycles_to_execute;
+                debugging_cycles = run_args.cpu65_cycles_to_execute;
             }
 
             do {
                 if (is_debugging) {
-                    cpu65_cycles_to_execute = 1;
+                    run_args.cpu65_cycles_to_execute = 1;
                 }
 
-                cpu65_cycle_count = 0;
+                run_args.cpu65_cycle_count = 0;
                 cycles_checkpoint_count = 0;
-                cpu65_run(); // run emulation for cpu65_cycles_to_execute cycles ...
+
+                cpu65_run(&run_args); // run emulation for cpu65_cycles_to_execute cycles ...
+
 #if DEBUG_TIMING
-                dbg_cycles_executed += cpu65_cycle_count;
+                dbg_cycles_executed += run_args.cpu65_cycle_count;
 #endif
-                g_dwCyclesThisFrame += cpu65_cycle_count;
 
                 if (is_debugging) {
-                    debugging_cycles -= cpu65_cycle_count;
-                    timing_checkpoint_cycles();
+                    debugging_cycles -= run_args.cpu65_cycle_count;
+                    timing_checkpointCycles();
 
                     if (c_debugger_should_break() || (debugging_cycles <= 0)) {
                         int err = 0;
@@ -381,7 +352,7 @@ cpu_runloop:
                         }
                     }
 
-                    if (emul_reinitialize) {
+                    if (run_args.emul_reinitialize) {
                         pthread_mutex_unlock(&interface_mutex);
                         goto cpu_runloop;
                     }
@@ -389,39 +360,36 @@ cpu_runloop:
             } while (is_debugging);
 
             MB_UpdateCycles();
-
-            timing_checkpoint_cycles();
+            // TODO : modularize MB and other peripheral card cycles/interrupts ...
 
             speaker_flush(); // play audio
 
-            if (g_dwCyclesThisFrame >= dwClksPerFrame) {
-                g_dwCyclesThisFrame -= dwClksPerFrame;
-                MB_EndOfVideoFrame();
-            }
+            TRACE_CPU_BEGIN("advance scanner");
+            video_scannerUpdate();
+            TRACE_CPU_END();
 
             clock_gettime(CLOCK_MONOTONIC, &tj);
             pthread_mutex_unlock(&interface_mutex);
             // -UNLOCK--------------------------------------------------------------------------------------- SAMPLE tj
 
-#if !MOBILE_DEVICE
-            if (timing_shouldAutoAdjustSpeed()) {
+            if (timing_shouldAutoAdjustSpeed() && !is_fullspeed) {
                 disk_motor_time = timespec_diff(disk6.motor_time, tj, &negative);
-                assert(!negative);
-                if (!is_fullspeed &&
-                        !speaker_isActive() &&
-                        !video_isDirty(A2_DIRTY_FLAG) && (!disk6.motor_off && (disk_motor_time.tv_sec || disk_motor_time.tv_nsec > DISK_MOTOR_QUIET_NSECS)) )
+                if (UNLIKELY(negative)) {
+                    LOG("WHOA... time went backwards #1! Did you just cross a timezone?");
+                    disk_motor_time.tv_sec = 1;
+                }
+                if (!speaker_isActive() && !video_isDirty(A2_DIRTY_FLAG) && (disk6.disk[disk6.drive].file_name != NULL) &&
+                    !disk6.motor_off && (disk_motor_time.tv_sec || disk_motor_time.tv_nsec > DISK_MOTOR_QUIET_NSECS) )
                 {
                     TIMING_LOG("auto switching to full speed");
                     _timing_initialize(CPU_SCALE_FASTEST);
                 }
             }
-#endif
 
             if (!is_fullspeed) {
                 deltat = timespec_diff(ti, tj, &negative);
-                if (negative) {
-                    // 2016/05/05 : crash report from the wild on Android if we assert(!negative)
-                    LOG("WHOA... time went backwards! Did you just cross a timezone?");
+                if (UNLIKELY(negative)) {
+                    LOG("WHOA... time went backwards #2! Did you just cross a timezone?");
                     deltat.tv_sec = 1;
                 }
                 long sleepfor = 0;
@@ -444,16 +412,11 @@ cpu_runloop:
                 {
                     deltat.tv_sec = 0;
                     deltat.tv_nsec = sleepfor;
-                    TRACE_CPU_BEGIN("sleep");
+                    ////TRACE_CPU_BEGIN("sleep");
                     nanosleep(&deltat, NULL);
-                    TRACE_CPU_END();
+                    ////TRACE_CPU_END();
                 }
 
-                dbg_ticks += EXECUTION_PERIOD_NSECS;
-                if ((dbg_ticks % (NANOSECONDS_PER_SECOND>>1)) == 0)
-                {
-                    display_flashText(); // TODO FIXME : proper FLASH timing ...
-                }
 #if DEBUG_TIMING
                 // collect timing statistics
                 if (speaker_neg_feedback > cycles_speaker_feedback)
@@ -478,11 +441,14 @@ cpu_runloop:
                 }
             }
 
-#if !MOBILE_DEVICE
-            if (timing_shouldAutoAdjustSpeed()) {
-                if (is_fullspeed && (
-                            speaker_isActive() ||
-                            video_isDirty(A2_DIRTY_FLAG) || (disk6.motor_off && (disk_motor_time.tv_sec || disk_motor_time.tv_nsec > DISK_MOTOR_QUIET_NSECS))) )
+            if (timing_shouldAutoAdjustSpeed() && is_fullspeed) {
+                disk_motor_time = timespec_diff(disk6.motor_time, tj, &negative);
+                if (UNLIKELY(negative)) {
+                    LOG("WHOA... time went backwards #3! Did you just cross a timezone?");
+                    disk_motor_time.tv_sec = 1;
+                }
+                if (speaker_isActive() || video_isDirty(A2_DIRTY_FLAG) ||
+                    (disk6.motor_off && (disk_motor_time.tv_sec || disk_motor_time.tv_nsec > DISK_MOTOR_QUIET_NSECS)) )
                 {
                     double speed = alt_speed_enabled ? cpu_altscale_factor : cpu_scale_factor;
                     if (speed <= CPU_SCALE_FASTEST_PIVOT) {
@@ -491,9 +457,8 @@ cpu_runloop:
                     }
                 }
             }
-#endif
 
-            if (UNLIKELY(emul_reinitialize)) {
+            if (UNLIKELY(run_args.emul_reinitialize)) {
                 break;
             }
 
@@ -524,8 +489,13 @@ cpu_runloop:
     return NULL;
 }
 
+bool timing_isCPUThread(void) {
+    return pthread_self() == cpu_thread_id;
+}
+
 void timing_startCPU(void) {
     cpu_shutting_down = false;
+    assert(cpu_thread_id == 0);
     int err = TEMP_FAILURE_RETRY(pthread_create(&cpu_thread_id, NULL, (void *)&cpu_thread, (void *)NULL));
     if (err) {
         LOG("pthread_create failed!");
@@ -542,19 +512,13 @@ void timing_stopCPU(void) {
     }
 }
 
-unsigned int CpuGetCyclesThisVideoFrame(void) {
-    assert(pthread_self() == cpu_thread_id);
+// Called when accurate global cycle count info is needed
+void timing_checkpointCycles(void) {
+    ASSERT_ON_CPU_THREAD();
 
-    timing_checkpoint_cycles();
-    return g_dwCyclesThisFrame + cycles_checkpoint_count;
-}
-
-// Called when an IO-reg is accessed & accurate global cycle count info is needed
-void timing_checkpoint_cycles(void) {
-    assert(pthread_self() == cpu_thread_id);
-
-    const int32_t d = cpu65_cycle_count - cycles_checkpoint_count;
+    const int32_t d = run_args.cpu65_cycle_count - cycles_checkpoint_count;
     assert(d >= 0);
+    cycles_video_frame += d;
 #if !TESTING
     cycles_count_total += d;
 #else
@@ -567,7 +531,7 @@ void timing_checkpoint_cycles(void) {
         }
     }
 #endif
-    cycles_checkpoint_count = cpu65_cycle_count;
+    cycles_checkpoint_count = run_args.cpu65_cycle_count;
 }
 
 // ----------------------------------------------------------------------------
@@ -583,7 +547,7 @@ bool timing_saveState(StateHelper_s *helper) {
         assert(cpu_scale_factor >= 0);
         assert(cpu_altscale_factor >= 0);
 
-        lVal = (uint32_t)(cpu_scale_factor * 100.);
+        lVal = (cpu_scale_factor * 100.);
         serialized[0] = (uint8_t)((lVal & 0xFF000000) >> 24);
         serialized[1] = (uint8_t)((lVal & 0xFF0000  ) >> 16);
         serialized[2] = (uint8_t)((lVal & 0xFF00    ) >>  8);
@@ -592,7 +556,7 @@ bool timing_saveState(StateHelper_s *helper) {
             break;
         }
 
-        lVal = (long)(cpu_altscale_factor * 100.);
+        lVal = (cpu_altscale_factor * 100.);
         serialized[0] = (uint8_t)((lVal & 0xFF000000) >> 24);
         serialized[1] = (uint8_t)((lVal & 0xFF0000  ) >> 16);
         serialized[2] = (uint8_t)((lVal & 0xFF00    ) >>  8);
@@ -654,7 +618,7 @@ bool timing_loadState(StateHelper_s *helper) {
 
 // ----------------------------------------------------------------------------
 
-static void vm_prefsChanged(const char *domain) {
+static void timing_prefsChanged(const char *domain) {
     (void)domain;
 
     float fVal = 1.0;
@@ -691,10 +655,13 @@ static void vm_prefsChanged(const char *domain) {
         MB_SetEnabled(enabled);
         timing_reinitializeAudio();
     }
+
+    auto_adjust_speed = prefs_parseBoolValue(PREF_DOMAIN_INTERFACE, PREF_DISK_FAST_LOADING, &bVal) ? bVal : true;
 }
 
-static __attribute__((constructor)) void _init_vm(void) {
-    prefs_registerListener(PREF_DOMAIN_VM, &vm_prefsChanged);
-    prefs_registerListener(PREF_DOMAIN_AUDIO, &vm_prefsChanged);
+static __attribute__((constructor)) void _init_timing(void) {
+    prefs_registerListener(PREF_DOMAIN_VM, &timing_prefsChanged);
+    prefs_registerListener(PREF_DOMAIN_AUDIO, &timing_prefsChanged);
+    prefs_registerListener(PREF_DOMAIN_INTERFACE, &timing_prefsChanged);
 }
 

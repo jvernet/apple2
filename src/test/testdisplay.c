@@ -16,28 +16,197 @@ static bool test_thread_running = false;
 extern pthread_mutex_t interface_mutex; // TODO FIXME : raw access to CPU mutex because stepping debugger ...
 
 static void testdisplay_setup(void *arg) {
+    test_setup_boot_disk("testdisplay1.dsk.gz", 1);
     test_common_setup();
     apple_ii_64k[0][MIXSWITCH_ADDR] = 0x00;
     apple_ii_64k[0][WATCHPOINT_ADDR] = 0x00;
-    joy_button0 = 0xff; // OpenApple
+    run_args.joy_button0 = 0xff; // OpenApple
     if (test_do_reboot) {
         cpu65_interrupt(ResetSig);
     }
 }
 
 static void testdisplay_teardown(void *arg) {
+    test_do_reboot = true;
 }
 
 // ----------------------------------------------------------------------------
 // Various Display Tests ...
 
-TEST test_boot_disk() {
-    test_setup_boot_disk("testdisplay1.dsk.gz", 1);
+#if VIDEO_TRACING
+
+#if 0
+#   define EXPECTED_BOOT_VIDEO_TRACE_FILE_SIZE 1484244660
+#   define EXPECTED_BOOT_VIDEO_TRACE_FILE_SHA "26b9e21914d4047e6b190fb4f6fcb6854a4eaa25"
+// NOTE that CONFORMANT_TRACKS codepaths will change the output of this tracing (just like cpu tracing)
+//  - Data in screen holes (e.g., 0478-047F is used by Disk ][
+//  - Longer boot time with CONFORMANT_TRACKS will add more frames of output
+#   if CONFORMANT_TRACKS
+TEST test_boot_video_trace(void) {
+
+    const char *homedir = HOMEDIR;
+    char *traceFile = NULL;
+    ASPRINTF(&traceFile, "%s/a2_boot_video_trace.txt", homedir);
+    ASSERT(traceFile);
+    unlink(traceFile);
+    video_scannerTraceBegin(traceFile, 0);
 
     BOOT_TO_DOS();
 
+    video_scannerTraceEnd();
+    do {
+        uint8_t md[SHA_DIGEST_LENGTH];
+        char mdstr0[(SHA_DIGEST_LENGTH*2)+1];
+
+        FILE *fp = fopen(traceFile, "r");
+
+        fseek(fp, 0, SEEK_END);
+        long expectedSize = ftell(fp);
+        ASSERT(expectedSize == EXPECTED_BOOT_VIDEO_TRACE_FILE_SIZE);
+        fseek(fp, 0, SEEK_SET);
+
+        unsigned char *buf = MALLOC(EXPECTED_BOOT_VIDEO_TRACE_FILE_SIZE);
+        if (fread(buf, 1, EXPECTED_BOOT_VIDEO_TRACE_FILE_SIZE, fp) != EXPECTED_BOOT_VIDEO_TRACE_FILE_SIZE) {
+            ASSERT(false);
+        }
+        fclose(fp); fp = NULL;
+        SHA1(buf, EXPECTED_BOOT_VIDEO_TRACE_FILE_SIZE, md);
+        FREE(buf);
+
+        sha1_to_str(md, mdstr0);
+        ASSERT(strcasecmp(mdstr0, EXPECTED_BOOT_VIDEO_TRACE_FILE_SHA) == 0);
+    } while(0);
+
+    unlink(traceFile);
+    FREE(traceFile);
+
     PASS();
 }
+#   endif
+#   undef EXPECTED_BOOT_VIDEO_TRACE_FILE_SIZE
+#   undef EXPECTED_BOOT_VIDEO_TRACE_FILE_SHA
+#endif // 0
+
+#   define EXPECTED_TRACE_40COL_FILE_SIZ 698230
+#   define EXPECTED_TRACE_40COL_FILE_SHA "2B8C050F84776A78F73A7AE803A474820E11B3C1"
+TEST test_video_trace_40col(void) {
+
+    BOOT_TO_DOS();
+
+    ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] != TEST_FINISHED);
+    test_type_input("CATALOG\r\rPOKE7987,255:REM TRIGGER DEBUGGER\r");
+    c_debugger_go();
+    ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
+    apple_ii_64k[0][WATCHPOINT_ADDR] = 0x0;
+
+    const char *homedir = HOMEDIR;
+    char *traceFile = NULL;
+    ASPRINTF(&traceFile, "%s/a2_video_trace_40col.txt", homedir);
+    ASSERT(traceFile);
+
+    unlink(traceFile);
+
+    video_scannerTraceBegin(traceFile, 1);
+
+    debugger_setBreakCallback(&video_scannerTraceShouldStop);
+    c_debugger_go();
+    debugger_setBreakCallback(NULL);
+
+    video_scannerTraceEnd();
+
+    do {
+        uint8_t md[SHA_DIGEST_LENGTH];
+        char mdstr0[(SHA_DIGEST_LENGTH*2)+1];
+
+        FILE *fp = fopen(traceFile, "r");
+        ASSERT(fp);
+
+        fseek(fp, 0, SEEK_END);
+        long expectedSize = ftell(fp);
+        ASSERT(expectedSize == EXPECTED_TRACE_40COL_FILE_SIZ);
+        fseek(fp, 0, SEEK_SET);
+
+        unsigned char *buf = MALLOC(EXPECTED_TRACE_40COL_FILE_SIZ);
+        if (fread(buf, 1, EXPECTED_TRACE_40COL_FILE_SIZ, fp) != EXPECTED_TRACE_40COL_FILE_SIZ) {
+            ASSERT(false);
+        }
+        fclose(fp); fp = NULL;
+        SHA1(buf, EXPECTED_TRACE_40COL_FILE_SIZ, md);
+        FREE(buf);
+
+        sha1_to_str(md, mdstr0);
+        ASSERT(strcasecmp(mdstr0, EXPECTED_TRACE_40COL_FILE_SHA) == 0);
+    } while(0);
+
+    unlink(traceFile);
+    FREE(traceFile);
+
+    PASS();
+}
+#   undef EXPECTED_TRACE_40COL_FILE_SIZ
+#   undef EXPECTED_TRACE_40COL_FILE_SHA
+
+#   define EXPECTED_TRACE_LILTEXWIN_FILE_SIZ 613920
+#   define EXPECTED_TRACE_LILTEXWIN_FILE_SHA "97cf740a3697d8046b0756c7c2baedc893d46237"
+TEST test_video_trace_liltexwin(void) {
+    test_setup_boot_disk("testdisplay2.dsk.gz", 1); // boots directly into LILTEXWIN
+
+    BOOT_TO_DOS();
+
+    c_debugger_set_timeout(5);
+    c_debugger_clear_watchpoints();
+    c_debugger_go();
+    c_debugger_set_timeout(0);
+
+    const char *homedir = HOMEDIR;
+    char *traceFile = NULL;
+    ASPRINTF(&traceFile, "%s/a2_video_trace_liltexwin.txt", homedir);
+    ASSERT(traceFile);
+
+    unlink(traceFile);
+
+    video_scannerTraceBegin(traceFile, 1);
+
+    debugger_setBreakCallback(&video_scannerTraceShouldStop);
+    c_debugger_go();
+    debugger_setBreakCallback(NULL);
+    c_debugger_set_watchpoint(WATCHPOINT_ADDR);
+
+    video_scannerTraceEnd();
+
+    do {
+        uint8_t md[SHA_DIGEST_LENGTH];
+        char mdstr0[(SHA_DIGEST_LENGTH*2)+1];
+
+        FILE *fp = fopen(traceFile, "r");
+        ASSERT(fp);
+
+        fseek(fp, 0, SEEK_END);
+        long expectedSize = ftell(fp);
+        ASSERT(expectedSize == EXPECTED_TRACE_LILTEXWIN_FILE_SIZ);
+        fseek(fp, 0, SEEK_SET);
+
+        unsigned char *buf = MALLOC(EXPECTED_TRACE_LILTEXWIN_FILE_SIZ);
+        if (fread(buf, 1, EXPECTED_TRACE_LILTEXWIN_FILE_SIZ, fp) != EXPECTED_TRACE_LILTEXWIN_FILE_SIZ) {
+            ASSERT(false);
+        }
+        fclose(fp); fp = NULL;
+        SHA1(buf, EXPECTED_TRACE_LILTEXWIN_FILE_SIZ, md);
+        FREE(buf);
+
+        sha1_to_str(md, mdstr0);
+        ASSERT(strcasecmp(mdstr0, EXPECTED_TRACE_LILTEXWIN_FILE_SHA) == 0);
+    } while(0);
+
+    unlink(traceFile);
+    FREE(traceFile);
+
+    PASS();
+}
+#   undef EXPECTED_TRACE_LILTEXWIN_FILE_SIZ
+#   undef EXPECTED_TRACE_LILTEXWIN_FILE_SHA
+
+#endif
 
 // ----------------------------------------------------------------------------
 // TEXT
@@ -50,7 +219,7 @@ TEST test_40col_normal() {
     c_debugger_go();
 
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    ASSERT_SHA("51E5960115380C64351ED00A2ACAB0EB67970249");
+    WAIT_FOR_FB_SHA("D676FAFEF4FE5B31832EF875285B7E3A87E47689");
 
     PASS();
 }
@@ -63,7 +232,7 @@ TEST test_80col_normal() {
     c_debugger_go();
 
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    ASSERT_SHA("ED9CE59F41A51A5ABB1617383A411455677A78E3");
+    WAIT_FOR_FB_SHA("BB63B7206CD8741270791872CCD5B77C08169850");
 
     PASS();
 }
@@ -76,7 +245,7 @@ TEST test_40col_inverse() {
     c_debugger_go();
 
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    ASSERT_SHA("20957B960C3C0DE0ABEE0058A08C0DDA24AB31D8");
+    WAIT_FOR_FB_SHA("137B1F840ACC1BD23F9636153AAD93CD0FB60E97");
 
     PASS();
 }
@@ -89,17 +258,13 @@ TEST test_80col_inverse() {
     c_debugger_go();
 
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    ASSERT_SHA("037798F4BCF740D0A7CBF7CDF5FC5D1B0B3C77A2");
+    WAIT_FOR_FB_SHA("CDAB6BCA6DA883049AF1431EF408F8994615B24A");
 
     PASS();
 }
 
 // ----------------------------------------------------------------------------
 // LORES
-//
-// 2014/04/05 NOTE : Tests may be successful but graphics display appears to be somewhat b0rken
-//
-// NOTE : These tests assume standard color mode (not b/w or interpolated)
 //
 
 TEST test_lores_with_80col() {
@@ -111,7 +276,8 @@ TEST test_lores_with_80col() {
     c_debugger_go();
 
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    ASSERT_SHA("7B642FF04DE03142A2CE1062C28A4D92E492EDDC");
+
+    WAIT_FOR_FB_SHA("22867871D3E9F26DAB99286724CD24114D185930");
 
     PASS();
 }
@@ -125,7 +291,23 @@ TEST test_lores_with_40col() {
     c_debugger_go();
 
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    ASSERT_SHA("D7DC78F5718B4CF8716614E79ADABCAB919FCE5D");
+
+    WAIT_FOR_FB_SHA("89CB9CAB3EAFC24CB3995B2B3846DF7E62C2106F");
+
+    PASS();
+}
+
+TEST test_lores_with_40col_2() {
+    BOOT_TO_DOS();
+
+    ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] != TEST_FINISHED);
+
+    test_type_input("RUNTESTLORES_2\r");
+    c_debugger_go();
+
+    ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
+
+    WAIT_FOR_FB_SHA("0CE19F2C173A7EBAC293198CF0E15A8BE495C9FA");
 
     PASS();
 }
@@ -139,7 +321,8 @@ TEST test_lores_40colmix_normal() {
     c_debugger_go();
 
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    ASSERT_SHA("9097A6AE967E4501B40C7CD7EEE115B8C478B345");
+
+    WAIT_FOR_FB_SHA("C0D1C54E3CD4D8D39B5174AFCB4E1815F3749614");
 
     PASS();
 }
@@ -153,7 +336,8 @@ TEST test_lores_40colmix_inverse() {
     c_debugger_go();
 
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    ASSERT_SHA("5256E8B96CB04F48324B587ECCCF8A435077B5DE");
+
+    WAIT_FOR_FB_SHA("F2332A32E34F6CF61A69C0C278105F348870E5C6");
 
     PASS();
 }
@@ -167,7 +351,8 @@ TEST test_lores_80colmix_normal() {
     c_debugger_go();
 
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    ASSERT_SHA("9D5D5382B0A18A71DC135CAD51BEA2665ADB5FB2");
+
+    WAIT_FOR_FB_SHA("EC819006C66EFE5CFF45BADC7B2ECA078268B1D3");
 
     PASS();
 }
@@ -181,7 +366,8 @@ TEST test_lores_80colmix_inverse() {
     c_debugger_go();
 
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    ASSERT_SHA("7936E87BE1F920AACD43268DB288746528E89959");
+
+    WAIT_FOR_FB_SHA("8681289778AB74083712DFF225A2CADADAE9C6DA");
 
     PASS();
 }
@@ -189,9 +375,8 @@ TEST test_lores_80colmix_inverse() {
 // ----------------------------------------------------------------------------
 // HIRES
 //
-// NOTE : These tests assume standard color mode (not b/w or interpolated)
-//
-#define MOIRE_SHA "1A5DD96B7E3538C2C3625A37653E013E3998F825"
+
+#define MOIRE_SHA_BW "04C6F5968C56A07FE19B9AB010B052C6218C8E79"
 
 TEST test_hires_with_80col() {
     BOOT_TO_DOS();
@@ -202,7 +387,8 @@ TEST test_hires_with_80col() {
     c_debugger_go();
 
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    ASSERT_SHA(MOIRE_SHA);
+
+    WAIT_FOR_FB_SHA(MOIRE_SHA_BW);
 
     PASS();
 }
@@ -215,7 +401,8 @@ TEST test_hires_with_40col() {
     c_debugger_go();
 
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    ASSERT_SHA(MOIRE_SHA);
+
+    WAIT_FOR_FB_SHA(MOIRE_SHA_BW);
 
     PASS();
 }
@@ -228,7 +415,8 @@ TEST test_hires_with_40col_page2() {
     c_debugger_go();
 
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    ASSERT_SHA(MOIRE_SHA);
+
+    WAIT_FOR_FB_SHA(MOIRE_SHA_BW);
 
     PASS();
 }
@@ -241,7 +429,8 @@ TEST test_hires_40colmix_normal() {
     c_debugger_go();
 
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    ASSERT_SHA("37F41F74EB23F8812498F732E6DA34A0EBC4D68A");
+
+    WAIT_FOR_FB_SHA("EEA7E0FBE38543CEAC0C9B599977C414D32F453C");
 
     PASS();
 }
@@ -254,7 +443,8 @@ TEST test_hires_40colmix_inverse() {
     c_debugger_go();
 
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    ASSERT_SHA("253D1823F5DAC0300B46B3D49C04CD59CC70076F");
+
+    WAIT_FOR_FB_SHA("29EE37FF777100486AE0706E1ACAE233F74A8C26");
 
     PASS();
 }
@@ -267,7 +457,8 @@ TEST test_hires_80colmix_normal() {
     c_debugger_go();
 
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    ASSERT_SHA("032BD68899749265EB2934A76A35D7068642824B");
+
+    WAIT_FOR_FB_SHA("BE548CA56A0194580637B488D7376D8DBCBC71C8");
 
     PASS();
 }
@@ -280,10 +471,15 @@ TEST test_hires_80colmix_inverse() {
     c_debugger_go();
 
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    ASSERT_SHA("FAFBB65013DA3D5173487C3F434C36A7C04DE92E");
+
+    WAIT_FOR_FB_SHA("7B1F9B4BDDE9E0AAA8895B5D9CC9D9126A612244");
 
     PASS();
 }
+
+// ----------------------------------------------------------------------------
+// 80LORES & 80HIRES
+//
 
 TEST test_80col_lores() {
     BOOT_TO_DOS();
@@ -295,6 +491,7 @@ TEST test_80col_lores() {
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     ASSERT_SHA("93E46FFBCE7D3890419961A64BC22949C8C44121");
 =======
     ASSERT_SHA("02257E25170D8E28F607C033B9D623F55641C7BA");
@@ -302,6 +499,24 @@ TEST test_80col_lores() {
 =======
     ASSERT_SHA("02257E25170D8E28F607C033B9D623F55641C7BA");
 >>>>>>> mauiaaron/develop
+=======
+
+    WAIT_FOR_FB_SHA("4565AB42DDDEB0FC49A5E868BDE4513BD407F84B");
+>>>>>>> master
+
+    PASS();
+}
+
+TEST test_80col_lores_2() {
+    BOOT_TO_DOS();
+
+    ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] != TEST_FINISHED);
+    test_type_input("RUN TESTLORES80_2\r");
+    c_debugger_go();
+
+    ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
+
+    WAIT_FOR_FB_SHA("55ECD4261611E1209915AB4052FFA3203C075EF1");
 
     PASS();
 }
@@ -314,13 +529,8 @@ TEST test_80col_hires() {
     c_debugger_go();
 
     ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    ASSERT_SHA("126363F103F3A24BB2EB2AEC5B4972F46F7CA24B");
 
-    apple_ii_64k[0][WATCHPOINT_ADDR] = 0x00;
-    c_debugger_go();
-
-    ASSERT(apple_ii_64k[0][WATCHPOINT_ADDR] == TEST_FINISHED);
-    ASSERT_SHA("91F63831B6D1145446F0DBACE8EBD284B5690D81");
+    WAIT_FOR_FB_SHA("0BBBDB9EB3D68C54E4791F78CA9865214B879118");
 
     PASS();
 }
@@ -332,21 +542,19 @@ GREATEST_SUITE(test_suite_display) {
     pthread_mutex_lock(&interface_mutex);
 
     test_thread_running = true;
-    
+
     GREATEST_SET_SETUP_CB(testdisplay_setup, NULL);
     GREATEST_SET_TEARDOWN_CB(testdisplay_teardown, NULL);
     GREATEST_SET_BREAKPOINT_CB(test_breakpoint, NULL);
 
     // TESTS --------------------------
 
-    RUN_TESTp(test_boot_disk);
-
+#if VIDEO_TRACING && CONFORMANT_TRACKS
+    //RUN_TESTp(test_boot_video_trace); -- Not valid presently
+    //RUN_TESTp(test_video_trace_40col); -- Need more stable test : disk is settled and cursor flashing ...
+    RUN_TESTp(test_video_trace_liltexwin);
+#endif
     // text modes
-    RUN_TESTp(test_40col_normal);
-    test_do_reboot = false;
-    RUN_TESTp(test_40col_normal);
-    test_do_reboot = true;
-
     RUN_TESTp(test_40col_normal);
     test_do_reboot = false;
     RUN_TESTp(test_40col_normal);
@@ -369,76 +577,84 @@ GREATEST_SUITE(test_suite_display) {
 
     // lores
 
+    test_do_reboot = true;
     RUN_TEST(test_lores_with_80col);
     test_do_reboot = false;
     RUN_TEST(test_lores_with_80col);
-    test_do_reboot = true;
 
+    test_do_reboot = true;
     RUN_TEST(test_lores_with_40col);
     test_do_reboot = false;
     RUN_TEST(test_lores_with_40col);
-    test_do_reboot = true;
 
+    test_do_reboot = true;
+    RUN_TEST(test_lores_with_40col_2);
+    test_do_reboot = false;
+    RUN_TEST(test_lores_with_40col_2);
+
+    test_do_reboot = true;
     RUN_TEST(test_lores_40colmix_normal);
     test_do_reboot = false;
     RUN_TEST(test_lores_40colmix_normal);
-    test_do_reboot = true;
 
+    test_do_reboot = true;
     RUN_TEST(test_lores_40colmix_inverse);
     test_do_reboot = false;
     RUN_TEST(test_lores_40colmix_inverse);
-    test_do_reboot = true;
 
+    test_do_reboot = true;
     RUN_TEST(test_lores_80colmix_normal);
     test_do_reboot = false;
     RUN_TEST(test_lores_80colmix_normal);
-    test_do_reboot = true;
 
+    test_do_reboot = true;
     RUN_TEST(test_lores_80colmix_inverse);
     test_do_reboot = false;
     RUN_TEST(test_lores_80colmix_inverse);
-    test_do_reboot = true;
 
     // hires
 
-    RUN_TESTp(test_hires_with_80col);
-    test_do_reboot = false;
-    RUN_TESTp(test_hires_with_80col);
     test_do_reboot = true;
+    RUN_TEST(test_hires_with_80col);
+    test_do_reboot = false;
+    RUN_TEST(test_hires_with_80col);
 
+    test_do_reboot = true;
     RUN_TEST(test_hires_with_40col);
     test_do_reboot = false;
     RUN_TEST(test_hires_with_40col);
-    test_do_reboot = true;
 
+    test_do_reboot = true;
     RUN_TEST(test_hires_with_40col_page2);
     test_do_reboot = false;
     RUN_TEST(test_hires_with_40col_page2);
-    test_do_reboot = true;
 
+    test_do_reboot = true;
     RUN_TEST(test_hires_40colmix_normal);
     test_do_reboot = false;
     RUN_TEST(test_hires_40colmix_normal);
-    test_do_reboot = true;
 
+    test_do_reboot = true;
     RUN_TEST(test_hires_40colmix_inverse);
     test_do_reboot = false;
     RUN_TEST(test_hires_40colmix_inverse);
-    test_do_reboot = true;
 
-    RUN_TESTp(test_hires_80colmix_normal);
-    test_do_reboot = false;
-    RUN_TESTp(test_hires_80colmix_normal);
     test_do_reboot = true;
+    RUN_TEST(test_hires_80colmix_normal);
+    test_do_reboot = false;
+    RUN_TEST(test_hires_80colmix_normal);
 
-    RUN_TESTp(test_hires_80colmix_inverse);
-    test_do_reboot = false;
-    RUN_TESTp(test_hires_80colmix_inverse);
     test_do_reboot = true;
+    RUN_TEST(test_hires_80colmix_inverse);
+    test_do_reboot = false;
+    RUN_TEST(test_hires_80colmix_inverse);
 
     // double-lo/hi
 
     RUN_TEST(test_80col_lores);
+
+    RUN_TEST(test_80col_lores_2);
+
     RUN_TEST(test_80col_hires);
 
     // ...
@@ -468,8 +684,6 @@ static void *test_thread(void *dummyptr) {
 void test_display(int _argc, char **_argv) {
     test_argc = _argc;
     test_argv = _argv;
-
-    srandom(time(NULL));
 
     test_common_init();
 

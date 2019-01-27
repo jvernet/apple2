@@ -23,7 +23,7 @@
         unsigned int tplWidth;      /* template width */ \
         unsigned int tplHeight;     /* template height */ \
         \
-        uint8_t *pixels;            /* raw indexed data */ \
+        PIXEL_TYPE *pixels;         /* raw indexed data */ \
         unsigned int pixWidth;      /* FB width -- this is the same as GLModel.texWidth if glyphMultiplier is 1 */ \
         unsigned int pixHeight;     /* FB height -- this is the same as GLModel.texHeight if glyphMultiplier is 1 */ \
         unsigned int glyphMultiplier; \
@@ -62,5 +62,8 @@ void glhud_quadModelToScreen(const GLModel *model, const int screenW, const int 
 
 // helper method to sync timing of fade out
 float glhud_getTimedVisibility(struct timespec timingBegin, float minAlpha, float maxAlpha);
+
+// current color of HUD elements
+extern interface_colorscheme_t glhud_currentColorScheme;
 
 #endif

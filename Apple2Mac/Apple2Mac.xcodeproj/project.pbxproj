@@ -138,8 +138,36 @@
 		4A4B676D1DB47682005028A6 /* Apple2iOSTestUI-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 4A4B676B1DB47682005028A6 /* Apple2iOSTestUI-Info.plist */; };
 		4A4B676E1DB488B9005028A6 /* testui.c in Sources */ = {isa = PBXBuildFile; fileRef = 4A8A405C1D85CF1B00B460B0 /* testui.c */; };
 		4A4B676F1DB488BE005028A6 /* testtrace.c in Sources */ = {isa = PBXBuildFile; fileRef = 935C55751C136F0D0013166D /* testtrace.c */; };
+		4A589F782157E72B0026A73A /* ntsc.c in Sources */ = {isa = PBXBuildFile; fileRef = 4A589F722157E72B0026A73A /* ntsc.c */; };
+		4A589F792157E72B0026A73A /* ntsc.c in Sources */ = {isa = PBXBuildFile; fileRef = 4A589F722157E72B0026A73A /* ntsc.c */; };
+		4A589F7A2157E72B0026A73A /* ntsc.c in Sources */ = {isa = PBXBuildFile; fileRef = 4A589F722157E72B0026A73A /* ntsc.c */; };
+		4A589F7B2157E72B0026A73A /* ntsc.c in Sources */ = {isa = PBXBuildFile; fileRef = 4A589F722157E72B0026A73A /* ntsc.c */; };
+		4A589F7C2157E72B0026A73A /* ntsc.c in Sources */ = {isa = PBXBuildFile; fileRef = 4A589F722157E72B0026A73A /* ntsc.c */; };
+		4A589F7D2157E72B0026A73A /* ntsc.c in Sources */ = {isa = PBXBuildFile; fileRef = 4A589F722157E72B0026A73A /* ntsc.c */; };
+		4A589F7E2157E72B0026A73A /* ntsc.c in Sources */ = {isa = PBXBuildFile; fileRef = 4A589F722157E72B0026A73A /* ntsc.c */; };
+		4A589F7F2157E72B0026A73A /* ntsc.c in Sources */ = {isa = PBXBuildFile; fileRef = 4A589F722157E72B0026A73A /* ntsc.c */; };
+		4A589F802157E72B0026A73A /* ntsc.c in Sources */ = {isa = PBXBuildFile; fileRef = 4A589F722157E72B0026A73A /* ntsc.c */; };
+		4A589F812157E72B0026A73A /* ntsc.c in Sources */ = {isa = PBXBuildFile; fileRef = 4A589F722157E72B0026A73A /* ntsc.c */; };
+		4A589F822157E72B0026A73A /* ntsc.c in Sources */ = {isa = PBXBuildFile; fileRef = 4A589F722157E72B0026A73A /* ntsc.c */; };
+		4A589F832157E72B0026A73A /* ntsc.c in Sources */ = {isa = PBXBuildFile; fileRef = 4A589F722157E72B0026A73A /* ntsc.c */; };
+		4A589F842157E72B0026A73A /* ntsc.c in Sources */ = {isa = PBXBuildFile; fileRef = 4A589F722157E72B0026A73A /* ntsc.c */; };
+		4A589F85215831560026A73A /* ntsc.c in Sources */ = {isa = PBXBuildFile; fileRef = 4A589F722157E72B0026A73A /* ntsc.c */; };
 		4A609CB31D725D4C0066AF38 /* external-disks in Resources */ = {isa = PBXBuildFile; fileRef = 4A609CB21D725D4C0066AF38 /* external-disks */; };
 		4A6746721D848B51006520C2 /* external-disks in Resources */ = {isa = PBXBuildFile; fileRef = 4A609CB21D725D4C0066AF38 /* external-disks */; };
+		4A68078C21A86FF200D4A353 /* systrace.c in Sources */ = {isa = PBXBuildFile; fileRef = 4A68078B21A86FF200D4A353 /* systrace.c */; };
+		4A68078D21A86FF200D4A353 /* systrace.c in Sources */ = {isa = PBXBuildFile; fileRef = 4A68078B21A86FF200D4A353 /* systrace.c */; };
+		4A68078E21A86FF200D4A353 /* systrace.c in Sources */ = {isa = PBXBuildFile; fileRef = 4A68078B21A86FF200D4A353 /* systrace.c */; };
+		4A68078F21A86FF200D4A353 /* systrace.c in Sources */ = {isa = PBXBuildFile; fileRef = 4A68078B21A86FF200D4A353 /* systrace.c */; };
+		4A68079021A86FF200D4A353 /* systrace.c in Sources */ = {isa = PBXBuildFile; fileRef = 4A68078B21A86FF200D4A353 /* systrace.c */; };
+		4A68079121A86FF200D4A353 /* systrace.c in Sources */ = {isa = PBXBuildFile; fileRef = 4A68078B21A86FF200D4A353 /* systrace.c */; };
+		4A68079221A86FF200D4A353 /* systrace.c in Sources */ = {isa = PBXBuildFile; fileRef = 4A68078B21A86FF200D4A353 /* systrace.c */; };
+		4A68079321A86FF200D4A353 /* systrace.c in Sources */ = {isa = PBXBuildFile; fileRef = 4A68078B21A86FF200D4A353 /* systrace.c */; };
+		4A68079421A86FF200D4A353 /* systrace.c in Sources */ = {isa = PBXBuildFile; fileRef = 4A68078B21A86FF200D4A353 /* systrace.c */; };
+		4A68079521A86FF200D4A353 /* systrace.c in Sources */ = {isa = PBXBuildFile; fileRef = 4A68078B21A86FF200D4A353 /* systrace.c */; };
+		4A68079621A86FF200D4A353 /* systrace.c in Sources */ = {isa = PBXBuildFile; fileRef = 4A68078B21A86FF200D4A353 /* systrace.c */; };
+		4A68079721A86FF200D4A353 /* systrace.c in Sources */ = {isa = PBXBuildFile; fileRef = 4A68078B21A86FF200D4A353 /* systrace.c */; };
+		4A68079821A86FF200D4A353 /* systrace.c in Sources */ = {isa = PBXBuildFile; fileRef = 4A68078B21A86FF200D4A353 /* systrace.c */; };
+		4A68079921A86FF200D4A353 /* systrace.c in Sources */ = {isa = PBXBuildFile; fileRef = 4A68078B21A86FF200D4A353 /* systrace.c */; };
 		4A69C1921A33DB90001579EF /* DDHidLib.framework in Copy Files (1 item) */ = {isa = PBXBuildFile; fileRef = 77C2796F1A1047AF000FE33F /* DDHidLib.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		4A6B7C8D1D39E98C00A02120 /* disks in Resources */ = {isa = PBXBuildFile; fileRef = 4ACD73191D205D6000123DE6 /* disks */; };
 		4A6B7C8E1D39E9E000A02120 /* disks in Resources */ = {isa = PBXBuildFile; fileRef = 4ACD73191D205D6000123DE6 /* disks */; };
@@ -950,6 +978,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		4A0DEA9B216135BD000A2615 /* ntsc.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ntsc.h; sourceTree = "<group>"; };
 		4A2636F819FDEDB700DBFB00 /* Apple2Mac.help */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Apple2Mac.help; sourceTree = "<group>"; };
 <<<<<<< HEAD
 		4A73BE2E1CCBE21A0041C573 /* memmngt.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = memmngt.c; sourceTree = "<group>"; };
@@ -958,8 +987,14 @@
 		4A4B67681DB47560005028A6 /* Apple2iOSTestUI.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Apple2iOSTestUI.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4A4B676A1DB47682005028A6 /* Apple2iOSTestTrace-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "Apple2iOSTestTrace-Info.plist"; sourceTree = "<group>"; };
 		4A4B676B1DB47682005028A6 /* Apple2iOSTestUI-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "Apple2iOSTestUI-Info.plist"; sourceTree = "<group>"; };
+		4A589F722157E72B0026A73A /* ntsc.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = ntsc.c; sourceTree = "<group>"; };
 		4A609CB21D725D4C0066AF38 /* external-disks */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "external-disks"; path = "../external-disks"; sourceTree = "<group>"; };
+<<<<<<< HEAD
 >>>>>>> upstream/develop
+=======
+		4A68078A21A86FDD00D4A353 /* systrace.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = systrace.h; sourceTree = "<group>"; };
+		4A68078B21A86FF200D4A353 /* systrace.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = systrace.c; sourceTree = "<group>"; };
+>>>>>>> master
 		4A7EDC911AE092680072E98A /* glhudmodel.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = glhudmodel.c; sourceTree = "<group>"; };
 		4A7EDC921AE092680072E98A /* glnode.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = glnode.c; sourceTree = "<group>"; };
 		4A7EDC9D1AE092B80072E98A /* interface.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = interface.c; sourceTree = "<group>"; };
@@ -973,6 +1008,9 @@
 		4A8F5D121F6A1FE300AE37B5 /* video.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = video.c; sourceTree = "<group>"; };
 		4A8F5D3B1F6A271700AE37B5 /* log.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = log.c; sourceTree = "<group>"; };
 		4AA2D7FE1D2038380054A5FF /* testprefs.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = testprefs.c; sourceTree = "<group>"; };
+		4ABA2AE5201D0A5A0031DB98 /* vm.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = vm.h; sourceTree = "<group>"; };
+		4ABA2AEA201D0A650031DB98 /* display.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = display.h; sourceTree = "<group>"; };
+		4ABA2AEB201D0C2D0031DB98 /* font.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = font.txt; sourceTree = "<group>"; };
 		4ABDA9CD1D792E8C0086A35B /* Apple2MacTestTrace.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Apple2MacTestTrace.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4ABDA9D01D792F480086A35B /* Apple2MacTestTrace-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "Apple2MacTestTrace-Info.plist"; sourceTree = "<group>"; };
 		4ACD73691D20A83E00123DE6 /* Apple2iOSTestCPU.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Apple2iOSTestCPU.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -986,8 +1024,29 @@
 		4AD4FEC31A52464F00F958EC /* Apple2MacTestDisk.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Apple2MacTestDisk.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4AD4FEC41A52464F00F958EC /* Apple2MacTestDisk-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "Apple2MacTestDisk-Info.plist"; path = "Apple2MacTests/Apple2MacTestDisk-Info.plist"; sourceTree = SOURCE_ROOT; };
 		4AD4FEC91A52467D00F958EC /* testdisk.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = testdisk.c; sourceTree = "<group>"; };
+		4ADB475B209E300D00CD2985 /* log.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = log.h; sourceTree = "<group>"; };
+		4ADB475D209E9A2600CD2985 /* glue-offsets.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "glue-offsets.c"; sourceTree = "<group>"; };
+		4ADB475F209E9A6800CD2985 /* genrom.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = genrom.c; sourceTree = "<group>"; };
+		4ADB4760209E9A8900CD2985 /* genfont.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = genfont.c; sourceTree = "<group>"; };
+		4ADB4761209E9A9600CD2985 /* json_parse_private.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = json_parse_private.h; sourceTree = "<group>"; };
+		4ADB4762209E9ABF00CD2985 /* breakpad.C */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = breakpad.C; sourceTree = "<group>"; };
+		4ADB4763209E9B1F00CD2985 /* rom.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = rom.c; sourceTree = "<group>"; };
 		4ADC522719E8CA4500186B36 /* Apple2MacTestVM.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Apple2MacTestVM.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4ADC522819E8CA4500186B36 /* Apple2MacTestVM-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "Apple2MacTestVM-Info.plist"; path = "Apple2MacTests/Apple2MacTestVM-Info.plist"; sourceTree = SOURCE_ROOT; };
+		4AEDCEE8209E9BF70090B44F /* glue-offsets.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "glue-offsets.h"; path = "arm/glue-offsets.h"; sourceTree = "<group>"; };
+		4AEDCEED209E9C0E0090B44F /* glue-offsets32.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "glue-offsets32.h"; path = "arm/glue-offsets32.h"; sourceTree = "<group>"; };
+		4AEDCEEE209E9C520090B44F /* soundcore-opensles.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "soundcore-opensles.c"; sourceTree = "<group>"; };
+		4AEDCEF0209E9CCA0090B44F /* shatest.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = shatest.c; sourceTree = "<group>"; };
+		4AEDCEF1209E9CF10090B44F /* sha1-license.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "sha1-license.txt"; sourceTree = "<group>"; };
+		4AEDCEF3209E9D280090B44F /* xvideo.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = xvideo.c; sourceTree = "<group>"; };
+		4AEDCEF4209E9D3F0090B44F /* ncvideo.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = ncvideo.c; sourceTree = "<group>"; };
+		4AEDCEF5209E9D3F0090B44F /* glinput.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = glinput.h; sourceTree = "<group>"; };
+		4AEDCEF6209E9D3F0090B44F /* glutinput.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = glutinput.c; sourceTree = "<group>"; };
+		4AEDCEF7209E9DD60090B44F /* glue-offsets.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "glue-offsets.h"; sourceTree = "<group>"; };
+		4AEDCEF8209E9DD60090B44F /* glue-offsets32.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "glue-offsets32.h"; sourceTree = "<group>"; };
+		4AEDCEF9209E9DD60090B44F /* glue-offsets64.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "glue-offsets64.h"; sourceTree = "<group>"; };
+		4AEDCEFA209E9E420090B44F /* LICENSE */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = LICENSE; path = ../external/jsmn/LICENSE; sourceTree = "<group>"; };
+		4AEDCEFC209E9E770090B44F /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = README.md; path = ../external/jsmn/README.md; sourceTree = "<group>"; };
 		4AFC17091AAE9C3200B215FA /* sha1.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = sha1.c; sourceTree = "<group>"; };
 		4E1733DC1C2C5E5D00CDF9DF /* AppleViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AppleViewController.h; sourceTree = "<group>"; };
 		4E1733DD1C2C5E5D00CDF9DF /* AppleViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = AppleViewController.m; sourceTree = "<group>"; };
@@ -1426,6 +1485,15 @@
 		773B3D4519568A570085CE5F /* src */ = {
 			isa = PBXGroup;
 			children = (
+				4ADB4762209E9ABF00CD2985 /* breakpad.C */,
+				4ADB4763209E9B1F00CD2985 /* rom.c */,
+				4ADB4761209E9A9600CD2985 /* json_parse_private.h */,
+				4ADB475F209E9A6800CD2985 /* genrom.c */,
+				4ADB4760209E9A8900CD2985 /* genfont.c */,
+				4ADB475D209E9A2600CD2985 /* glue-offsets.c */,
+				4ABA2AEB201D0C2D0031DB98 /* font.txt */,
+				4ABA2AEA201D0A650031DB98 /* display.h */,
+				4ABA2AE5201D0A5A0031DB98 /* vm.h */,
 				935C55781C136F550013166D /* arm */,
 				779F564619EAF66E00A6F107 /* audio */,
 				773B3D5C19568A570085CE5F /* common.h */,
@@ -1469,6 +1537,9 @@
 		773B3D7019568A570085CE5F /* meta */ = {
 			isa = PBXGroup;
 			children = (
+				4A68078B21A86FF200D4A353 /* systrace.c */,
+				4A68078A21A86FDD00D4A353 /* systrace.h */,
+				4ADB475B209E300D00CD2985 /* log.h */,
 				4A8F5D3B1F6A271700AE37B5 /* log.c */,
 				4A8F5D081F6A1FC900AE37B5 /* darwin-shim.c */,
 				4A8F5D091F6A1FC900AE37B5 /* memmngt.h */,
@@ -1485,6 +1556,8 @@
 		773B3D7919568A570085CE5F /* test */ = {
 			isa = PBXGroup;
 			children = (
+				4AEDCEF1209E9CF10090B44F /* sha1-license.txt */,
+				4AEDCEF0209E9CCA0090B44F /* shatest.c */,
 				773B3D7A19568A570085CE5F /* greatest.h */,
 				935C55771C136F260013166D /* sha1.h */,
 				4AFC17091AAE9C3200B215FA /* sha1.c */,
@@ -1504,6 +1577,12 @@
 		773B3D8A19568A570085CE5F /* video */ = {
 			isa = PBXGroup;
 			children = (
+				4A0DEA9B216135BD000A2615 /* ntsc.h */,
+				4A589F722157E72B0026A73A /* ntsc.c */,
+				4AEDCEF5209E9D3F0090B44F /* glinput.h */,
+				4AEDCEF6209E9D3F0090B44F /* glutinput.c */,
+				4AEDCEF4209E9D3F0090B44F /* ncvideo.c */,
+				4AEDCEF3209E9D280090B44F /* xvideo.c */,
 				4A8F5D121F6A1FE300AE37B5 /* video.c */,
 				935C55801C1370160013166D /* gltouch */,
 				779F562819E4FE9E00A6F107 /* Basic.fsh */,
@@ -1524,6 +1603,9 @@
 		773B3D8E19568A570085CE5F /* x86 */ = {
 			isa = PBXGroup;
 			children = (
+				4AEDCEF7209E9DD60090B44F /* glue-offsets.h */,
+				4AEDCEF8209E9DD60090B44F /* glue-offsets32.h */,
+				4AEDCEF9209E9DD60090B44F /* glue-offsets64.h */,
 				773B3D8F19568A570085CE5F /* cpu-regs.h */,
 				773B3D9019568A570085CE5F /* cpu.S */,
 				773B3D9119568A570085CE5F /* darwin-glue.S */,
@@ -1535,6 +1617,7 @@
 		779F564619EAF66E00A6F107 /* audio */ = {
 			isa = PBXGroup;
 			children = (
+				4AEDCEEE209E9C520090B44F /* soundcore-opensles.c */,
 				779F564819EAF66E00A6F107 /* alhelpers.h */,
 				779F564719EAF66E00A6F107 /* alhelpers.c */,
 				779F564A19EAF66E00A6F107 /* AY8910.h */,
@@ -1641,6 +1724,8 @@
 		935C55781C136F550013166D /* arm */ = {
 			isa = PBXGroup;
 			children = (
+				4AEDCEE8209E9BF70090B44F /* glue-offsets.h */,
+				4AEDCEED209E9C0E0090B44F /* glue-offsets32.h */,
 				935C55A01C1384400013166D /* cpu.S */,
 				935C557C1C136FBD0013166D /* glue-prologue.h */,
 				935C557A1C136F7E0013166D /* cpu-regs.h */,
@@ -1672,6 +1757,8 @@
 		935C55A61C13890D0013166D /* jsmn */ = {
 			isa = PBXGroup;
 			children = (
+				4AEDCEFC209E9E770090B44F /* README.md */,
+				4AEDCEFA209E9E420090B44F /* LICENSE */,
 				935C55A71C1389370013166D /* jsmn.c */,
 				935C55A81C1389370013166D /* jsmn.h */,
 			);
@@ -1977,7 +2064,7 @@
 		773B3D04195688590085CE5F /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0730;
+				LastUpgradeCheck = 0930;
 				ORGANIZATIONNAME = deadc0de.org;
 				TargetAttributes = {
 					4A4B66D91DB4723F005028A6 = {
@@ -2006,6 +2093,10 @@
 								enabled = 1;
 							};
 						};
+					};
+					779DD82C195BD9F900DF89E5 = {
+						DevelopmentTeam = 4S92KXH58V;
+						ProvisioningStyle = Automatic;
 					};
 					935C55271C12BA5F0013166D = {
 						CreatedOnToolsVersion = 7.1.1;
@@ -2693,6 +2784,7 @@
 				4A4B66E01DB4723F005028A6 /* A2IXPopupChoreographer.m in Sources */,
 				4A4B676F1DB488BE005028A6 /* testtrace.c in Sources */,
 				4A4B66E11DB4723F005028A6 /* gltouchjoy_kpad.c in Sources */,
+				4A589F822157E72B0026A73A /* ntsc.c in Sources */,
 				4A4B66E21DB4723F005028A6 /* gltouchjoy.c in Sources */,
 				4A4B66E31DB4723F005028A6 /* soundcore.c in Sources */,
 				4A4B66E41DB4723F005028A6 /* soundcore-openal.c in Sources */,
@@ -2733,6 +2825,7 @@
 				4A4B67071DB4723F005028A6 /* joystick.c in Sources */,
 				4A4B67081DB4723F005028A6 /* iosPrefControllerViewController.m in Sources */,
 				4A4B67091DB4723F005028A6 /* sha1.c in Sources */,
+				4A68079721A86FF200D4A353 /* systrace.c in Sources */,
 				4A4B670A1DB4723F005028A6 /* keys.c in Sources */,
 				4A4B670B1DB4723F005028A6 /* AppDelegate.m in Sources */,
 				4A4B670C1DB4723F005028A6 /* main.m in Sources */,
@@ -2755,6 +2848,7 @@
 				4A4B672A1DB47560005028A6 /* A2IXPopupChoreographer.m in Sources */,
 				4A4B672B1DB47560005028A6 /* gltouchjoy_kpad.c in Sources */,
 				4A4B672C1DB47560005028A6 /* gltouchjoy.c in Sources */,
+				4A589F832157E72B0026A73A /* ntsc.c in Sources */,
 				4A4B672D1DB47560005028A6 /* soundcore.c in Sources */,
 				4A4B672E1DB47560005028A6 /* soundcore-openal.c in Sources */,
 				4A4B672F1DB47560005028A6 /* opcodes.c in Sources */,
@@ -2795,6 +2889,7 @@
 				4A4B67511DB47560005028A6 /* joystick.c in Sources */,
 				4A4B67521DB47560005028A6 /* iosPrefControllerViewController.m in Sources */,
 				4A4B67531DB47560005028A6 /* sha1.c in Sources */,
+				4A68079821A86FF200D4A353 /* systrace.c in Sources */,
 				4A4B67541DB47560005028A6 /* keys.c in Sources */,
 				4A4B67551DB47560005028A6 /* AppDelegate.m in Sources */,
 				4A4B67561DB47560005028A6 /* main.m in Sources */,
@@ -2812,6 +2907,7 @@
 				4A8A401D1D85CEEE00B460B0 /* prefs.c in Sources */,
 				4A8A401E1D85CEEE00B460B0 /* display.c in Sources */,
 				4A8F5D181F6A1FEC00AE37B5 /* video.c in Sources */,
+				4A589F7C2157E72B0026A73A /* ntsc.c in Sources */,
 				4A8A401F1D85CEEE00B460B0 /* EmulatorGLView.m in Sources */,
 				4A8A40201D85CEEE00B460B0 /* disk.c in Sources */,
 				4A8A40211D85CEEE00B460B0 /* sha1.c in Sources */,
@@ -2843,6 +2939,7 @@
 				4A8A403D1D85CEEE00B460B0 /* font.c in Sources */,
 				4A8A403E1D85CEEE00B460B0 /* cpu-supp.c in Sources */,
 				4A8A403F1D85CEEE00B460B0 /* vm.c in Sources */,
+				4A68079121A86FF200D4A353 /* systrace.c in Sources */,
 				4A8A40401D85CEEE00B460B0 /* darwin-glue.S in Sources */,
 				4A8A40411D85CEEE00B460B0 /* soundcore.c in Sources */,
 				4A8A40421D85CEEE00B460B0 /* matrixUtil.c in Sources */,
@@ -2863,6 +2960,7 @@
 				4ABDA9941D792E8C0086A35B /* prefs.c in Sources */,
 				4ABDA9951D792E8C0086A35B /* display.c in Sources */,
 				4A8F5D171F6A1FEB00AE37B5 /* video.c in Sources */,
+				4A589F7B2157E72B0026A73A /* ntsc.c in Sources */,
 				4ABDA9961D792E8C0086A35B /* EmulatorGLView.m in Sources */,
 				4ABDA9971D792E8C0086A35B /* disk.c in Sources */,
 				4ABDA9981D792E8C0086A35B /* sha1.c in Sources */,
@@ -2894,6 +2992,7 @@
 				4ABDA9B41D792E8C0086A35B /* font.c in Sources */,
 				4ABDA9B51D792E8C0086A35B /* cpu-supp.c in Sources */,
 				4ABDA9B61D792E8C0086A35B /* vm.c in Sources */,
+				4A68079021A86FF200D4A353 /* systrace.c in Sources */,
 				4ABDA9B71D792E8C0086A35B /* darwin-glue.S in Sources */,
 				4ABDA9B81D792E8C0086A35B /* soundcore.c in Sources */,
 				4ABDA9B91D792E8C0086A35B /* matrixUtil.c in Sources */,
@@ -2917,6 +3016,7 @@
 				4ACD73271D20A83E00123DE6 /* A2IXPopupChoreographer.m in Sources */,
 				4ACD73281D20A83E00123DE6 /* gltouchjoy_kpad.c in Sources */,
 				4ACD73291D20A83E00123DE6 /* gltouchjoy.c in Sources */,
+				4A589F7F2157E72B0026A73A /* ntsc.c in Sources */,
 				4ACD732A1D20A83E00123DE6 /* soundcore.c in Sources */,
 				4ACD732B1D20A83E00123DE6 /* soundcore-openal.c in Sources */,
 				4ACD732C1D20A83E00123DE6 /* opcodes.c in Sources */,
@@ -2957,6 +3057,7 @@
 				4ACD734C1D20A83E00123DE6 /* joystick.c in Sources */,
 				4ACD734D1D20A83E00123DE6 /* iosPrefControllerViewController.m in Sources */,
 				4ACD734E1D20A83E00123DE6 /* sha1.c in Sources */,
+				4A68079421A86FF200D4A353 /* systrace.c in Sources */,
 				4ACD734F1D20A83E00123DE6 /* keys.c in Sources */,
 				4ACD73501D20A83E00123DE6 /* AppDelegate.m in Sources */,
 				4ACD73511D20A83E00123DE6 /* main.m in Sources */,
@@ -2976,6 +3077,7 @@
 				4ACD73751D20AB6A00123DE6 /* gltouchjoy_joy.c in Sources */,
 				4ACD73761D20AB6A00123DE6 /* A2IXPopupChoreographer.m in Sources */,
 				4ACD73771D20AB6A00123DE6 /* gltouchjoy_kpad.c in Sources */,
+				4A589F842157E72B0026A73A /* ntsc.c in Sources */,
 				4ACD73781D20AB6A00123DE6 /* gltouchjoy.c in Sources */,
 				4ACD73791D20AB6A00123DE6 /* soundcore.c in Sources */,
 				4ACD737A1D20AB6A00123DE6 /* soundcore-openal.c in Sources */,
@@ -3016,6 +3118,7 @@
 				4ACD739D1D20AB6A00123DE6 /* joystick.c in Sources */,
 				4ACD739E1D20AB6A00123DE6 /* iosPrefControllerViewController.m in Sources */,
 				4ACD739F1D20AB6A00123DE6 /* sha1.c in Sources */,
+				4A68079921A86FF200D4A353 /* systrace.c in Sources */,
 				4ACD73A01D20AB6A00123DE6 /* keys.c in Sources */,
 				4ACD73A11D20AB6A00123DE6 /* AppDelegate.m in Sources */,
 				4ACD73A21D20AB6A00123DE6 /* main.m in Sources */,
@@ -3035,6 +3138,7 @@
 				4ACD73C71D20B11D00123DE6 /* A2IXPopupChoreographer.m in Sources */,
 				4ACD73C81D20B11D00123DE6 /* gltouchjoy_kpad.c in Sources */,
 				4ACD73C91D20B11D00123DE6 /* gltouchjoy.c in Sources */,
+				4A589F802157E72B0026A73A /* ntsc.c in Sources */,
 				4ACD73CA1D20B11D00123DE6 /* soundcore.c in Sources */,
 				4ACD73CB1D20B11D00123DE6 /* soundcore-openal.c in Sources */,
 				4ACD73CC1D20B11D00123DE6 /* opcodes.c in Sources */,
@@ -3075,6 +3179,7 @@
 				4ACD73ED1D20B11D00123DE6 /* joystick.c in Sources */,
 				4ACD73EE1D20B11D00123DE6 /* iosPrefControllerViewController.m in Sources */,
 				4ACD73EF1D20B11D00123DE6 /* sha1.c in Sources */,
+				4A68079521A86FF200D4A353 /* systrace.c in Sources */,
 				4ACD73F01D20B11D00123DE6 /* keys.c in Sources */,
 				4ACD73F11D20B11D00123DE6 /* AppDelegate.m in Sources */,
 				4ACD73F21D20B11D00123DE6 /* main.m in Sources */,
@@ -3094,6 +3199,7 @@
 				4ACD742D1D26210600123DE6 /* A2IXPopupChoreographer.m in Sources */,
 				4ACD742E1D26210600123DE6 /* gltouchjoy_kpad.c in Sources */,
 				4ACD742F1D26210600123DE6 /* gltouchjoy.c in Sources */,
+				4A589F812157E72B0026A73A /* ntsc.c in Sources */,
 				4ACD74301D26210600123DE6 /* soundcore.c in Sources */,
 				4ACD74311D26210600123DE6 /* soundcore-openal.c in Sources */,
 				4ACD74321D26210600123DE6 /* opcodes.c in Sources */,
@@ -3134,6 +3240,7 @@
 				4ACD74531D26210600123DE6 /* joystick.c in Sources */,
 				4ACD74541D26210600123DE6 /* iosPrefControllerViewController.m in Sources */,
 				4ACD74551D26210600123DE6 /* sha1.c in Sources */,
+				4A68079621A86FF200D4A353 /* systrace.c in Sources */,
 				4ACD74561D26210600123DE6 /* keys.c in Sources */,
 				4ACD74571D26210600123DE6 /* AppDelegate.m in Sources */,
 				4ACD74581D26210600123DE6 /* main.m in Sources */,
@@ -3150,6 +3257,7 @@
 				4AD4FE951A52464F00F958EC /* prefs.c in Sources */,
 				4AD4FE961A52464F00F958EC /* display.c in Sources */,
 				4A8F5D151F6A1FEA00AE37B5 /* video.c in Sources */,
+				4A589F792157E72B0026A73A /* ntsc.c in Sources */,
 				4AA2D7E51D202A5B0054A5FF /* EmulatorGLView.m in Sources */,
 				4AD4FE971A52464F00F958EC /* disk.c in Sources */,
 				4AFC170C1AAE9C3200B215FA /* sha1.c in Sources */,
@@ -3181,6 +3289,7 @@
 				4AD4FEA91A52464F00F958EC /* font.c in Sources */,
 				4AD4FEAA1A52464F00F958EC /* cpu-supp.c in Sources */,
 				4AD4FEAB1A52464F00F958EC /* vm.c in Sources */,
+				4A68078E21A86FF200D4A353 /* systrace.c in Sources */,
 				4AD4FEAC1A52464F00F958EC /* darwin-glue.S in Sources */,
 				4ACD74121D261A1300123DE6 /* soundcore.c in Sources */,
 				4AD4FEAD1A52464F00F958EC /* matrixUtil.c in Sources */,
@@ -3201,6 +3310,7 @@
 				4ADC51FF19E8CA4500186B36 /* prefs.c in Sources */,
 				4ADC520019E8CA4500186B36 /* display.c in Sources */,
 				4A8F5D191F6A1FED00AE37B5 /* video.c in Sources */,
+				4A589F7D2157E72B0026A73A /* ntsc.c in Sources */,
 				4AA2D7E61D202A5C0054A5FF /* EmulatorGLView.m in Sources */,
 				4ADC520119E8CA4500186B36 /* disk.c in Sources */,
 				4AFC170E1AAE9C3200B215FA /* sha1.c in Sources */,
@@ -3232,6 +3342,7 @@
 				4ADC521319E8CA4500186B36 /* font.c in Sources */,
 				4ADC521419E8CA4500186B36 /* cpu-supp.c in Sources */,
 				4ADC521519E8CA4500186B36 /* vm.c in Sources */,
+				4A68079221A86FF200D4A353 /* systrace.c in Sources */,
 				4ADC521619E8CA4500186B36 /* darwin-glue.S in Sources */,
 				4ACD74141D261A1500123DE6 /* soundcore.c in Sources */,
 				4ADC521719E8CA4500186B36 /* matrixUtil.c in Sources */,
@@ -3271,6 +3382,7 @@
 				773B3DAD19568A570085CE5F /* debugger.c in Sources */,
 				77E1C0B319D72700004344E0 /* vectorUtil.c in Sources */,
 				4A7EDC9E1AE092B80072E98A /* interface.c in Sources */,
+				4A589F85215831560026A73A /* ntsc.c in Sources */,
 				773B3DAB19568A570085CE5F /* keys.c in Sources */,
 				773B3DBC19568A570085CE5F /* timing.c in Sources */,
 				773BC91A19F31E7B00996893 /* prefs.c in Sources */,
@@ -3289,6 +3401,7 @@
 				77E1C0B519D72700004344E0 /* modelUtil.c in Sources */,
 				773B3DAC19568A570085CE5F /* debug.l in Sources */,
 				935C55161C12B61D0013166D /* EmulatorJoystickCalibrationView.m in Sources */,
+				4A68078C21A86FF200D4A353 /* systrace.c in Sources */,
 				779F565919EAF66E00A6F107 /* AY8910.c in Sources */,
 				935C55181C12B61D0013166D /* EmulatorPrefsController.m in Sources */,
 				93BC72571BF6FF11005CDFCA /* playqueue.c in Sources */,
@@ -3319,6 +3432,7 @@
 				779DD830195BD9F900DF89E5 /* prefs.c in Sources */,
 				779DD831195BD9F900DF89E5 /* display.c in Sources */,
 				4A8F5D141F6A1FE900AE37B5 /* video.c in Sources */,
+				4A589F782157E72B0026A73A /* ntsc.c in Sources */,
 				4AA2D7EC1D202BFA0054A5FF /* EmulatorGLView.m in Sources */,
 				779DD832195BD9F900DF89E5 /* disk.c in Sources */,
 				4AFC170B1AAE9C3200B215FA /* sha1.c in Sources */,
@@ -3350,6 +3464,7 @@
 				779DD83D195BD9F900DF89E5 /* font.c in Sources */,
 				779DD83E195BD9F900DF89E5 /* cpu-supp.c in Sources */,
 				779DD83F195BD9F900DF89E5 /* vm.c in Sources */,
+				4A68078D21A86FF200D4A353 /* systrace.c in Sources */,
 				779DD840195BD9F900DF89E5 /* darwin-glue.S in Sources */,
 				4ACD74111D261A1200123DE6 /* soundcore.c in Sources */,
 				4ADC51C519E8BD4000186B36 /* matrixUtil.c in Sources */,
@@ -3370,6 +3485,7 @@
 				779F566519EB0B9100A6F107 /* prefs.c in Sources */,
 				779F566619EB0B9100A6F107 /* display.c in Sources */,
 				4A8F5D161F6A1FEB00AE37B5 /* video.c in Sources */,
+				4A589F7A2157E72B0026A73A /* ntsc.c in Sources */,
 				4AA2D7E71D202A5D0054A5FF /* EmulatorGLView.m in Sources */,
 				779F566719EB0B9100A6F107 /* disk.c in Sources */,
 				4AFC170D1AAE9C3200B215FA /* sha1.c in Sources */,
@@ -3401,6 +3517,7 @@
 				779F567919EB0B9100A6F107 /* font.c in Sources */,
 				779F567A19EB0B9100A6F107 /* cpu-supp.c in Sources */,
 				779F567B19EB0B9100A6F107 /* vm.c in Sources */,
+				4A68078F21A86FF200D4A353 /* systrace.c in Sources */,
 				779F567C19EB0B9100A6F107 /* darwin-glue.S in Sources */,
 				4ACD74131D261A1400123DE6 /* soundcore.c in Sources */,
 				779F567D19EB0B9100A6F107 /* matrixUtil.c in Sources */,
@@ -3430,6 +3547,7 @@
 				935C55631C136E070013166D /* prefs.c in Sources */,
 				935C55731C136E6F0013166D /* json_parse.c in Sources */,
 				935C55641C136E070013166D /* rom-shim.c in Sources */,
+				4A589F7E2157E72B0026A73A /* ntsc.c in Sources */,
 				935C55651C136E070013166D /* timing.c in Sources */,
 				4A8F5D271F6A202100AE37B5 /* memmngt.c in Sources */,
 				935C55661C136E070013166D /* glalert.c in Sources */,
@@ -3448,6 +3566,7 @@
 				935C55511C136DF40013166D /* alhelpers.c in Sources */,
 				935C55521C136DF40013166D /* AY8910.c in Sources */,
 				935C55531C136DF40013166D /* mockingboard.c in Sources */,
+				4A68079321A86FF200D4A353 /* systrace.c in Sources */,
 				935C55541C136DF40013166D /* playqueue.c in Sources */,
 				935C558E1C1370800013166D /* gltouchmenu.c in Sources */,
 				935C55571C136DF40013166D /* speaker.c in Sources */,
@@ -3592,6 +3711,7 @@
 				ALWAYS_SEARCH_USER_PATHS = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_OBJC_ARC = NO;
+				CLANG_ENABLE_OBJC_WEAK = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
@@ -3636,6 +3756,7 @@
 				ALWAYS_SEARCH_USER_PATHS = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_OBJC_ARC = NO;
+				CLANG_ENABLE_OBJC_WEAK = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
@@ -3679,6 +3800,7 @@
 				ALWAYS_SEARCH_USER_PATHS = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_OBJC_ARC = NO;
+				CLANG_ENABLE_OBJC_WEAK = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
@@ -3718,6 +3840,7 @@
 				ALWAYS_SEARCH_USER_PATHS = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_OBJC_ARC = NO;
+				CLANG_ENABLE_OBJC_WEAK = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
@@ -3756,15 +3879,17 @@
 				ALWAYS_SEARCH_USER_PATHS = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_OBJC_ARC = NO;
+				CLANG_ENABLE_OBJC_WEAK = YES;
 				COMBINE_HIDPI_IMAGES = YES;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREFIX_HEADER = "Apple2Mac/Apple2Mac-Prefix.pch";
+				GCC_PREFIX_HEADER = "Apple2Mac-Prefix.pch";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"APPLE2IX=1",
-					"KEYPAD_JOYSTICK=1",
-					"TEST_UI=1",
-					"TESTING=1",
+					"CONFORMANT_TRACKS=1",
 					"VIDEO_OPENGL=1",
+					"KEYPAD_JOYSTICK=1",
+					"TESTING=1",
+					"TEST_UI=1",
 				);
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
@@ -3784,15 +3909,17 @@
 				ALWAYS_SEARCH_USER_PATHS = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_OBJC_ARC = NO;
+				CLANG_ENABLE_OBJC_WEAK = YES;
 				COMBINE_HIDPI_IMAGES = YES;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREFIX_HEADER = "Apple2Mac/Apple2Mac-Prefix.pch";
+				GCC_PREFIX_HEADER = "Apple2Mac-Prefix.pch";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"APPLE2IX=1",
-					"KEYPAD_JOYSTICK=1",
-					"TEST_UI=1",
-					"TESTING=1",
+					"CONFORMANT_TRACKS=1",
 					"VIDEO_OPENGL=1",
+					"KEYPAD_JOYSTICK=1",
+					"TESTING=1",
+					"TEST_UI=1",
 					"NDEBUG=1",
 				);
 				HEADER_SEARCH_PATHS = (
@@ -3813,21 +3940,23 @@
 				ALWAYS_SEARCH_USER_PATHS = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_OBJC_ARC = NO;
+				CLANG_ENABLE_OBJC_WEAK = YES;
 				COMBINE_HIDPI_IMAGES = YES;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREFIX_HEADER = "Apple2Mac/Apple2Mac-Prefix.pch";
+				GCC_PREFIX_HEADER = "Apple2Mac-Prefix.pch";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"APPLE2IX=1",
-					"KEYPAD_JOYSTICK=1",
-					"TEST_TRACE=1",
-					"TESTING=1",
 					"CONFORMANT_TRACKS=1",
+					"VIDEO_OPENGL=1",
+					"KEYPAD_JOYSTICK=1",
+					"TESTING=1",
+					"TEST_TRACE=1",
 					"CPU_TRACING=1",
 					"DISK_TRACING=1",
 					"MB_TRACING=1",
 					"SPEAKER_TRACING=1",
 					"VM_TRACING=1",
-					"VIDEO_OPENGL=1",
+					"VIDEO_TRACING=1",
 				);
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
@@ -3847,21 +3976,23 @@
 				ALWAYS_SEARCH_USER_PATHS = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_OBJC_ARC = NO;
+				CLANG_ENABLE_OBJC_WEAK = YES;
 				COMBINE_HIDPI_IMAGES = YES;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREFIX_HEADER = "Apple2Mac/Apple2Mac-Prefix.pch";
+				GCC_PREFIX_HEADER = "Apple2Mac-Prefix.pch";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"APPLE2IX=1",
-					"KEYPAD_JOYSTICK=1",
-					"TEST_TRACE=1",
-					"TESTING=1",
 					"CONFORMANT_TRACKS=1",
+					"VIDEO_OPENGL=1",
+					"KEYPAD_JOYSTICK=1",
+					"TESTING=1",
+					"TEST_TRACE=1",
 					"CPU_TRACING=1",
 					"DISK_TRACING=1",
 					"MB_TRACING=1",
 					"SPEAKER_TRACING=1",
 					"VM_TRACING=1",
-					"VIDEO_OPENGL=1",
+					"VIDEO_TRACING=1",
 					"NDEBUG=1",
 				);
 				HEADER_SEARCH_PATHS = (
@@ -3882,6 +4013,7 @@
 				ALWAYS_SEARCH_USER_PATHS = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_OBJC_ARC = NO;
+				CLANG_ENABLE_OBJC_WEAK = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
@@ -3920,6 +4052,7 @@
 				ALWAYS_SEARCH_USER_PATHS = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_OBJC_ARC = NO;
+				CLANG_ENABLE_OBJC_WEAK = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
@@ -3957,6 +4090,7 @@
 				ALWAYS_SEARCH_USER_PATHS = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_OBJC_ARC = NO;
+				CLANG_ENABLE_OBJC_WEAK = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
@@ -3996,6 +4130,7 @@
 				ALWAYS_SEARCH_USER_PATHS = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_OBJC_ARC = NO;
+				CLANG_ENABLE_OBJC_WEAK = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
@@ -4034,6 +4169,7 @@
 				ALWAYS_SEARCH_USER_PATHS = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_OBJC_ARC = NO;
+				CLANG_ENABLE_OBJC_WEAK = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
@@ -4074,6 +4210,7 @@
 				ALWAYS_SEARCH_USER_PATHS = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_OBJC_ARC = NO;
+				CLANG_ENABLE_OBJC_WEAK = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
@@ -4113,6 +4250,7 @@
 				ALWAYS_SEARCH_USER_PATHS = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_OBJC_ARC = NO;
+				CLANG_ENABLE_OBJC_WEAK = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
@@ -4152,6 +4290,7 @@
 				ALWAYS_SEARCH_USER_PATHS = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_OBJC_ARC = NO;
+				CLANG_ENABLE_OBJC_WEAK = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
@@ -4190,16 +4329,18 @@
 				ALWAYS_SEARCH_USER_PATHS = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_OBJC_ARC = NO;
+				CLANG_ENABLE_OBJC_WEAK = YES;
 				COMBINE_HIDPI_IMAGES = YES;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREFIX_HEADER = "Apple2Mac/Apple2Mac-Prefix.pch";
+				GCC_PREFIX_HEADER = "Apple2Mac-Prefix.pch";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"APPLE2IX=1",
-					"KEYPAD_JOYSTICK=1",
-					"TEST_DISK=1",
-					"TESTING=1",
-					"DISK_TRACING=1",
+					"CONFORMANT_TRACKS=1",
 					"VIDEO_OPENGL=1",
+					"KEYPAD_JOYSTICK=1",
+					"TESTING=1",
+					"TEST_DISK=1",
+					"DISK_TRACING=1",
 				);
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
@@ -4219,16 +4360,18 @@
 				ALWAYS_SEARCH_USER_PATHS = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_OBJC_ARC = NO;
+				CLANG_ENABLE_OBJC_WEAK = YES;
 				COMBINE_HIDPI_IMAGES = YES;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREFIX_HEADER = "Apple2Mac/Apple2Mac-Prefix.pch";
+				GCC_PREFIX_HEADER = "Apple2Mac-Prefix.pch";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"APPLE2IX=1",
-					"KEYPAD_JOYSTICK=1",
-					"TEST_DISK=1",
-					"TESTING=1",
-					"DISK_TRACING=1",
+					"CONFORMANT_TRACKS=1",
 					"VIDEO_OPENGL=1",
+					"KEYPAD_JOYSTICK=1",
+					"TESTING=1",
+					"TEST_DISK=1",
+					"DISK_TRACING=1",
 					"NDEBUG=1",
 				);
 				HEADER_SEARCH_PATHS = (
@@ -4249,15 +4392,17 @@
 				ALWAYS_SEARCH_USER_PATHS = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_OBJC_ARC = NO;
+				CLANG_ENABLE_OBJC_WEAK = YES;
 				COMBINE_HIDPI_IMAGES = YES;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREFIX_HEADER = "Apple2Mac/Apple2Mac-Prefix.pch";
+				GCC_PREFIX_HEADER = "Apple2Mac-Prefix.pch";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"APPLE2IX=1",
-					"KEYPAD_JOYSTICK=1",
-					"TEST_VM=1",
-					"TESTING=1",
+					"CONFORMANT_TRACKS=1",
 					"VIDEO_OPENGL=1",
+					"KEYPAD_JOYSTICK=1",
+					"TESTING=1",
+					"TEST_VM=1",
 				);
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
@@ -4277,15 +4422,17 @@
 				ALWAYS_SEARCH_USER_PATHS = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_OBJC_ARC = NO;
+				CLANG_ENABLE_OBJC_WEAK = YES;
 				COMBINE_HIDPI_IMAGES = YES;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREFIX_HEADER = "Apple2Mac/Apple2Mac-Prefix.pch";
+				GCC_PREFIX_HEADER = "Apple2Mac-Prefix.pch";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"APPLE2IX=1",
-					"KEYPAD_JOYSTICK=1",
-					"TEST_VM=1",
-					"TESTING=1",
+					"CONFORMANT_TRACKS=1",
 					"VIDEO_OPENGL=1",
+					"KEYPAD_JOYSTICK=1",
+					"TESTING=1",
+					"TEST_VM=1",
 					"NDEBUG=1",
 				);
 				HEADER_SEARCH_PATHS = (
@@ -4345,23 +4492,37 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
 				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"DEBUG=1",
@@ -4384,23 +4545,37 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
 				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
 				GCC_WARN_UNDECLARED_SELECTOR = YES;
@@ -4418,13 +4593,15 @@
 				ALWAYS_SEARCH_USER_PATHS = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_OBJC_ARC = NO;
+				CLANG_ENABLE_OBJC_WEAK = YES;
 				COMBINE_HIDPI_IMAGES = YES;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "Apple2Mac-Prefix.pch";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"APPLE2IX=1",
-					"KEYPAD_JOYSTICK=1",
+					"CONFORMANT_TRACKS=1",
 					"VIDEO_OPENGL=1",
+					"KEYPAD_JOYSTICK=1",
 				);
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
@@ -4446,13 +4623,15 @@
 				ALWAYS_SEARCH_USER_PATHS = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_OBJC_ARC = NO;
+				CLANG_ENABLE_OBJC_WEAK = YES;
 				COMBINE_HIDPI_IMAGES = YES;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "Apple2Mac-Prefix.pch";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"APPLE2IX=1",
-					"KEYPAD_JOYSTICK=1",
+					"CONFORMANT_TRACKS=1",
 					"VIDEO_OPENGL=1",
+					"KEYPAD_JOYSTICK=1",
 					"NDEBUG=1",
 				);
 				HEADER_SEARCH_PATHS = (
@@ -4475,15 +4654,20 @@
 				ALWAYS_SEARCH_USER_PATHS = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_OBJC_ARC = NO;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CODE_SIGN_IDENTITY = "Mac Developer";
+				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = 4S92KXH58V;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREFIX_HEADER = "Apple2Mac/Apple2Mac-Prefix.pch";
+				GCC_PREFIX_HEADER = "Apple2Mac-Prefix.pch";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"APPLE2IX=1",
-					"KEYPAD_JOYSTICK=1",
-					"TEST_CPU=1",
-					"TESTING=1",
+					"CONFORMANT_TRACKS=1",
 					"VIDEO_OPENGL=1",
+					"KEYPAD_JOYSTICK=1",
+					"TESTING=1",
+					"TEST_CPU=1",
 				);
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
@@ -4492,6 +4676,7 @@
 				INFOPLIST_FILE = "Apple2MacTests/Apple2MacTestCPU-Info.plist";
 				PRODUCT_BUNDLE_IDENTIFIER = "org.deadc0de.${PRODUCT_NAME:rfc1034identifier}";
 				PRODUCT_NAME = Apple2MacTestCPU;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/../src";
 				WRAPPER_EXTENSION = app;
 			};
@@ -4503,15 +4688,20 @@
 				ALWAYS_SEARCH_USER_PATHS = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_OBJC_ARC = NO;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CODE_SIGN_IDENTITY = "Mac Developer";
+				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = 4S92KXH58V;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREFIX_HEADER = "Apple2Mac/Apple2Mac-Prefix.pch";
+				GCC_PREFIX_HEADER = "Apple2Mac-Prefix.pch";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"APPLE2IX=1",
-					"KEYPAD_JOYSTICK=1",
-					"TEST_CPU=1",
-					"TESTING=1",
+					"CONFORMANT_TRACKS=1",
 					"VIDEO_OPENGL=1",
+					"KEYPAD_JOYSTICK=1",
+					"TESTING=1",
+					"TEST_CPU=1",
 					"NDEBUG=1",
 				);
 				HEADER_SEARCH_PATHS = (
@@ -4521,6 +4711,7 @@
 				INFOPLIST_FILE = "Apple2MacTests/Apple2MacTestCPU-Info.plist";
 				PRODUCT_BUNDLE_IDENTIFIER = "org.deadc0de.${PRODUCT_NAME:rfc1034identifier}";
 				PRODUCT_NAME = Apple2MacTestCPU;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/../src";
 				WRAPPER_EXTENSION = app;
 			};
@@ -4532,15 +4723,18 @@
 				ALWAYS_SEARCH_USER_PATHS = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_OBJC_ARC = NO;
+				CLANG_ENABLE_OBJC_WEAK = YES;
 				COMBINE_HIDPI_IMAGES = YES;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREFIX_HEADER = "Apple2Mac/Apple2Mac-Prefix.pch";
+				GCC_PREFIX_HEADER = "Apple2Mac-Prefix.pch";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"APPLE2IX=1",
+					"CONFORMANT_TRACKS=1",
+					"VIDEO_OPENGL=1",
 					"KEYPAD_JOYSTICK=1",
 					"TESTING=1",
 					"TEST_DISPLAY=1",
-					"VIDEO_OPENGL=1",
+					"VIDEO_TRACING=1",
 				);
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
@@ -4560,15 +4754,18 @@
 				ALWAYS_SEARCH_USER_PATHS = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_OBJC_ARC = NO;
+				CLANG_ENABLE_OBJC_WEAK = YES;
 				COMBINE_HIDPI_IMAGES = YES;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREFIX_HEADER = "Apple2Mac/Apple2Mac-Prefix.pch";
+				GCC_PREFIX_HEADER = "Apple2Mac-Prefix.pch";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"APPLE2IX=1",
+					"CONFORMANT_TRACKS=1",
+					"VIDEO_OPENGL=1",
 					"KEYPAD_JOYSTICK=1",
 					"TESTING=1",
 					"TEST_DISPLAY=1",
-					"VIDEO_OPENGL=1",
+					"VIDEO_TRACING=1",
 					"NDEBUG=1",
 				);
 				HEADER_SEARCH_PATHS = (
@@ -4589,6 +4786,7 @@
 				ALWAYS_SEARCH_USER_PATHS = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_OBJC_ARC = NO;
+				CLANG_ENABLE_OBJC_WEAK = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
@@ -4626,6 +4824,7 @@
 				ALWAYS_SEARCH_USER_PATHS = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_OBJC_ARC = NO;
+				CLANG_ENABLE_OBJC_WEAK = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";

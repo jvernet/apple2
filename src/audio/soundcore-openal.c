@@ -72,6 +72,7 @@ static AudioBackend_s openal_audio_backend = { { 0 } };
 static void _playq_removeNode(ALVoice *voice, PlayNode_s *playNode) {
     long err = voice->playq->Remove(voice->playq, playNode);
     assert(err == 0);
+    (void)err;
     voice->_queued_total_bytes -= playNode->numBytes;
     assert(voice->_queued_total_bytes >= 0);
 }
@@ -400,17 +401,17 @@ static ALVoice *_openal_createVoice(unsigned long numChannels) {
         }
 #endif
 
-        long longBuffers[OPENAL_NUM_BUFFERS];
+        unsigned int bufs[OPENAL_NUM_BUFFERS];
         for (unsigned int i=0; i<OPENAL_NUM_BUFFERS; i++) {
-            longBuffers[i] = (long)(voice->buffers[i]);
+            bufs[i] = voice->buffers[i];
         }
-        voice->playq = playq_createPlayQueue(longBuffers, OPENAL_NUM_BUFFERS);
+        voice->playq = playq_createPlayQueue(bufs, OPENAL_NUM_BUFFERS);
         if (!voice->playq) {
             LOG("OOPS, Not enough memory for PlayQueue");
             break;
         }
 
-        voice->rate = openal_audio_backend.systemSettings.sampleRateHz;
+        voice->rate = (ALuint)openal_audio_backend.systemSettings.sampleRateHz;
 
         // Emulator supports only mono and stereo
         if (numChannels == 2) {
@@ -422,7 +423,7 @@ static ALVoice *_openal_createVoice(unsigned long numChannels) {
         /* Allocate enough space for the temp buffer, given the format */
         assert(numChannels == 1 || numChannels == 2);
         unsigned long maxSamples = openal_audio_backend.systemSettings.monoBufferSizeSamples * numChannels;
-        voice->buffersize = maxSamples * openal_audio_backend.systemSettings.bytesPerSample;
+        voice->buffersize = (ALsizei)maxSamples * (ALsizei)openal_audio_backend.systemSettings.bytesPerSample;
 
         voice->data = CALLOC(1, voice->buffersize);
         if (voice->data == NULL) {
@@ -481,6 +482,7 @@ static long openal_createSoundBuffer(const AudioContext_s *audio_context, INOUT 
 
         ALCcontext *ctx = (ALCcontext*)(audio_context->_internal);
         assert(ctx != NULL);
+        (void)ctx;
 
         if ((voice = _openal_createVoice(NUM_CHANNELS)) == NULL) {
             LOG("OOPS, Cannot create new voice");
@@ -530,6 +532,8 @@ static long openal_systemShutdown(INOUT AudioContext_s **audio_context) {
 
     ALCcontext *ctx = (ALCcontext*) (*audio_context)->_internal;
     assert(ctx != NULL);
+    (void)ctx;
+
     (*audio_context)->_internal = NULL;
     FREE(*audio_context);
 

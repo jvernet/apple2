@@ -36,10 +36,10 @@ extern int breakpoints[MAX_BRKPTS];     /* memory breakpoints */
 extern int watchpoints[MAX_BRKPTS];     /* memory watchpoints */
 
 // internal debugger commands
-extern void clear_debugger_screen();
+extern void clear_debugger_screen(void);
 extern void bload(FILE*, char*, int, int);
-extern void show_misc_info();
-extern uint8_t get_current_opcode();
+extern void show_misc_info(void);
+extern uint8_t get_current_opcode(void);
 extern void dump_mem(int, int, int, int, int);
 extern void search_mem(char*, int, int);
 extern void set_mem(int, char*);
@@ -47,18 +47,18 @@ extern void set_lc_mem(int, int, char*);
 extern void disasm(int, int, int, int);
 extern void clear_halt(int*, int);
 extern bool set_halt(int*, int);
-extern void show_breakpts();
-extern void show_regs();
-extern void display_help();
-extern void show_lc_info();
-extern void show_disk_info();
+extern void show_breakpts(void);
+extern void show_regs(void);
+extern void display_help(void);
+extern void show_lc_info(void);
+extern void show_disk_info(void);
 extern void set_halt_opcode(uint8_t opcode);
-extern void set_halt_65c02();
-extern void clear_halt_65c02();
+extern void set_halt_65c02(void);
+extern void clear_halt_65c02(void);
 extern void clear_halt_opcode(uint8_t opcode);
-extern void show_opcode_breakpts();
+extern void show_opcode_breakpts(void);
 extern int debugger_go(stepping_struct_t s);
-extern void fb_sha1();
+extern void fb_sha1(void);
 
 /*
   d{is} {lc1|lc2} {/bank/}{addr} {+}{len}
@@ -174,7 +174,7 @@ ADDRS	[0-9a-fA-F]+
     ++debugtext;
 
     arg1 = (int)strtol(debugtext, &debugtext, 16);
-    dump_mem(cpu65_pc, arg1, 0, do_ascii, -1);
+    dump_mem(run_args.cpu65_pc, arg1, 0, do_ascii, -1);
     return MEM;
 }
 
@@ -184,7 +184,7 @@ ADDRS	[0-9a-fA-F]+
 
     if (tolower(debugtext[0]) == 'a')
 	do_ascii = 1;
-    dump_mem(cpu65_pc, 256, 0, do_ascii, -1);
+    dump_mem(run_args.cpu65_pc, 256, 0, do_ascii, -1);
     return MEM;
 }
 
@@ -297,7 +297,7 @@ ADDRS	[0-9a-fA-F]+
 
     arg1 = (int)strtol(debugtext, &debugtext, 16);
     arg2 = 256;
-    if ((arg1 < 0) || (arg1 > 65535)) arg1 = cpu65_pc;
+    if ((arg1 < 0) || (arg1 > 65535)) arg1 = run_args.cpu65_pc;
 
     disasm(arg1, arg2, 0, -1);
     return DIS;
@@ -312,7 +312,7 @@ ADDRS	[0-9a-fA-F]+
 
     arg1 = (int)strtol(debugtext, &debugtext, 16);
     arg2 = 256;
-    if ((arg1 < 0) || (arg1 > 65535)) arg1 = cpu65_pc;
+    if ((arg1 < 0) || (arg1 > 65535)) arg1 = run_args.cpu65_pc;
 
     disasm(arg1, arg2, 0, arg3);
     return DIS;
@@ -324,13 +324,13 @@ ADDRS	[0-9a-fA-F]+
     ++debugtext;
 
     arg1 = (int)strtol(debugtext, &debugtext, 16);
-    disasm(cpu65_pc, arg1, 0, -1);
+    disasm(run_args.cpu65_pc, arg1, 0, -1);
     return DIS;
 }
 
 {BOS}di?s?{EOS} {
     /* disassemble current location */
-    disasm(cpu65_pc, 256, 0, -1);
+    disasm(run_args.cpu65_pc, 256, 0, -1);
     return DIS;
 }
 
@@ -550,7 +550,7 @@ ADDRS	[0-9a-fA-F]+
 
     stepping_struct_t s = {
         .step_type = UNTILING,
-        .step_pc = cpu65_pc + delta
+        .step_pc = run_args.cpu65_pc + delta
     };
 
     debugger_go(s);
@@ -562,7 +562,7 @@ ADDRS	[0-9a-fA-F]+
     while (!isspace(*debugtext)) ++debugtext;
 
     /* DANGEROUS! */
-    cpu65_pc = (int)strtol(debugtext, (char**)NULL, 16);
+    run_args.cpu65_pc = (int)strtol(debugtext, (char**)NULL, 16);
 
     stepping_struct_t s = {
         .step_type = GOING
@@ -583,7 +583,7 @@ ADDRS	[0-9a-fA-F]+
 
 {BOS}wa?t?c?h?{EOS} {
     /* set watchpoint */
-    set_halt(watchpoints, cpu65_pc);
+    set_halt(watchpoints, run_args.cpu65_pc);
     return WATCH;
 }
 
@@ -604,7 +604,7 @@ ADDRS	[0-9a-fA-F]+
 
 {BOS}br?e?a?k?{EOS} {
     /* set breakpoint */
-    set_halt(breakpoints, cpu65_pc);
+    set_halt(breakpoints, run_args.cpu65_pc);
     return BREAK;
 }
 

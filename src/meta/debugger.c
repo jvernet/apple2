@@ -60,6 +60,8 @@ int arg1, arg2, arg3;                   /* command arguments */
 int breakpoints[MAX_BRKPTS];            /* memory breakpoints */
 int watchpoints[MAX_BRKPTS];            /* memory watchpoints */
 
+static bool(*shouldBreakCallback)(void) = NULL;
+
 #ifdef INTERFACE_CLASSIC
 /* debugger globals */
 //1.  5.  10.  15.  20.  25.  30.  35.  40.  45.  50.  55.  60.  65.  70.  75.  80.",
@@ -98,7 +100,7 @@ uint8_t current_opcode;
 int op_breakpoints[256];                /* opcode breakpoints */
 
 /* in debug.l */
-extern int yylex();
+extern int yylex(void);
 extern void init_lex(char *buf, int size);
 
 /* -------------------------------------------------------------------------
@@ -126,7 +128,7 @@ int c_get_current_rambank(int addrs) {
 
             /* if SLOTCXROM, then internal rom (regardless of
                SLOTC3ROM setting). */
-            if (softswitches & SS_CXROM)
+            if (run_args.softswitches & SS_CXROM)
             {
                 return 1;
             }
@@ -134,7 +136,7 @@ int c_get_current_rambank(int addrs) {
             /* slot 3 rom */
             if ((addrs >= 0xC300) && (addrs < 0xC400))
             {
-                return !!(softswitches & SS_C3ROM);
+                return !!(run_args.softswitches & SS_C3ROM);
             }
 
             return 0;   /* peripheral rom */
@@ -143,28 +145,28 @@ int c_get_current_rambank(int addrs) {
         /* text page 1 */
         if ((addrs >= 0x400) && (addrs < 0x800))
         {
-            return !!(softswitches & SS_TEXTRD);
+            return !!(run_args.softswitches & SS_TEXTRD);
         }
 
         /* hires page 1 with 80STORE and HIRES on */
         if ((addrs >= 0x2000) && (addrs < 0x4000))
         {
-            return !!(softswitches & SS_HGRRD);
+            return !!(run_args.softswitches & SS_HGRRD);
         }
 
         /* otherwise return RAMRD flag */
-        return !!(softswitches & SS_RAMRD);
+        return !!(run_args.softswitches & SS_RAMRD);
     }
 
     /* executing in ALTZP space. */
-    return !!(softswitches & SS_ALTZP);
+    return !!(run_args.softswitches & SS_ALTZP);
 }
 
 /* -------------------------------------------------------------------------
     get_last_opcode () - returns the last executed opcode
    ------------------------------------------------------------------------- */
 uint8_t get_last_opcode() {
-    return cpu65_opcode;
+    return run_args.cpu65_opcode;
 }
 
 /* -------------------------------------------------------------------------
@@ -172,41 +174,41 @@ uint8_t get_last_opcode() {
         the PC is currently reading from.
    ------------------------------------------------------------------------- */
 uint8_t get_current_opcode() {
-    int bank = c_get_current_rambank(cpu65_pc);
+    int bank = c_get_current_rambank(run_args.cpu65_pc);
     int lcbank = 0;
 
     /* main RAM */
-    if (cpu65_pc < 0xD000)
+    if (run_args.cpu65_pc < 0xD000)
     {
-        return apple_ii_64k[bank][cpu65_pc];
+        return apple_ii_64k[bank][run_args.cpu65_pc];
     }
 
     /* LC RAM */
-    if (cpu65_pc >= 0xE000)
+    if (run_args.cpu65_pc >= 0xE000)
     {
-        if (softswitches & SS_LCRAM)
+        if (run_args.softswitches & SS_LCRAM)
         {
-            return language_card[bank][cpu65_pc-0xE000];
+            return language_card[bank][run_args.cpu65_pc-0xE000];
         }
         else
         {
-            return apple_ii_64k[bank][cpu65_pc];
+            return apple_ii_64k[bank][run_args.cpu65_pc];
         }
     }
 
     /* LC BANK RAM */
-    if (softswitches & SS_BANK2)
+    if (run_args.softswitches & SS_BANK2)
     {
         lcbank = 0x1000;
     }
 
-    if (softswitches & SS_LCRAM)
+    if (run_args.softswitches & SS_LCRAM)
     {
-        return language_banks[bank][cpu65_pc-0xD000+lcbank];
+        return language_banks[bank][run_args.cpu65_pc-0xD000+lcbank];
     }
     else
     {
-        return apple_ii_64k[bank][cpu65_pc];
+        return apple_ii_64k[bank][run_args.cpu65_pc];
     }
 }
 
@@ -226,15 +228,15 @@ void dump_mem(int addrs, int len, int lc, int do_ascii, int rambank) {
         rambank = c_get_current_rambank(addrs);
     }
 
-    if (!lc && (softswitches & SS_LCRAM) && (addrs >= 0xd000))
+    if (!lc && (run_args.softswitches & SS_LCRAM) && (addrs >= 0xd000))
     {
         /* read lc anyway */
-        lc = 1 + !!(softswitches & SS_BANK2);
+        lc = 1 + !!(run_args.softswitches & SS_BANK2);
     }
 
     if ((addrs < 0) || (addrs > 0xffff))
     {
-        addrs = cpu65_pc;
+        addrs = run_args.cpu65_pc;
         orig_addrs = addrs;
     }
 
@@ -334,7 +336,7 @@ void search_mem(char *hexstr, int lc, int rambank) {
     /* check which rambank for cpu65_pc */
     if (rambank == -1)
     {
-        rambank = c_get_current_rambank(cpu65_pc);
+        rambank = c_get_current_rambank(run_args.cpu65_pc);
     }
 
     /* iterate over memory */
@@ -531,16 +533,16 @@ void disasm(int addrs, int len, int lc, int rambank) {
         rambank = c_get_current_rambank(addrs);
     }
 
-    if (!lc && (softswitches & SS_LCRAM) && (addrs >= 0xd000))
+    if (!lc && (run_args.softswitches & SS_LCRAM) && (addrs >= 0xd000))
     {
         /* read lc anyway */
-        lc = 1 + !!(softswitches & SS_BANK2);
+        lc = 1 + !!(run_args.softswitches & SS_BANK2);
     }
 
     /* handle invalid address request */
     if ((addrs < 0) || (addrs > 0xffff))
     {
-        addrs = cpu65_pc;
+        addrs = run_args.cpu65_pc;
         orig_addrs = addrs;
     }
 
@@ -682,46 +684,46 @@ void disasm(int addrs, int len, int lc, int rambank) {
    ------------------------------------------------------------------------- */
 
 void show_regs() {
-    sprintf(second_buf[num_buffer_lines++], "PC = %04X EA = %04X SP = %04X", cpu65_pc, cpu65_ea, cpu65_sp + 0x0100);
-    sprintf(second_buf[num_buffer_lines++], "X = %02X Y = %02X A = %02X F = %02X", cpu65_x, cpu65_y, cpu65_a, cpu65_f);
+    sprintf(second_buf[num_buffer_lines++], "PC = %04X EA = %04X SP = %04X", run_args.cpu65_pc, run_args.cpu65_ea, run_args.cpu65_sp + 0x0100);
+    sprintf(second_buf[num_buffer_lines++], "X = %02X Y = %02X A = %02X F = %02X", run_args.cpu65_x, run_args.cpu65_y, run_args.cpu65_a, run_args.cpu65_f);
 
     memset(second_buf[num_buffer_lines], ' ', BUF_X);
-    if (cpu65_f & C_Flag_6502)
+    if (run_args.cpu65_f & C_Flag_6502)
     {
         second_buf[num_buffer_lines][0]='C';
     }
 
-    if (cpu65_f & X_Flag_6502)
+    if (run_args.cpu65_f & X_Flag_6502)
     {
         second_buf[num_buffer_lines][1]='X';
     }
 
-    if (cpu65_f & I_Flag_6502)
+    if (run_args.cpu65_f & I_Flag_6502)
     {
         second_buf[num_buffer_lines][2]='I';
     }
 
-    if (cpu65_f & V_Flag_6502)
+    if (run_args.cpu65_f & V_Flag_6502)
     {
         second_buf[num_buffer_lines][3]='V';
     }
 
-    if (cpu65_f & B_Flag_6502)
+    if (run_args.cpu65_f & B_Flag_6502)
     {
         second_buf[num_buffer_lines][4]='B';
     }
 
-    if (cpu65_f & D_Flag_6502)
+    if (run_args.cpu65_f & D_Flag_6502)
     {
         second_buf[num_buffer_lines][5]='D';
     }
 
-    if (cpu65_f & Z_Flag_6502)
+    if (run_args.cpu65_f & Z_Flag_6502)
     {
         second_buf[num_buffer_lines][6]='Z';
     }
 
-    if (cpu65_f & N_Flag_6502)
+    if (run_args.cpu65_f & N_Flag_6502)
     {
         second_buf[num_buffer_lines][7]='N';
     }
@@ -744,23 +746,23 @@ static int will_branch() {
     switch (op)
     {
     case 0x10:                          /* BPL */
-        return (int) !(cpu65_f & N_Flag_6502);
+        return (int) !(run_args.cpu65_f & N_Flag_6502);
     case 0x30:                          /* BMI */
-        return (int) (cpu65_f & N_Flag_6502);
+        return (int) (run_args.cpu65_f & N_Flag_6502);
     case 0x50:                          /* BVC */
-        return (int) !(cpu65_f & V_Flag_6502);
+        return (int) !(run_args.cpu65_f & V_Flag_6502);
     case 0x70:                          /* BVS */
-        return (int) (cpu65_f & V_Flag_6502);
+        return (int) (run_args.cpu65_f & V_Flag_6502);
     case 0x80:                          /* BRA */
         return 1;
     case 0x90:                          /* BCC */
-        return (int) !(cpu65_f & C_Flag_6502);
+        return (int) !(run_args.cpu65_f & C_Flag_6502);
     case 0xb0:                          /* BCS */
-        return (int) (cpu65_f & C_Flag_6502);
+        return (int) (run_args.cpu65_f & C_Flag_6502);
     case 0xd0:                          /* BNE */
-        return (int) !(cpu65_f & Z_Flag_6502);
+        return (int) !(run_args.cpu65_f & Z_Flag_6502);
     case 0xf0:                          /* BEQ */
-        return (int) (cpu65_f & Z_Flag_6502);
+        return (int) (run_args.cpu65_f & Z_Flag_6502);
     }
 
     return BRANCH_NA;
@@ -877,28 +879,28 @@ int at_haltpt() {
     uint8_t op = get_last_opcode();
     if (op_breakpoints[op])
     {
-        sprintf(second_buf[num_buffer_lines++], "stopped at %04X bank %d instruction %02X", cpu65_pc, c_get_current_rambank(cpu65_pc), op);
+        sprintf(second_buf[num_buffer_lines++], "stopped at %04X bank %d instruction %02X", run_args.cpu65_pc, c_get_current_rambank(run_args.cpu65_pc), op);
         ++count;
     }
 
     for (int i = 0; i < MAX_BRKPTS; i++)
     {
-        if (cpu65_pc == breakpoints[i])
+        if (run_args.cpu65_pc == breakpoints[i])
         {
-            sprintf(second_buf[num_buffer_lines++], "stopped at %04X bank %d", breakpoints[i], c_get_current_rambank(cpu65_pc));
+            sprintf(second_buf[num_buffer_lines++], "stopped at %04X bank %d", breakpoints[i], c_get_current_rambank(run_args.cpu65_pc));
             ++count;
         }
     }
 
-    if (cpu65_rw)   /* only check watchpoints if read/write occured */
+    if (run_args.cpu65_rw)   /* only check watchpoints if read/write occured */
     {
         for (int i = 0; i < MAX_BRKPTS; i++)
         {
-            if (cpu65_ea == watchpoints[i])
+            if (run_args.cpu65_ea == watchpoints[i])
             {
-                if (cpu65_rw & 0x2)
+                if (run_args.cpu65_rw & 0x2)
                 {
-                    sprintf(second_buf[num_buffer_lines++], "wrote: %04X: %02X", watchpoints[i], cpu65_d);
+                    sprintf(second_buf[num_buffer_lines++], "wrote: %04X: %02X", watchpoints[i], run_args.cpu65_d);
                     ++count;
                 }
                 else
@@ -907,7 +909,7 @@ int at_haltpt() {
                     ++count;
                 }
 
-                cpu65_rw = 0; /* only allow WP to trip once */
+                run_args.cpu65_rw = 0; /* only allow WP to trip once */
             }
         }
     }
@@ -981,29 +983,29 @@ void show_opcode_breakpts() {
    ------------------------------------------------------------------------- */
 void show_lc_info() {
     int i = num_buffer_lines;
-    sprintf(second_buf[i++], "lc bank = %d", 1 + !!(softswitches & SS_BANK2));
-    (softswitches & SS_LCWRT) ? sprintf(second_buf[i++], "write LC") : sprintf(second_buf[i++], "LC write protected");
-    (softswitches & SS_LCRAM) ? sprintf(second_buf[i++], "read LC")  : sprintf(second_buf[i++], "read ROM");
-    sprintf(second_buf[i++], "second = %d", !!(softswitches & SS_LCSEC));
+    sprintf(second_buf[i++], "lc bank = %d", 1 + !!(run_args.softswitches & SS_BANK2));
+    (run_args.softswitches & SS_LCWRT) ? sprintf(second_buf[i++], "write LC") : sprintf(second_buf[i++], "LC write protected");
+    (run_args.softswitches & SS_LCRAM) ? sprintf(second_buf[i++], "read LC")  : sprintf(second_buf[i++], "read ROM");
+    sprintf(second_buf[i++], "second = %d", !!(run_args.softswitches & SS_LCSEC));
     num_buffer_lines = i;
 }
 
 void show_misc_info() {
     int i = num_buffer_lines;
-    sprintf(second_buf[i++], "TEXT (%04X): %s", SW_TEXT + !!(softswitches & SS_TEXT), (softswitches & SS_TEXT) ? "on" : "off");
-    sprintf(second_buf[i++], "MIXED (%04X): %s", SW_MIXED + !!(softswitches & SS_MIXED), (softswitches & SS_MIXED) ? "on" : "off");
-    sprintf(second_buf[i++], "PAGE2 (%04X): %s", SW_PAGE2 + !!(softswitches & SS_PAGE2), (softswitches & SS_PAGE2) ? "on" : "off");
-    sprintf(second_buf[i++], "HIRES (%04X): %s", SW_HIRES + !!(softswitches & SS_HIRES), (softswitches & SS_HIRES) ? "on" : "off");
-    sprintf(second_buf[i++], "80STORE (%04X): %s", SW_80STORE + !!(softswitches & SS_80STORE), (softswitches & SS_80STORE) ? "on" : "off");
-    sprintf(second_buf[i++], "RAMRD (%04X): %s", SW_RAMRD + !!(softswitches & SS_RAMRD), (softswitches & SS_RAMRD) ? "on" : "off");
-    sprintf(second_buf[i++], "RAMWRT (%04X): %s", SW_RAMWRT + !!(softswitches & SS_RAMWRT), (softswitches & SS_RAMWRT) ? "on" : "off");
-    sprintf(second_buf[i++], "ALTZP (%04X): %s", SW_ALTZP + !!(softswitches & SS_ALTZP), (softswitches & SS_ALTZP) ? "on" : "off");
-    sprintf(second_buf[i++], "80COL (%04X): %s", SW_80COL + !!(softswitches & SS_80COL), (softswitches & SS_80COL) ? "on" : "off");
-    sprintf(second_buf[i++], "ALTCHAR (%04X): %s", SW_ALTCHAR + !!(softswitches & SS_ALTCHAR), (softswitches & SS_ALTCHAR) ? "on" : "off");
-    sprintf(second_buf[i++], "SLOTC3ROM (%04X): %s", SW_SLOTC3ROM -/*anomaly*/ !!(softswitches & SS_C3ROM), (softswitches & SS_C3ROM) ? "on" : "off");
-    sprintf(second_buf[i++], "SLOTCXROM (%04X): %s", SW_SLOTCXROM + !!(softswitches & SS_CXROM), (softswitches & SS_CXROM) ? "on" : "off");
-    sprintf(second_buf[i++], "DHIRES (%04X): %s", SW_DHIRES + !!(softswitches & SS_DHIRES), (softswitches & SS_DHIRES) ? "on" : "off");
-    sprintf(second_buf[i++], "IOUDIS (%04X): %s", SW_IOUDIS + !!(softswitches & SS_IOUDIS), (softswitches & SS_IOUDIS) ? "on" : "off");
+    sprintf(second_buf[i++], "TEXT (%04X): %s", SW_TEXT + !!(run_args.softswitches & SS_TEXT), (run_args.softswitches & SS_TEXT) ? "on" : "off");
+    sprintf(second_buf[i++], "MIXED (%04X): %s", SW_MIXED + !!(run_args.softswitches & SS_MIXED), (run_args.softswitches & SS_MIXED) ? "on" : "off");
+    sprintf(second_buf[i++], "PAGE2 (%04X): %s", SW_PAGE2 + !!(run_args.softswitches & SS_PAGE2), (run_args.softswitches & SS_PAGE2) ? "on" : "off");
+    sprintf(second_buf[i++], "HIRES (%04X): %s", SW_HIRES + !!(run_args.softswitches & SS_HIRES), (run_args.softswitches & SS_HIRES) ? "on" : "off");
+    sprintf(second_buf[i++], "80STORE (%04X): %s", SW_80STORE + !!(run_args.softswitches & SS_80STORE), (run_args.softswitches & SS_80STORE) ? "on" : "off");
+    sprintf(second_buf[i++], "RAMRD (%04X): %s", SW_RAMRD + !!(run_args.softswitches & SS_RAMRD), (run_args.softswitches & SS_RAMRD) ? "on" : "off");
+    sprintf(second_buf[i++], "RAMWRT (%04X): %s", SW_RAMWRT + !!(run_args.softswitches & SS_RAMWRT), (run_args.softswitches & SS_RAMWRT) ? "on" : "off");
+    sprintf(second_buf[i++], "ALTZP (%04X): %s", SW_ALTZP + !!(run_args.softswitches & SS_ALTZP), (run_args.softswitches & SS_ALTZP) ? "on" : "off");
+    sprintf(second_buf[i++], "80COL (%04X): %s", SW_80COL + !!(run_args.softswitches & SS_80COL), (run_args.softswitches & SS_80COL) ? "on" : "off");
+    sprintf(second_buf[i++], "ALTCHAR (%04X): %s", SW_ALTCHAR + !!(run_args.softswitches & SS_ALTCHAR), (run_args.softswitches & SS_ALTCHAR) ? "on" : "off");
+    sprintf(second_buf[i++], "SLOTC3ROM (%04X): %s", SW_SLOTC3ROM -/*anomaly*/ !!(run_args.softswitches & SS_C3ROM), (run_args.softswitches & SS_C3ROM) ? "on" : "off");
+    sprintf(second_buf[i++], "SLOTCXROM (%04X): %s", SW_SLOTCXROM + !!(run_args.softswitches & SS_CXROM), (run_args.softswitches & SS_CXROM) ? "on" : "off");
+    sprintf(second_buf[i++], "DHIRES (%04X): %s", SW_DHIRES + !!(run_args.softswitches & SS_DHIRES), (run_args.softswitches & SS_DHIRES) ? "on" : "off");
+    sprintf(second_buf[i++], "IOUDIS (%04X): %s", SW_IOUDIS + !!(run_args.softswitches & SS_IOUDIS), (run_args.softswitches & SS_IOUDIS) ? "on" : "off");
 /*     sprintf(second_buf[i++], "RDVBLBAR: %s", (SLOTCXROM & 0x80) */
 /*          ? "on" : "off"); */
 
@@ -1091,10 +1093,8 @@ void fb_sha1() {
     uint8_t md[SHA_DIGEST_LENGTH];
     char buf[(SHA_DIGEST_LENGTH*2)+1];
 
-    uint8_t *fb = MALLOC(SCANWIDTH*SCANHEIGHT*sizeof(uint8_t));
-    display_renderStagingFramebuffer(fb);
-    SHA1(fb, SCANWIDTH*SCANHEIGHT, md);
-    FREE(fb);
+    PIXEL_TYPE *fb = display_getCurrentFramebuffer();
+    SHA1((const unsigned char *)fb, SCANWIDTH*SCANHEIGHT*PIXEL_STRIDE, md);
 
     int i=0;
     for (int j=0; j<SHA_DIGEST_LENGTH; j++, i+=2) {
@@ -1103,8 +1103,8 @@ void fb_sha1() {
     sprintf(buf+i, "%c", '\0');
     LOG("SHA1 : %s", buf);
 
-    int ch = -1;
 #ifdef INTERFACE_CLASSIC
+    int ch = -1;
     while ((ch = c_mygetch(1)) == -1) {
         // ...
     }
@@ -1185,14 +1185,12 @@ static int begin_cpu_stepping() {
    ------------------------------------------------------------------------- */
 bool c_debugger_should_break() {
 
-    if (pthread_self() != cpu_thread_id) {
-        // OOPS ...
-        LOG("should only call this from cpu thread, bailing...");
-        assert(false);
-    }
+    ASSERT_ON_CPU_THREAD();
 
     bool break_stepping = false;
     if (at_haltpt()) {
+        stepping_struct.should_break = true;
+    } else if (shouldBreakCallback && shouldBreakCallback()) {
         stepping_struct.should_break = true;
     } else {
         uint8_t op = get_last_opcode();
@@ -1228,7 +1226,7 @@ bool c_debugger_should_break() {
 
             case UNTILING:
             {
-                if (stepping_struct.step_pc == cpu65_pc) {
+                if (stepping_struct.step_pc == run_args.cpu65_pc) {
                     stepping_struct.should_break = true;
                 }
             }
@@ -1275,7 +1273,7 @@ int debugger_go(stepping_struct_t s) {
 #if !TESTING
     if (stepping_struct.step_type != LOADING) {
         clear_debugger_screen();
-        disasm(cpu65_pc, 1, 0, -1);
+        disasm(run_args.cpu65_pc, 1, 0, -1);
         int branch = will_branch();
         if (branch != BRANCH_NA) {
             sprintf(second_buf[num_buffer_lines++], "%s", (branch) ? "will branch" : "will not branch");
@@ -1411,7 +1409,7 @@ static void do_debug_command() {
         main debugging console
    ------------------------------------------------------------------------- */
 
-void c_interface_debugging(uint8_t *stagingFB) {
+void c_interface_debugging(void) {
 
     static char lex_initted = 0;
 
@@ -1455,7 +1453,7 @@ void c_interface_debugging(uint8_t *stagingFB) {
         c_interface_print(1, 1+PROMPT_Y, 0, command_line);
 
         /* highlight cursor */
-        display_plotChar(stagingFB, /*col:*/1+command_pos, /*row:*/1+PROMPT_Y, GREEN_ON_BLUE, command_line[command_pos]);
+        display_plotChar(/*col:*/1+command_pos, /*row:*/1+PROMPT_Y, GREEN_ON_BLUE, command_line[command_pos]);
 
         while ((ch = c_mygetch(1)) == -1)
         {
@@ -1538,6 +1536,10 @@ void c_debugger_set_timeout(const unsigned int secs) {
 
 bool c_debugger_set_watchpoint(const uint16_t addr) {
     return set_halt(watchpoints, addr);
+}
+
+void debugger_setBreakCallback(bool(*cb)(void)) {
+    shouldBreakCallback = cb;
 }
 
 void c_debugger_clear_watchpoints(void) {
