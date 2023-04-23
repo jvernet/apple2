@@ -47,8 +47,8 @@ extern bool cpu65_loadState(StateHelper_s *helper);
 
 extern void cpu65_direct_write(int ea,int data);
 
-extern void *cpu65_vmem_r[65536];
-extern void *cpu65_vmem_w[65536];
+extern void *cpu65_vmem_r[256];
+extern void *cpu65_vmem_w[256];
 
 extern uint8_t cpu65_flags_encode[256];
 extern uint8_t cpu65_flags_decode[256];
@@ -87,8 +87,9 @@ void cpu65_trace_checkpoint(void);
 #   define D_Flag          0x20            /* 6502 Decimal mode       */
 #   define Z_Flag          0x40            /* 6502 Zero               */
 #   define N_Flag          0x80            /* 6502 Negative           */
-#elif defined(__arm__)
+#elif defined(__arm__) || defined(__aarch64__)
 // VCZN positions match positions of shifted status register
+// ALSO NOTE : changing these WILL AFFECT custom shifting in arm/cpu.S ...
 #   define V_Flag          0x1
 #   define C_Flag          0x2
 #   define Z_Flag          0x4
@@ -101,10 +102,7 @@ void cpu65_trace_checkpoint(void);
 #   define I_Flag          0x20
 #   define B_Flag          0x40
 #   define D_Flag          0x80
-#   define BX_Flags        0x50
 #   define BI_Flags        0x60
-#elif defined(__aarch64__)
-#   error soon ...
 #else
 #   error unknown machine architecture
 #endif

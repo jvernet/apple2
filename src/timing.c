@@ -30,7 +30,7 @@ static int32_t cycles_checkpoint_count = 0;
 // scaling and speed adjustments
 static bool auto_adjust_speed = true;
 static bool is_paused = false;
-static unsigned long _pause_spinLock = 0;
+static unsigned long _pause_spinLock = SPINLOCK_INIT;
 
 double cpu_scale_factor = 1.0;
 double cpu_altscale_factor = 1.0;
@@ -150,8 +150,9 @@ void timing_toggleCPUSpeed(void) {
 }
 
 static void timing_reinitializeAudio(void) {
-    SPINLOCK_ACQUIRE(&_pause_spinLock);
     ASSERT_NOT_ON_CPU_THREAD();
+
+    SPIN_LOCK_FULL(&_pause_spinLock);
 #if !TESTING
     assert(cpu_isPaused());
 #endif
@@ -159,13 +160,13 @@ static void timing_reinitializeAudio(void) {
     emul_pause_audio = false;
     emul_resume_audio = false;
     emul_video_dirty = false;
-    SPINLOCK_RELINQUISH(&_pause_spinLock);
+    SPIN_UNLOCK_FULL(&_pause_spinLock);
 }
 
 void cpu_pause(void) {
     ASSERT_NOT_ON_CPU_THREAD();
 
-    SPINLOCK_ACQUIRE(&_pause_spinLock);
+    SPIN_LOCK_FULL(&_pause_spinLock);
     do {
         if (is_paused) {
             break;
@@ -179,13 +180,13 @@ void cpu_pause(void) {
         pthread_mutex_lock(&interface_mutex);
         is_paused = true;
     } while (0);
-    SPINLOCK_RELINQUISH(&_pause_spinLock);
+    SPIN_UNLOCK_FULL(&_pause_spinLock);
 }
 
 void cpu_resume(void) {
     ASSERT_NOT_ON_CPU_THREAD();
 
-    SPINLOCK_ACQUIRE(&_pause_spinLock);
+    SPIN_LOCK_FULL(&_pause_spinLock);
     do {
         if (!is_paused) {
             break;
@@ -200,7 +201,7 @@ void cpu_resume(void) {
         is_paused = false;
         pthread_mutex_unlock(&interface_mutex);
     } while (0);
-    SPINLOCK_RELINQUISH(&_pause_spinLock);
+    SPIN_UNLOCK_FULL(&_pause_spinLock);
 }
 
 bool cpu_isPaused(void) {
@@ -297,32 +298,43 @@ cpu_runloop:
             clock_gettime(CLOCK_MONOTONIC, &ti);
 
             deltat = timespec_diff(t0, ti, &negative);
-            if (deltat.tv_sec) {
+            if (UNLIKELY(deltat.tv_sec)) {
                 if (!is_fullspeed) {
                     TIMING_LOG("NOTE : serious divergence from target time ...");
                 }
                 t0 = ti;
-                deltat = timespec_diff(t0, ti, &negative);
+                deltat = (struct timespec){ 0 };
             }
             t0 = timespec_add(t0, EXECUTION_PERIOD_NSECS); // expected interval
             drift_adj_nsecs = negative ? ~deltat.tv_nsec : deltat.tv_nsec;
 
-            // set up increment & decrement counters
-            run_args.cpu65_cycles_to_execute = (cycles_persec_target / 1000); // cycles_persec_target * EXECUTION_PERIOD_NSECS / NANOSECONDS_PER_SECOND
-            if (!is_fullspeed) {
-                run_args.cpu65_cycles_to_execute += cycles_speaker_feedback;
-            }
-            if (run_args.cpu65_cycles_to_execute < 0) {
-                run_args.cpu65_cycles_to_execute = 0;
+            // Determine the count of 65c02 cycles to execute
+            {
+                static int speaker_wedged_count = 0;
+
+                run_args.cpu65_cycles_to_execute = (cycles_persec_target / 1000); // cycles_persec_target * EXECUTION_PERIOD_NSECS / NANOSECONDS_PER_SECOND
+                if (!is_fullspeed) {
+                    // Speaker backend (real-time soundcard) actually drives us!
+                    run_args.cpu65_cycles_to_execute += cycles_speaker_feedback;
+                }
+                if (UNLIKELY(run_args.cpu65_cycles_to_execute <= 0)) {
+                    run_args.cpu65_cycles_to_execute = 0;
+                    if (++speaker_wedged_count >= SOUNDCORE_ERROR_MAX<<1) {
+                        speaker_wedged_count = 0;
+                        emul_reinitialize_audio = true;
+                    }
+                } else {
+                    speaker_wedged_count = 0;
+                }
             }
 
             MB_StartOfCpuExecute();
-            if (is_debugging) {
+            if (UNLIKELY(is_debugging)) {
                 debugging_cycles = run_args.cpu65_cycles_to_execute;
             }
 
             do {
-                if (is_debugging) {
+                if (UNLIKELY(is_debugging)) {
                     run_args.cpu65_cycles_to_execute = 1;
                 }
 
@@ -335,11 +347,11 @@ cpu_runloop:
                 dbg_cycles_executed += run_args.cpu65_cycle_count;
 #endif
 
-                if (is_debugging) {
+                if (UNLIKELY(is_debugging)) {
                     debugging_cycles -= run_args.cpu65_cycle_count;
                     timing_checkpointCycles();
 
-                    if (c_debugger_should_break() || (debugging_cycles <= 0)) {
+                    if (debugger_shouldBreak() || (debugging_cycles <= 0)) {
                         int err = 0;
                         if ((err = pthread_cond_signal(&dbg_thread_cond))) {
                             LOG("pthread_cond_signal : %d", err);
@@ -357,7 +369,7 @@ cpu_runloop:
                         goto cpu_runloop;
                     }
                 }
-            } while (is_debugging);
+            } while (UNLIKELY(is_debugging));
 
             MB_UpdateCycles();
             // TODO : modularize MB and other peripheral card cycles/interrupts ...
@@ -497,10 +509,7 @@ void timing_startCPU(void) {
     cpu_shutting_down = false;
     assert(cpu_thread_id == 0);
     int err = TEMP_FAILURE_RETRY(pthread_create(&cpu_thread_id, NULL, (void *)&cpu_thread, (void *)NULL));
-    if (err) {
-        LOG("pthread_create failed!");
-        assert(false);
-    }
+    assert(!err);
 }
 
 void timing_stopCPU(void) {

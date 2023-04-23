@@ -11,13 +11,13 @@
 
 package org.deadc0de.apple2ix;
 
-import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Build;
+import androidx.appcompat.app.AlertDialog;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -34,17 +34,16 @@ import android.widget.RadioButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import org.deadc0de.apple2ix.basic.R;
 import org.json.JSONArray;
 import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-
-import org.deadc0de.apple2ix.basic.R;
-import org.json.JSONObject;
 
 public class Apple2DisksMenu implements Apple2MenuView {
 
@@ -370,7 +369,7 @@ public class Apple2DisksMenu implements Apple2MenuView {
                 try {
                     diskArgs.pfd.close();
                 } catch (IOException ioe) {
-                    Log.e(TAG, "Error attempting to close PFD : " + ioe);
+                    Apple2Activity.logMessage(Apple2Activity.LogType.ERROR, TAG, "Error attempting to close PFD : " + ioe);
                 }
             }
             diskArgs.pfd = null;
@@ -382,7 +381,7 @@ public class Apple2DisksMenu implements Apple2MenuView {
             }
 
         } catch (Throwable t) {
-            Log.d(TAG, "OOPS: " + t);
+            Apple2Activity.logMessage(Apple2Activity.LogType.DEBUG, TAG, "OOPS: " + t);
         }
     }
 
@@ -429,12 +428,6 @@ public class Apple2DisksMenu implements Apple2MenuView {
         final RadioButton readWrite = (RadioButton) diskConfirmationView.findViewById(R.id.radioButton_readWrite);
         readWrite.setChecked(!roChecked);
 
-        builder.setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                dialog.dismiss();
-            }
-        });
         builder.setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
@@ -571,6 +564,10 @@ public class Apple2DisksMenu implements Apple2MenuView {
                     break;
                 }
 
+                if (diskPath.startsWith(Apple2DisksMenu.EXTERNAL_CHOOSER_SENTINEL)) {
+                    diskPath = diskPath.substring(Apple2DisksMenu.EXTERNAL_CHOOSER_SENTINEL.length());
+                }
+
                 Uri uri = Uri.parse(diskPath);
                 if (uri == null) {
                     break;
@@ -582,7 +579,7 @@ public class Apple2DisksMenu implements Apple2MenuView {
                     break;
                 }
 
-                imageName = diskPath.substring(idx + 1);
+                imageName = Apple2DiskChooserActivity.getFileNameFromUri(mActivity, uri);
             } while (false);
 
             LinearLayout layout = (LinearLayout) mDisksView.findViewById((i == 0) ? R.id.a2_newschool_driveA_layout : R.id.a2_newschool_driveB_layout);
@@ -742,7 +739,7 @@ public class Apple2DisksMenu implements Apple2MenuView {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, final int position, long id) {
                 if (isDirectory[position]) {
-                    Log.d(TAG, "Descending to path : " + filePaths[position]);
+                    Apple2Activity.logMessage(Apple2Activity.LogType.DEBUG, TAG, "Descending to path : " + filePaths[position]);
                     if (parentIsRootPath && !new File(filePaths[position]).isAbsolute()) {
                         pushPathStack(parentDisksDir + File.separator + filePaths[position]);
                     } else {

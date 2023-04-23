@@ -22,6 +22,7 @@
 
 /* process includes only the second time we parse this file. */
 #include "common.h"
+#include "meta/debug_private.h"
 
 #define debugtext yytext
 
@@ -57,7 +58,7 @@ extern void set_halt_65c02(void);
 extern void clear_halt_65c02(void);
 extern void clear_halt_opcode(uint8_t opcode);
 extern void show_opcode_breakpts(void);
-extern int debugger_go(stepping_struct_t s);
+extern int _debugger_go(stepping_struct_s s);
 extern void fb_sha1(void);
 
 /*
@@ -473,7 +474,7 @@ ADDRS	[0-9a-fA-F]+
 
 {BOS}(st?e?p?|ne?x?t?){EOS} {
 
-    stepping_struct_t s = {
+    stepping_struct_s s = {
         .step_type = STEPPING,
         .step_count = 1
     };
@@ -482,7 +483,7 @@ ADDRS	[0-9a-fA-F]+
         s.step_type = NEXTING;
     }
 
-    debugger_go(s);
+    _debugger_go(s);
     return STEP;
 }
 
@@ -493,7 +494,7 @@ ADDRS	[0-9a-fA-F]+
     arg1 = (int)strtol(debugtext, (char**)NULL, 16);
     if ((arg1 < 1) || (arg1 > 255)) arg1 = 255;
 
-    stepping_struct_t s = {
+    stepping_struct_s s = {
         .step_type = STEPPING,
         .step_count = arg1
     };
@@ -502,18 +503,18 @@ ADDRS	[0-9a-fA-F]+
         s.step_type = NEXTING;
     }
 
-    debugger_go(s);
+    _debugger_go(s);
     return STEP;
 }
 
 {BOS}fi?n?i?s?h?{EOS} {
 
-    stepping_struct_t s = {
+    stepping_struct_s s = {
         .step_type = FINISHING,
         .step_frame = 1
     };
 
-    debugger_go(s);
+    _debugger_go(s);
     return FINISH;
 }
 
@@ -546,14 +547,17 @@ ADDRS	[0-9a-fA-F]+
     case addr_j_indirect_x:
 	delta = 3;
         break; 
+    default:
+        assert(false);
+        break;
     }
 
-    stepping_struct_t s = {
+    stepping_struct_s s = {
         .step_type = UNTILING,
         .step_pc = run_args.cpu65_pc + delta
     };
 
-    debugger_go(s);
+    _debugger_go(s);
     return UNTIL;
 }
 
@@ -564,20 +568,20 @@ ADDRS	[0-9a-fA-F]+
     /* DANGEROUS! */
     run_args.cpu65_pc = (int)strtol(debugtext, (char**)NULL, 16);
 
-    stepping_struct_t s = {
+    stepping_struct_s s = {
         .step_type = GOING
     };
 
-    debugger_go(s);
+    _debugger_go(s);
     return GO;
 }
 
 {BOS}go?{EOS} {
-    stepping_struct_t s = {
+    stepping_struct_s s = {
         .step_type = GOING
     };
 
-    debugger_go(s);
+    _debugger_go(s);
     return GO;
 }
 
@@ -797,12 +801,12 @@ ADDRS	[0-9a-fA-F]+
     buf[len] = '\r';
     buf[len+1] = '\0';
 
-    stepping_struct_t s = {
+    stepping_struct_s s = {
         .step_type = TYPING,
         .step_text = buf
     };
 
-    debugger_go(s);
+    _debugger_go(s);
 
     return TYPE;
 }
@@ -827,12 +831,12 @@ ADDRS	[0-9a-fA-F]+
     while (fgets(buf, DEBUG_BUFSZ, fp)) {
         LOG("%s", buf);
 
-        stepping_struct_t s = {
+        stepping_struct_s s = {
             .step_type = LOADING,
             .step_text = buf
         };
 
-        ch = debugger_go(s);
+        ch = _debugger_go(s);
         if (ch != -1) {
             break;
         }
@@ -840,10 +844,10 @@ ADDRS	[0-9a-fA-F]+
     fclose(fp);
 
     if (ch == -1) {
-        stepping_struct_t s = {
+        stepping_struct_s s = {
             .step_type = GOING,
         };
-        debugger_go(s);
+        _debugger_go(s);
     }
 
     return LOAD;
@@ -994,7 +998,7 @@ void init_lex (char *str, int size) {
 #define WONT_EXECUTE 0
     static volatile void *hack_warnings = &hack_warnings;
     if (hack_warnings == WONT_EXECUTE) {
-        // flex defines these, but we don't use 'em ...
+        // this section is just here to kill warnings about unused input() and yyunput()
         char hack[2];
         yyunput('\0', hack);
         input();

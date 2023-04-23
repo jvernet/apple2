@@ -17,13 +17,53 @@
 #include "vm.h"
 
 
+#if __aarch64__
+#   define APSR NZCV
+#   define APSR_nzcvq NZCV
+
+#   define Zero(x) \
+                mov     x, wzr;
+#   define ZeroX(x) \
+                mov     x, xzr;
+
+#   define Enter \
+                stp     x29, x30, [sp, -16]!; \
+                mov     x29, sp; \
+                stp     x19, x20, [sp, -16]!; \
+                stp     x21, x22, [sp, -16]!; \
+                stp     x23, x24, [sp, -16]!; \
+                stp     x25, x26, [sp, -16]!; \
+                stp     x27, x28, [sp, -16]!;
+
+#   define Exit \
+                ldp     x27, x28, [sp], 16; \
+                ldp     x25, x26, [sp], 16; \
+                ldp     x23, x24, [sp], 16; \
+                ldp     x21, x22, [sp], 16; \
+                ldp     x19, x20, [sp], 16; \
+                ldp     x29, x30, [sp], 16; \
+                ret;
+#else
+
+#   define Zero(x) \
+                eor     x, x, x;
+#   define ZeroX(x) \
+                eor     x, x, x;
+
+#   define Enter \
+                push    {r4, r5, r6, r7, r8, r9, r10, r11, lr};
+
+#   define Exit \
+                pop     {r4, r5, r6, r7, r8, r9, r10, r11, pc};
+#endif
+
 #define DecodeFlags \
-                ldr     r1, [reg_args, #CPU65_FLAGS_DECODE]; \
-                ldrb    F_Reg, [r1, r0];
+                ldr     xr1, [reg_args, #CPU65_FLAGS_DECODE]; \
+                ldrb    F_Reg, [xr1, xr0];
 
 #define EncodeFlags \
-                ldr     r1, [reg_args, #CPU65_FLAGS_ENCODE]; \
-                ldrb    r0, [r1, F_Reg];
+                ldr     xr1, [reg_args, #CPU65_FLAGS_ENCODE]; \
+                ldrb    wr0, [xr1, xF_Reg];
 
 #define CommonSaveCPUState \
                 /* save EA */ \
@@ -38,7 +78,7 @@
                 strb    A_Reg, [reg_args, #CPU65_A]; \
                 /* save flags */ \
                 EncodeFlags \
-                strb    r0, [reg_args, #CPU65_F]
+                strb    wr0, [reg_args, #CPU65_F];
 
 // Tracing is necessary for some CPU tests and to verify operation against other emulators
 #if CPU_TRACING
@@ -61,20 +101,9 @@
 
 
 #define CPUStatsReset \
-                eor     r1, r1, r1; \
-                strb    r1, [reg_args, #CPU65_OPCYCLES]; \
-                strb    r1, [reg_args, #CPU65_RW];
-
-#define CPUStatsSetRead \
-                ldrb    r1, [reg_args, #CPU65_RW]; \
-                orr     r1, r1, #1; \
-                strb    r1, [reg_args, #CPU65_RW];
-
-#define CPUStatsSetWrite \
-                strb    r0, [reg_args, #CPU65_D]; \
-                ldrb    r1, [reg_args, #CPU65_RW]; \
-                orr     r1, r1, #2; \
-                strb    r1, [reg_args, #CPU65_RW];
+                Zero(wr1) \
+                strb    wr1, [reg_args, #CPU65_OPCYCLES]; \
+                strb    wr1, [reg_args, #CPU65_RW];
 
 // ----------------------------------------------------------------------------
 // CPU (6502) helper macros
@@ -82,88 +111,106 @@
 // Add 16bit x with <=16bit amt
 #define AddUint16(x, amt) \
                 add     x, x, amt; \
-                bic     x, #0x10000;
+                bic     x, x, #0xFF0000;
 
 // Increment 16bit x
 #define IncUint16(x) \
                 AddUint16(x, #1)
 
-// Add 8bit x with <=8bit amt
-#define AddUint8(x, amt) \
-                add     x, x, amt; \
-                bic     SP_Reg, #0x0100;
-
 // Increment 8bit x
 #define IncUint8(x) \
-                AddUint8(x, #1)
-
-// Subtract 8bit x by <=8bit amt
-#define SubUint8(x, amt) \
-                subs    x, x, amt; \
-                movmi   x, #0xFF;
+                add     x, x, #1; \
+                and     x, x, #0xFF;
 
 // Decrement 8bit x
 #define DecUint8(x) \
-                SubUint8(x, #1)
+                sub     x, x, #1; \
+                and     x, x, #0xFF;
 
 #define GetFromPC_B \
                 mov     EffectiveAddr, PC_Reg; \
+                lsr     wr1, EffectiveAddr, #8; \
                 IncUint16(PC_Reg) \
-                orrs    r0, r0, #0x10000; /* clear ARM processor flags */ \
-                ldr     r1, [reg_vmem_r, EffectiveAddr, LSL PTR_SHIFT]; \
-                blx     r1; \
+                ldr     xr1, [reg_vmem_r, xr1, LSL PTR_SHIFT]; \
+                BLX     xr1; \
                 TRACE_ARG
 
-#define hi_byte         r0
-#define lo_byte         r9
+#define word_reg        PC_Reg
+#define hi_byte         wr0
+#define lo_byte         wr9
 
 #define GetFromPC_W \
                 mov     EffectiveAddr, PC_Reg; \
+                lsr     wr1, EffectiveAddr, #8; \
                 AddUint16(PC_Reg, #2) \
-                ldr     r1, [reg_vmem_r, EffectiveAddr, LSL PTR_SHIFT]; \
-                blx     r1; \
+                lsl     PC_Reg, PC_Reg, #16; \
+                ldr     xr1, [reg_vmem_r, xr1, LSL PTR_SHIFT]; \
+                BLX     xr1; \
                 TRACE_ARG \
-                mov     lo_byte, r0; \
+                orr     word_reg, word_reg, wr0; \
                 IncUint16(EffectiveAddr) \
-                ldr     r1, [reg_vmem_r, EffectiveAddr, LSL PTR_SHIFT]; \
-                blx     r1; \
+                lsr     wr1, EffectiveAddr, #8; \
+                ldr     xr1, [reg_vmem_r, xr1, LSL PTR_SHIFT]; \
+                BLX     xr1; \
                 TRACE_ARG; \
-                mov     hi_byte, hi_byte, LSL #8; \
-                orr     r0, hi_byte, lo_byte;
+                lsl     wr0, wr0, #8; /* hi byte */ \
+                orr     wr0, word_reg, wr0; \
+                lsl     wr0, wr0, #16; \
+                lsr     wr0, wr0, #16; \
+                lsr     PC_Reg, PC_Reg, #16;
 
 #define JumpNextInstruction \
                 TRACE_PROLOGUE \
                 GetFromPC_B \
-                strb    r0, [reg_args, #CPU65_OPCODE]; /* r0 should be next opcode */ \
-                ldr     r1, [reg_args, #CPU65__OPCODES]; \
-                ldr     r1, [r1, r0, LSL PTR_SHIFT]; \
-                bx      r1;
+                strb    wr0, [reg_args, #CPU65_OPCODE]; /* wr0 should be next opcode */ \
+                ldr     xr1, [reg_args, #CPU65__OPCODES]; \
+                ldr     xr1, [xr1, xr0, LSL PTR_SHIFT]; \
+                ZeroX(xr0) \
+                msr     APSR_nzcvq, xr0; \
+                BX      xr1;
 
 #define GetFromEA_B \
-                CPUStatsSetRead \
-                ldr     r1, [reg_vmem_r, EffectiveAddr, LSL PTR_SHIFT]; \
-                blx     r1;
+                /* Record CPU read: */ \
+                lsr     wr1, EffectiveAddr, #8; \
+                ldrb    wr9, [reg_args, #CPU65_RW]; \
+                orr     wr9, wr9, #1; \
+                strb    wr9, [reg_args, #CPU65_RW]; \
+                \
+                ldr     xr1, [reg_vmem_r, xr1, LSL PTR_SHIFT]; \
+                BLX     xr1;
 
 #define GetFromEA_W \
-                ldr     r1, [reg_vmem_r, EffectiveAddr, LSL PTR_SHIFT]; \
-                blx     r1; \
-                mov     lo_byte, r0; \
+                lsr     wr1, EffectiveAddr, #8; \
+                lsl     PC_Reg, PC_Reg, #16; \
+                ldr     xr1, [reg_vmem_r, xr1, LSL PTR_SHIFT]; \
+                BLX     xr1; \
+                orr     word_reg, word_reg, wr0; \
                 IncUint16(EffectiveAddr) \
-                ldr     r1, [reg_vmem_r, EffectiveAddr, LSL PTR_SHIFT]; \
-                blx     r1; \
-                mov     hi_byte, hi_byte, LSL #8; \
-                orr     r0, hi_byte, lo_byte;
+                lsr     wr1, EffectiveAddr, #8; \
+                ldr     xr1, [reg_vmem_r, xr1, LSL PTR_SHIFT]; \
+                BLX     xr1; \
+                lsl     wr0, wr0, #8; /* hi byte */ \
+                orr     wr0, word_reg, wr0; \
+                lsl     wr0, wr0, #16; \
+                lsr     wr0, wr0, #16; \
+                lsr     PC_Reg, PC_Reg, #16;
 
 #define PutToEA_B \
-                CPUStatsSetWrite \
-                ldr     r1, [reg_args, #CPU65_VMEM_W]; \
-                ldr     r1, [r1, EffectiveAddr, LSL PTR_SHIFT]; \
-                blx     r1;
+                /* Record CPU write: */ \
+                lsr     wr1, EffectiveAddr, #8; \
+                strb    wr0, [reg_args, #CPU65_D]; \
+                ldrb    wr9, [reg_args, #CPU65_RW]; \
+                orr     wr9, wr9, #2; \
+                strb    wr9, [reg_args, #CPU65_RW]; \
+                ldr     xr9, [reg_args, #CPU65_VMEM_W]; \
+                ldr     xr1, [xr9, xr1, LSL PTR_SHIFT]; \
+                BLX     xr1;
 
 #define GetFromMem_B(x) \
                 mov     EffectiveAddr, x; \
-                ldr     r1, [reg_vmem_r, EffectiveAddr, LSL PTR_SHIFT]; \
-                blx     r1;
+                lsr     wr1, EffectiveAddr, #8; \
+                ldr     xr1, [reg_vmem_r, xr1, LSL PTR_SHIFT]; \
+                BLX     xr1;
 
 #define GetFromMem_W(x) \
                 mov     EffectiveAddr, x; \
@@ -172,103 +219,103 @@
 #define Continue \
                 b       continue;
 
-#define cbw \
+#define cbw(x) \
                 /* Virtual x86: Convert Byte-to-Word */ \
-                mov     r0, r0, LSL #24; \
-                mov     r0, r0, ASR #24;
+                lsl     x, x, #24; \
+                asr     x, x, #24;
 
-#define _IncOpCycles \
+#define _AddOpCycles(x) \
                 ldrb    scratch_count, [reg_args, #CPU65_OPCYCLES]; \
-                add     scratch_count, scratch_count, #1;
+                add     scratch_count, scratch_count, x;
 
-#define IncOpCycles \
-                _IncOpCycles \
+#define AddOpCycles(x) \
+                _AddOpCycles(x) \
                 strb    scratch_count, [reg_args, #CPU65_OPCYCLES];
 
-#define scratch_count   r1
-#define pc_hi_prev      r9
-#define pc_hi_next      r0
+#define FlagNotZero(x) \
+                mrs     arm_flags, APSR; \
+                lsr     x, arm_flags, #30; \
+                and     x, x, #1; /* Z_Flag */ \
+                eor     x, x, #1;
+
+#define scratch_count   wr1
+#define pc_hi_prev      wr9
+#define pc_hi_next      wr0
 #define BranchXCycles \
-                _IncOpCycles \
-                mov     pc_hi_prev, PC_Reg, LSR #8; \
-                cbw; \
-                add     PC_Reg, PC_Reg, r0; /* branch PC */ \
-                mov     PC_Reg, PC_Reg, LSL #16; /* 16bit under/overflow protection */ \
-                mov     PC_Reg, PC_Reg, LSR #16; \
-                mov     pc_hi_next, PC_Reg, LSR #8; \
-                teq     pc_hi_next, pc_hi_prev; \
-                addne   scratch_count, scratch_count, #1; /* +1 branch taken */ \
+                _AddOpCycles(#1) \
+                lsr     pc_hi_prev, PC_Reg, #8; \
+                cbw(wr0); \
+                add     PC_Reg, PC_Reg, wr0; /* branch PC */ \
+                bic     PC_Reg, PC_Reg, #0xFF0000; /* 16bit under/overflow protection */ \
+                lsr     pc_hi_next, PC_Reg, #8; \
+                eor     wr0, pc_hi_next, pc_hi_prev; \
+                \
+                cmp     wr0, #0; \
+                FlagNotZero(xr12) \
+                \
+                add     scratch_count, scratch_count, wr12; /* +0/1 branch not/taken */ \
                 strb    scratch_count, [reg_args, #CPU65_OPCYCLES];
 
-#define arm_flags r12
 #define lahf \
-                /* Virtual x86: Load %AH (r12) from ARM CPU Flags */ \
+                /* Virtual x86: Load %AH (wr12) from ARM CPU Flags */ \
                 mrs     arm_flags, APSR; \
-                mov     arm_flags, arm_flags, LSR #28;
-
-#define bt \
-                /* Virtual x86: Bit Test (and set ... carry flag only) */ \
-                tst     F_Reg, #C_Flag; \
-                mrs     arm_flags, APSR; \
-                biceq   arm_flags, arm_flags, #0x20000000; \
-                orrne   arm_flags, arm_flags, #0x20000000; \
-                msr     APSR_nzcvq, arm_flags;
-
-#define btc \
-                /* Virtual x86: Bit Test and Clear (carry flag only) */ \
-                tst     F_Reg, #C_Flag; \
-                mrs     arm_flags, APSR; \
-                bicne   arm_flags, arm_flags, #0x20000000; \
-                /*orreq   arm_flags, arm_flags, #0x20000000;*/ \
-                msr     APSR_nzcvq, arm_flags;
+                lsr     arm_flags, arm_flags, #28;
 
 #define FlagC \
                 lahf; \
                 and     arm_flags, arm_flags, #C_Flag; \
                 bic     F_Reg, F_Reg, #C_Flag; \
-                orr     F_Reg, F_Reg, arm_flags;
+                orr     xF_Reg, xF_Reg, arm_flags;
 
 #define FlagZ \
                 lahf; \
                 and     arm_flags, arm_flags, #Z_Flag; \
                 bic     F_Reg, F_Reg, #Z_Flag; \
-                orr     F_Reg, F_Reg, arm_flags;
+                orr     xF_Reg, xF_Reg, arm_flags;
+
+#define FlagZasV \
+                lahf; \
+                and     arm_flags, arm_flags, #Z_Flag; \
+                bic     F_Reg, F_Reg, #V_Flag; \
+                lsr     arm_flags, arm_flags, #2; \
+                orr     xF_Reg, xF_Reg, arm_flags;
 
 #define FlagN \
                 lahf; \
                 and     arm_flags, arm_flags, #N_Flag; \
                 bic     F_Reg, F_Reg, #N_Flag; \
-                orr     F_Reg, F_Reg, arm_flags;
+                orr     xF_Reg, xF_Reg, arm_flags;
 
 #define FlagNZ \
                 lahf; \
                 and     arm_flags, arm_flags, #NZ_Flags; \
                 bic     F_Reg, F_Reg, #NZ_Flags; \
-                orr     F_Reg, F_Reg, arm_flags;
+                orr     xF_Reg, xF_Reg, arm_flags;
 
 #define FlagNZC \
                 lahf; \
                 and     arm_flags, arm_flags, #NZC_Flags; \
                 bic     F_Reg, F_Reg, #NZC_Flags; \
-                orr     F_Reg, F_Reg, arm_flags;
+                orr     xF_Reg, xF_Reg, arm_flags;
 
 #define FlagNVZ \
                 lahf; \
                 and     arm_flags, arm_flags, #NVZ_Flags; \
-                bic     F_Reg, F_Reg, #NVZ_Flags; \
-                orr     F_Reg, F_Reg, arm_flags;
+                bic     F_Reg, F_Reg, #NZ_Flags; \
+                bic     F_Reg, F_Reg, #V_Flag; \
+                orr     xF_Reg, xF_Reg, arm_flags;
 
 #define FlagNVZC \
                 lahf; \
                 bic     F_Reg, F_Reg, #NVZC_Flags; \
-                orr     F_Reg, F_Reg, arm_flags;
+                orr     xF_Reg, xF_Reg, arm_flags;
 
-#define stack_loc r1
+#define stack_loc xr1
 #ifdef APPLE2_VM
 #   define RestoreAltZP \
                 ldr     stack_loc, [reg_args, #BASE_STACKZP]; \
                 add     stack_loc, stack_loc, #0x100; \
-                add     stack_loc, stack_loc, SP_Reg;
+                add     stack_loc, stack_loc, xSP_Reg;
 #else
 #   error FIXME TODO ...
 #endif
@@ -297,8 +344,9 @@
 #if CPU_TRACING
 #define GetImm \
                 _GetImm \
-                ldr     r1, [reg_vmem_r, EffectiveAddr, LSL PTR_SHIFT]; \
-                blx     r1; \
+                lsr     wr1, EffectiveAddr, #8; \
+                ldr     xr1, [reg_vmem_r, xr1, LSL PTR_SHIFT]; \
+                BLX     xr1; \
                 TRACE_ARG
 #else
 #define GetImm \
@@ -309,13 +357,13 @@
    order address, and the third byte is the high order byte. */
 #define GetAbs \
                 GetFromPC_W; \
-                mov     EffectiveAddr, r0;
+                mov     EffectiveAddr, wr0;
 
 /* Zero Page Addressing - the second byte of the instruction is an
    address on the zero page */
 #define GetZPage \
                 GetFromPC_B; \
-                mov     EffectiveAddr, r0;
+                mov     EffectiveAddr, wr0;
 
 /* Zero Page Indexed Addressing - The effective address is calculated by
    adding the second byte to the contents of the index register.  Due
@@ -324,25 +372,28 @@
    not occur. */
 #define GetZPage_X \
                 GetFromPC_B; \
-                add     r0, r0, X_Reg; \
-                bic     r0, #0x100; \
-                mov     EffectiveAddr, r0;
+                add     wr0, wr0, X_Reg; \
+                bic     wr0, wr0, #0x100; \
+                mov     EffectiveAddr, wr0;
 
 #define GetZPage_Y \
                 GetFromPC_B; \
-                add     r0, r0, Y_Reg; \
-                bic     r0, #0x100; \
-                mov     EffectiveAddr, r0;
+                add     wr0, wr0, Y_Reg; \
+                bic     wr0, wr0, #0x100; \
+                mov     EffectiveAddr, wr0;
 
-#define ea_hi_prev r1
-#define ea_hi_next r9
-#define AddIndexRegAndTestPageBoundary(IndexReg) \
-                mov     ea_hi_prev, r0, LSR #8; \
-                add     r0, r0, IndexReg; \
-                bic     r0, #0x10000; \
-                mov     ea_hi_next, r0, LSR #8; \
-                teq     ea_hi_prev, ea_hi_next; \
-                beq     9f;
+#define ea_hi_prev wr1
+#define AddIndexReg(IndexReg) \
+                lsr     ea_hi_prev, wr0, #8; \
+                add     wr0, wr0, IndexReg; \
+                bic     wr0, wr0, #0x10000;
+
+#define ea_hi_next wr9
+#define TestPageBoundary(x) \
+                lsr     ea_hi_next, wr0, #8; \
+                eor     ea_hi_next, ea_hi_prev, ea_hi_next; \
+                cmp     ea_hi_next, #0; \
+                FlagNotZero(x);
 
 /* Absolute Indexed Addressing - The effective address is formed by
    adding the contents of X or Y to the address contained in the
@@ -350,27 +401,27 @@
 
 #define GetAbs_X \
                 GetFromPC_W \
-                AddIndexRegAndTestPageBoundary(X_Reg) \
-                IncOpCycles \
-9:              mov     EffectiveAddr, r0;
+                AddIndexReg(X_Reg) \
+                TestPageBoundary(xr12) \
+                AddOpCycles(wr12) \
+                mov     EffectiveAddr, wr0;
 
 #define GetAbs_X_STx \
                 GetFromPC_W \
-                AddIndexRegAndTestPageBoundary(X_Reg) \
-                /* IncOpCycles */ \
-9:              mov     EffectiveAddr, r0;
+                AddIndexReg(X_Reg) \
+                mov     EffectiveAddr, wr0;
 
 #define GetAbs_Y \
                 GetFromPC_W \
-                AddIndexRegAndTestPageBoundary(Y_Reg) \
-                IncOpCycles \
-9:              mov     EffectiveAddr, r0;
+                AddIndexReg(Y_Reg) \
+                TestPageBoundary(xr12) \
+                AddOpCycles(wr12) \
+                mov     EffectiveAddr, wr0;
 
 #define GetAbs_Y_STA \
                 GetFromPC_W \
-                AddIndexRegAndTestPageBoundary(Y_Reg) \
-                /* IncOpCycles */ \
-9:              mov     EffectiveAddr, r0;
+                AddIndexReg(Y_Reg) \
+                mov     EffectiveAddr, wr0;
 
 /* Zero Page Indirect Addressing (65c02) - The second byte of the
    instruction points to a memory location on page zero containing the
@@ -378,15 +429,15 @@
    zero contains the high order byte of the address. */
 #define GetIndZPage \
                 GetFromPC_B \
-                mov     EffectiveAddr, r0; \
+                mov     EffectiveAddr, wr0; \
                 GetFromEA_B \
-                mov     r12, r0; \
+                mov     wr12, wr0; \
                 add     EffectiveAddr, EffectiveAddr, #1; \
-                bic     EffectiveAddr, #0x100; \
+                bic     EffectiveAddr, EffectiveAddr, #0x100; \
                 GetFromEA_B \
-                mov     r0, r0, LSL #8; \
-                orr     r0, r12, r0; \
-                mov     EffectiveAddr, r0;
+                lsl     wr0, wr0, #8; \
+                orr     wr0, wr12, wr0; \
+                mov     EffectiveAddr, wr0;
 
 /* Zero Page Indexed Indirect Addressing - The second byte is added to
    the contents of the X index register; the carry is discarded.  The
@@ -397,17 +448,17 @@
    and low-order bytes must be in page zero. */
 #define GetIndZPage_X \
                 GetFromPC_B \
-                mov     EffectiveAddr, r0; \
+                mov     EffectiveAddr, wr0; \
                 add     EffectiveAddr, EffectiveAddr, X_Reg; \
-                bic     EffectiveAddr, #0x100; \
+                bic     EffectiveAddr, EffectiveAddr, #0x100; \
                 GetFromEA_B \
-                mov     r12, r0; \
+                mov     wr12, wr0; \
                 add     EffectiveAddr, EffectiveAddr, #1; \
-                bic     EffectiveAddr, #0x100; \
+                bic     EffectiveAddr, EffectiveAddr, #0x100; \
                 GetFromEA_B \
-                mov     r0, r0, LSL #8; \
-                orr     r0, r12, r0; \
-                mov     EffectiveAddr, r0;
+                lsl     wr0, wr0, #8; \
+                orr     wr0, wr12, wr0; \
+                mov     EffectiveAddr, wr0;
 
 /* Indirect Indexed Addressing - The second byte of the instruction
    points to a memory location in page zero.  The contents of this
@@ -418,339 +469,52 @@
    effective address. */
 #define _GetIndZPage_Y \
                 GetFromPC_B \
-                mov     EffectiveAddr, r0; \
+                mov     EffectiveAddr, wr0; \
                 GetFromEA_B \
-                mov     r12, r0; \
+                mov     wr12, wr0; \
                 add     EffectiveAddr, EffectiveAddr, #1; \
-                bic     EffectiveAddr, #0x100; \
+                bic     EffectiveAddr, EffectiveAddr, #0x100; \
                 GetFromEA_B \
-                mov     r0, r0, LSL #8; \
-                orr     r0, r12, r0; \
-                AddIndexRegAndTestPageBoundary(Y_Reg)
+                lsl     wr0, wr0, #8; \
+                orr     wr0, wr12, wr0; \
+                AddIndexReg(Y_Reg)
 
 #define GetIndZPage_Y \
                 _GetIndZPage_Y \
-                IncOpCycles \
-9:              mov     EffectiveAddr, r0;
+                TestPageBoundary(xr12) \
+                AddOpCycles(wr12) \
+                mov     EffectiveAddr, wr0;
 
 #define GetIndZPage_Y_STA \
                 _GetIndZPage_Y \
-                /*IncOpCycles*/ \
-9:              mov     EffectiveAddr, r0;
-
-// ----------------------------------------------------------------------------
-// 65c02 instruction macros
-
-#if 0
-#error this attempts to leverage ARM 32bit flags, but does so incorrectly ... possibly there is some efficiency gains here if correctness can be assured
-#define DoADC_b \
-                GetFromEA_B \
-                mov     A_Reg, A_Reg, LSL #24; \
-                mov     r0, r0, LSL #24; \
-                \
-                /* clear ARM 'C' */ \
-                adcs    r1, r1, #0; \
-                \
-                /* set HI-C */ \
-                tst     F_Reg, #C_Flag; \
-                adcnes  A_Reg, A_Reg, #0x01000000; \
-                \
-                /* lahf; */ \
-                /* and     arm_flags, arm_flags, #VC_Flags; */ \
-                /* mov     arm_flags_int, arm_flags; */ \
-                \
-                adcs    A_Reg, A_Reg, r0; \
-                FlagNVZC \
-                /* merge intermediate V,C */ \
-                /* orr     F_Reg, F_Reg, arm_flags_int; */ \
-                mov     A_Reg, A_Reg, LSR #24;
-#else
-#define sign_a r1
-#define sign_0 r9
-#define DoADC_b \
-                GetFromEA_B \
-                /* save operand sign bits */ \
-                mov     sign_a, A_Reg, LSR #7; \
-                mov     sign_0, r0, LSR #7; \
-                /* perform ADC with incoming carry */\
-                tst     F_Reg, #C_Flag; \
-                addne   A_Reg, A_Reg, #1; \
-                add     A_Reg, A_Reg, r0; \
-                /* clear and set flags */ \
-                bic     F_Reg, F_Reg, #NVZC_Flags; \
-                tst     A_Reg, #0x100; \
-                orrne   F_Reg, F_Reg, #C_Flag; \
-                bic     A_Reg, #0x100; \
-                \
-                tst     A_Reg, #0x80; \
-                orrne   F_Reg, F_Reg, #N_Flag; \
-                \
-                teq     sign_a, sign_0; \
-                bne     1f; \
-                mov     sign_0, A_Reg, LSR #7; \
-                cmp     sign_a, sign_0; \
-                orrne   F_Reg, F_Reg, #V_Flag; \
-                \
-1:              tst     A_Reg, #0xFF; \
-                orreq   F_Reg, F_Reg, #Z_Flag;
-#endif
+                mov     EffectiveAddr, wr0;
 
 #ifndef NDEBUG
-#define DebugBCDCheck \
+#   define DebugBCDCheck \
                 tst     A_Reg, #0x80; \
-                tstne   A_Reg, #0x60; \
-                blne    CALL(debug_illegal_bcd); \
-                tst     A_Reg, #0x08; \
-                tstne   A_Reg, #0x06; \
-                blne    CALL(debug_illegal_bcd); \
-                tst     r0, #0x80; \
-                tstne   r0, #0x60; \
-                blne    CALL(debug_illegal_bcd); \
-                tst     r0, #0x08; \
-                tstne   r0, #0x06; \
-                blne    CALL(debug_illegal_bcd);
+                bz      6f; \
+                tst     A_Reg, #0x60; \
+                bz      6f; \
+                bl      CALL(debug_illegal_bcd); \
+6:              tst     A_Reg, #0x08; \
+                bz      7f; \
+                tst     A_Reg, #0x06; \
+                bz      7f; \
+                bl      CALL(debug_illegal_bcd); \
+7:              tst     wr0, #0x80; \
+                bz      8f; \
+                tst     wr0, #0x60; \
+                bz      8f; \
+                bl      CALL(debug_illegal_bcd); \
+8:              tst     wr0, #0x08; \
+                bz      9f; \
+                tst     wr0, #0x06; \
+                bz      9f; \
+                bl      CALL(debug_illegal_bcd); \
+9:
 #else
-#define DebugBCDCheck
+#   define DebugBCDCheck
 #endif
-
-#define DoAND \
-                GetFromEA_B \
-                mov     r0, r0, LSL #24; \
-                mov     A_Reg, A_Reg, LSL #24; \
-                ands    A_Reg, A_Reg, r0; \
-                FlagNZ \
-                mov     A_Reg, A_Reg, LSR #24;
-
-#define _DoASL(x) \
-                mov     x, x, LSL #24; \
-                adcs    x, x, x; \
-                FlagNZC \
-                mov     x, x, LSR #24;
-
-#define DoASL \
-                GetFromEA_B \
-                _DoASL(r0) \
-                PutToEA_B
-
-#define _DoBIT \
-                GetFromEA_B \
-                mov     r1, A_Reg; \
-                and     r1, r1, r0;
-
-#define DoBIT \
-                _DoBIT \
-                bic     F_Reg, F_Reg, #NVZ_Flags; \
-                tst     r1, #0xFF; \
-                orreq   F_Reg, F_Reg, #Z_Flag; \
-                tst     r0, #0x40; \
-                orrne   F_Reg, F_Reg, #V_Flag; \
-                tst     r0, #0x80; \
-                orrne   F_Reg, F_Reg, #N_Flag;
-
-#define DoCMP \
-                GetFromEA_B \
-                /* TODO FIXME : maybe actually use cmp or cmn instruction? */ \
-                mov     r0, r0, LSL #24; \
-                mov     r1, A_Reg, LSL #24; \
-                subs    r1, r1, r0; \
-                /*cmc;*/ \
-                FlagNZC
-
-#define DoCPX \
-                GetFromEA_B \
-                mov     r0, r0, LSL #24; \
-                mov     r1, X_Reg, LSL #24; \
-                subs    r1, r1, r0; \
-                /*cmc;*/ \
-                FlagNZC
-
-#define DoCPY \
-                GetFromEA_B \
-                mov     r0, r0, LSL #24; \
-                mov     r1, Y_Reg, LSL #24; \
-                subs    r1, r1, r0; \
-                /*cmc;*/ \
-                FlagNZC
-
-#define _DoDEC(x) \
-                mov     r1, #1; \
-                mov     r1, r1, LSL #24; \
-                mov     x, x, LSL #24; \
-                subs    x, x, r1; \
-                FlagNZ \
-                mov     x, x, LSR #24;
-
-#define DoDEC \
-                GetFromEA_B \
-                _DoDEC(r0) \
-                PutToEA_B
-
-#define DoEOR \
-                GetFromEA_B \
-                mov     r0, r0, LSL #24; \
-                mov     A_Reg, A_Reg, LSL #24; \
-                eors    A_Reg, A_Reg, r0; \
-                FlagNZ \
-                mov     A_Reg, A_Reg, LSR #24;
-
-#define _DoINC(x) \
-                mov     r1, #1; \
-                mov     r1, r1, LSL #24; \
-                mov     x, x, LSL #24; \
-                adds    x, x, r1; \
-                FlagNZ \
-                mov     x, x, LSR #24;
-
-#define DoINC \
-                GetFromEA_B \
-                _DoINC(r0) \
-                PutToEA_B
-
-#define DoLDA \
-                GetFromEA_B \
-                mov     A_Reg, r0; \
-                mov     r0, r0, LSL #24; \
-                orrs    r0, r0, r0; \
-                FlagNZ
-
-#define DoLDX \
-                GetFromEA_B \
-                mov     X_Reg, r0; \
-                mov     r0, r0, LSL #24; \
-                orrs    r0, r0, r0; \
-                FlagNZ
-
-#define DoLDY \
-                GetFromEA_B \
-                mov     Y_Reg, r0; \
-                mov     r0, r0, LSL #24; \
-                orrs    r0, r0, r0; \
-                FlagNZ
-
-#define _DoLSR(x) \
-                lsrs    x, x, #1; \
-                FlagNZC
-
-#define DoLSR \
-                GetFromEA_B \
-                _DoLSR(r0) \
-                PutToEA_B
-
-#define DoORA \
-                GetFromEA_B \
-                mov     r0, r0, LSL #24; \
-                mov     A_Reg, A_Reg, LSL #24; \
-                orrs    A_Reg, A_Reg, r0; \
-                FlagNZ \
-                mov     A_Reg, A_Reg, LSR #24;
-
-#define _DoPLx(x) \
-                Pop(x); \
-                mov     r0, x, LSL #24; \
-                orrs    r0, r0, r0; \
-                FlagNZ
-
-#define _DoROL(x) \
-                mov     x, x, LSL #8; \
-                tst     F_Reg, #C_Flag; \
-                orrne   x, x, #0x80; \
-                lsls    x, x, #17; \
-                FlagNZC \
-                mov     x, x, LSR #24;
-
-#define DoROL \
-                GetFromEA_B \
-                _DoROL(r0) \
-                PutToEA_B
-
-
-#define _DoROR(x) \
-                tst     F_Reg, #C_Flag; \
-                orrne   x, x, #0x100; \
-                ror     x, x, #1; \
-                bic     F_Reg, F_Reg, #NZC_Flags; \
-                tst     x, #ROR_BIT; \
-                bicne   x, #ROR_BIT; \
-                orrne   F_Reg, F_Reg, #C_Flag; \
-                tst     x, #0xFF; \
-                orreq   F_Reg, F_Reg, #Z_Flag; \
-                tst     x, #0x80; \
-                orrne   F_Reg, F_Reg, #N_Flag;
-
-#define DoROR \
-                GetFromEA_B \
-                _DoROR(r0) \
-                PutToEA_B
-
-#if 0
-#error this attempts to leverage ARM 32bit flags, but does so incorrectly ... possibly there is some efficiency gains here if correctness can be assured
-#define DoSBC_b \
-                GetFromEA_B \
-                mvn     r0, r0; \
-                adcs    r1, r1, #0; \
-                bt; \
-                adcs    A_Reg, A_Reg, r0; \
-                FlagNVZC
-#else
-#define DoSBC_b \
-                GetFromEA_B \
-                /* save operand sign bits */ \
-                mov     sign_a, A_Reg, LSR #7; \
-                mov     sign_0, r0, LSR #7; \
-                /* perform SBC with incoming borrow */\
-                sub     A_Reg, A_Reg, r0; \
-                tst     F_Reg, #C_Flag; \
-                subeq   A_Reg, A_Reg, #1; \
-                /* clear and set flags */ \
-                bic     F_Reg, F_Reg, #NVZC_Flags; \
-                tst     A_Reg, #0x80000000; \
-                orreq   F_Reg, F_Reg, #C_Flag; \
-                mov     A_Reg, A_Reg, LSL #24; \
-                mov     A_Reg, A_Reg, LSR #24; \
-                \
-                tst     A_Reg, #0x80; \
-                orrne   F_Reg, F_Reg, #N_Flag; \
-                \
-                teq     sign_a, sign_0; \
-                beq     1f; \
-                mov     sign_0, A_Reg, LSR #7; \
-                cmp     sign_a, sign_0; \
-                orrne   F_Reg, F_Reg, #V_Flag; \
-                \
-1:              tst     A_Reg, #0xFF; \
-                orreq   F_Reg, F_Reg, #Z_Flag;
-#endif
-
-#define DoSTA \
-                mov     r0, A_Reg; \
-                PutToEA_B
-
-#define DoSTX \
-                mov     r0, X_Reg; \
-                PutToEA_B
-
-#define DoSTY \
-                mov     r0, Y_Reg; \
-                PutToEA_B
-
-#define DoSTZ \
-                mov     r0, #0; \
-                PutToEA_B
-
-#define DoTRB \
-                GetFromEA_B \
-                tst     r0, A_Reg; \
-                FlagZ \
-                mvn     r1, A_Reg; \
-                and     r0, r0, r1; \
-                PutToEA_B
-
-#define DoTSB \
-                GetFromEA_B \
-                tst     r0, A_Reg; \
-                FlagZ \
-                orr     r0, A_Reg, r0; \
-                PutToEA_B
 
 /* ----------------------------------------------------------------------
        6502 routines and instructions
@@ -761,71 +525,102 @@
        ADd memory to accumulator with Carry
    ---------------------------------- */
 
-#define carry r9
-#define lo_nyb r1
+#define carry wr9
+#define lo_nyb wr12
 
-// Decimal mode
+// Add with carry Decimal mode
 ENTRY(op_ADC_dec)
-                IncOpCycles
+                AddOpCycles(#1)
                 GetFromEA_B
                 DebugBCDCheck
                 // isolate lo nybbles
                 mov     lo_nyb, A_Reg
-                mov     r9, r0
+                mov     wr9, wr0
                 and     lo_nyb, lo_nyb, #0x0F
-                and     r9, r9, #0x0F
+                and     wr9, wr9, #0x0F
                 // lo nybble addition with carry
-                tst     F_Reg, #C_Flag
-                addne   r9, r9, #1
-                add     lo_nyb, lo_nyb, r9
+                and     wr1, F_Reg, #C_Flag
+                lsr     wr1, wr1, #1
+                add     wr9, wr9, wr1
+                add     lo_nyb, lo_nyb, wr9
                 // prep 65c02 flags
-                bic     F_Reg, #NVZC_Flags
+                bic     F_Reg, F_Reg, #NVZC_Flags
                 // lo nybble DAA (Decimal Adjustment after Addition), saving carry (+0, +1, +2)
                 cmp     lo_nyb, #0x09
-                addhi   lo_nyb, lo_nyb, #6
-                mov     carry, lo_nyb, LSR #4
+                bls     1f
+                add     lo_nyb, lo_nyb, #6
+1:              lsr     carry, lo_nyb, #4
                 and     lo_nyb, lo_nyb, #0x0F
                 // isolate hi nybbles
-                mov     A_Reg, A_Reg, LSR #4
-                mov     r0, r0, LSR #4
+                lsr     A_Reg, A_Reg, #4
+                lsr     wr0, wr0, #4
                 // hi nybble addition with carry
-                add     r0, r0, carry
-                add     r0, A_Reg, r0
+                add     wr0, wr0, carry
+                add     wr0, A_Reg, wr0
                 // hi nybble DAA
-                cmp     r0, #0x09
-                addhi   r0, #6
-                orrhi   F_Reg, #C_Flag
+                cmp     wr0, #0x09
+                bls     2f
+                add     wr0, wr0, #6
+                orr     F_Reg, F_Reg, #C_Flag
                 // merge nybbles
-                mov     r0, r0, LSL #4
-                orr     A_Reg, r0, lo_nyb
+2:              lsl     wr0, wr0, #4
+                orr     A_Reg, wr0, lo_nyb
                 // NZ flags
-                tst     A_Reg, #0x80
-                orrne   F_Reg, F_Reg, #N_Flag
-                tst     A_Reg, #0xFF
-                orreq   F_Reg, F_Reg, #Z_Flag
+                and     wr1, A_Reg, #0x80
+                lsr     wr1, wr1, #4 /* N_Flag is bit 4 */
+                orr     F_Reg, F_Reg, wr1
+                ands    wr1, A_Reg, #0xFF
+                FlagZ
                 Continue
 
-#define maybe_DoADC_d \
-                tst     F_Reg, #D_Flag;  /* Decimal mode? */ \
+#define sign_a wr12
+#define sign_0 wr9
+#define sign_res wr1
+DoADC_b:        tst     F_Reg, #D_Flag /* Decimal mode? */
                 bne     CALL(op_ADC_dec) /* Yes, jump to decimal version */
+                GetFromEA_B
+                /* save operand sign bits */
+                lsr     sign_a, A_Reg, #7
+                lsr     sign_0, wr0, #7
+                /* add the incoming carry */
+                and     wr1, F_Reg, #C_Flag
+                lsr     wr1, wr1, #1
+                add     A_Reg, A_Reg, wr1
+                /* perform main add */
+                add     A_Reg, A_Reg, wr0
+                /* clear and set flags */
+                bic     F_Reg, F_Reg, #NVZC_Flags
+                and     wr1, A_Reg, #0x100
+                bic     A_Reg, A_Reg, #0x100
+                lsr     wr1, wr1, #7 /* C_Flag */
+                orr     F_Reg, F_Reg, wr1
+                and     wr1, A_Reg, #0x80
+                lsr     wr1, wr1, #4 /* N_Flag */
+                orr     F_Reg, F_Reg, wr1
+                /* check and set oVerflow (V_Flag) */
+                eor     sign_0, sign_a, sign_0 /* 1: no V, 0: V if signRes != signA */
+                mvn     sign_0, sign_0
+                and     sign_0, sign_0, #1 /* 0: no V, 1: mask */
+                lsr     sign_res, A_Reg, #7
+                eor     sign_a, sign_a, sign_res
+                and     sign_a, sign_a, sign_0
+                orr     F_Reg, F_Reg, sign_a /* V_Flag */
+                /* finally set Z -- this is here to avoid collision with overloaded xr12 */
+                ands    wr1, A_Reg, #0xFF
+                FlagZ
+                Continue
 
 ENTRY(op_ADC_imm) // 0x69
                 GetImm
-          maybe_DoADC_d
-                DoADC_b
-                Continue
+                b       DoADC_b
 
 ENTRY(op_ADC_zpage) // 0x65
                 GetZPage
-          maybe_DoADC_d
-                DoADC_b
-                Continue
+                b       DoADC_b
 
 ENTRY(op_ADC_zpage_x) // 0x75
                 GetZPage_X
-          maybe_DoADC_d
-                DoADC_b
-                Continue
+                b       DoADC_b
 
 // UNIMPLEMENTED : W65C02S datasheet
 ENTRY(op_ADC_zpage_y)
@@ -833,40 +628,28 @@ ENTRY(op_ADC_zpage_y)
 
 ENTRY(op_ADC_abs) // 0x6d
                 GetAbs
-          maybe_DoADC_d
-                DoADC_b
-                Continue
+                b       DoADC_b
 
 ENTRY(op_ADC_abs_x) // 0x7d
                 GetAbs_X
-          maybe_DoADC_d
-                DoADC_b
-                Continue
+                b       DoADC_b
 
 ENTRY(op_ADC_abs_y) // 0x79
                 GetAbs_Y
-          maybe_DoADC_d
-                DoADC_b
-                Continue
+                b       DoADC_b
 
 ENTRY(op_ADC_ind_x) // 0x61
                 GetIndZPage_X
-          maybe_DoADC_d
-                DoADC_b
-                Continue
+                b       DoADC_b
 
 ENTRY(op_ADC_ind_y) // 0x71
                 GetIndZPage_Y
-          maybe_DoADC_d
-                DoADC_b
-                Continue
+                b       DoADC_b
 
 // 65c02 : 0x72
 ENTRY(op_ADC_ind_zpage)
                 GetIndZPage
-          maybe_DoADC_d
-                DoADC_b
-                Continue
+                b       DoADC_b
 
 .ltorg
 
@@ -875,20 +658,26 @@ ENTRY(op_ADC_ind_zpage)
        logical AND memory with accumulator
    ---------------------------------- */
 
+DoAND:
+                GetFromEA_B
+                lsl     wr0, wr0, #24
+                lsl     A_Reg, A_Reg, #24
+                ands    A_Reg, A_Reg, wr0
+                FlagNZ
+                lsr     A_Reg, A_Reg, #24
+                Continue
+
 ENTRY(op_AND_imm) // 0x29
                 GetImm
-                DoAND
-                Continue
+                b       DoAND
 
 ENTRY(op_AND_zpage) // 0x25
                 GetZPage
-                DoAND
-                Continue
+                b       DoAND
 
 ENTRY(op_AND_zpage_x) // 0x35
                 GetZPage_X
-                DoAND
-                Continue
+                b       DoAND
 
 // UNIMPLEMENTED : W65C02S datasheet
 ENTRY(op_AND_zpage_y)
@@ -896,34 +685,28 @@ ENTRY(op_AND_zpage_y)
 
 ENTRY(op_AND_abs) // 0x2d
                 GetAbs
-                DoAND
-                Continue
+                b       DoAND
 
 ENTRY(op_AND_abs_x) // 0x3d
                 GetAbs_X
-                DoAND
-                Continue
+                b       DoAND
 
 ENTRY(op_AND_abs_y) // 0x39
                 GetAbs_Y
-                DoAND
-                Continue
+                b       DoAND
 
 ENTRY(op_AND_ind_x) // 0x21
                 GetIndZPage_X
-                DoAND
-                Continue
+                b       DoAND
 
 ENTRY(op_AND_ind_y) // 0x31
                 GetIndZPage_Y
-                DoAND
-                Continue
+                b       DoAND
 
 // 65c02 : 0x32
 ENTRY(op_AND_ind_zpage)
                 GetIndZPage
-                DoAND
-                Continue
+                b       DoAND
 
 .ltorg
 
@@ -931,6 +714,17 @@ ENTRY(op_AND_ind_zpage)
        ASL instructions
        Arithmetic Shift one bit Left, memory or accumulator
    ---------------------------------- */
+
+#define _DoASL(x) \
+                lsl     x, x, #24; \
+                adcs    x, x, x; \
+                FlagNZC \
+                lsr     x, x, #24;
+
+#define DoASL \
+                GetFromEA_B \
+                _DoASL(wr0) \
+                PutToEA_B
 
 ENTRY(op_ASL_acc) // 0x0a
                 _DoASL(A_Reg)
@@ -1065,27 +859,41 @@ ENTRY(op_BEQ) // 0xF0
        BIt Test
    ---------------------------------- */
 
+#define _DoBIT \
+                GetFromEA_B \
+                and     wr1, A_Reg, wr0;
+
+DoBIT:
+                _DoBIT
+                bic     F_Reg, F_Reg, #NZ_Flags
+                bic     F_Reg, F_Reg, #V_Flag
+                ands    wr1, wr1, #0xFF
+                FlagZ
+                and     wr1, wr0, #0x40
+                lsr     wr1, wr1, #6 /* V_Flag is bit 1 */
+                orr     F_Reg, F_Reg, wr1
+                and     wr1, wr0, #0x80
+                lsr     wr1, wr1, #4 /* N_Flag is bit 4 */
+                orr     F_Reg, F_Reg, wr1
+                Continue
+
 ENTRY(op_BIT_zpage) // 0x24
                 GetZPage
-                DoBIT
-                Continue
+                b       DoBIT
 
 ENTRY(op_BIT_abs) // 0x2c
                 GetAbs
-                DoBIT
-                Continue
+                b       DoBIT
 
 // 65c02 : 0x34
 ENTRY(op_BIT_zpage_x)
                 GetZPage_X
-                DoBIT
-                Continue
+                b       DoBIT
 
 // 65c02 : 0x3C
 ENTRY(op_BIT_abs_x)
                 GetAbs_X
-                DoBIT
-                Continue
+                b       DoBIT
 
                 /* BIT immediate is anomalous in that it does not affect the
                  * N and V flags, unlike in other addressing modes.
@@ -1094,9 +902,8 @@ ENTRY(op_BIT_abs_x)
 ENTRY(op_BIT_imm)
                 GetImm
                 _DoBIT
-                tst     r1, #0xFF
-                orreq   F_Reg, F_Reg, #Z_Flag
-                bicne   F_Reg, F_Reg, #Z_Flag
+                ands    wr1, wr1, #0xFF
+                FlagZ
                 Continue
 
 .ltorg
@@ -1157,18 +964,19 @@ ENTRY(op_BRA)
 ENTRY(op_UNK) /* make undefined opcodes fault */
 ENTRY(op_BRK)
                 IncUint16(PC_Reg)
-                mov     r0, PC_Reg
-                mov     r0, r0, ROR #8
-                Push(r0)
-                mov     r0, r0, LSR #24
-                Push(r0)
-                orr     F_Reg, F_Reg, #BX_Flags
+                mov     wr0, PC_Reg
+                ror     wr0, wr0, #8
+                Push(wr0)
+                lsr     wr0, wr0, #24
+                Push(wr0)
+                orr     F_Reg, F_Reg, #B_Flag
+                orr     F_Reg, F_Reg, #X_Flag
                 EncodeFlags
-                Push(r0)
+                Push(wr0)
                 orr     F_Reg, F_Reg, #I_Flag
                 ldrh    EffectiveAddr, [reg_args, #INTERRUPT_VECTOR]
                 GetFromEA_W
-                mov     PC_Reg, r0
+                mov     PC_Reg, wr0
                 Continue
 
 .ltorg
@@ -1204,7 +1012,7 @@ ENTRY(op_BVS) // 0x70
    ---------------------------------- */
 
 ENTRY(op_CLC) // 0x18
-                bic     F_Reg, #C_Flag
+                bic     F_Reg, F_Reg, #C_Flag
                 Continue
 
 /* ----------------------------------
@@ -1212,7 +1020,7 @@ ENTRY(op_CLC) // 0x18
    ---------------------------------- */
 
 ENTRY(op_CLD) // 0xd8
-                bic     F_Reg, #D_Flag
+                bic     F_Reg, F_Reg, #D_Flag
                 Continue
 
 /* ----------------------------------
@@ -1220,7 +1028,7 @@ ENTRY(op_CLD) // 0xd8
    ---------------------------------- */
 
 ENTRY(op_CLI) // 0x58
-                bic     F_Reg, #I_Flag
+                bic     F_Reg, F_Reg, #I_Flag
                 Continue
 
 /* ----------------------------------
@@ -1228,7 +1036,7 @@ ENTRY(op_CLI) // 0x58
    ---------------------------------- */
 
 ENTRY(op_CLV) // 0xB8
-                bic     F_Reg, #V_Flag
+                bic     F_Reg, F_Reg, #V_Flag
                 Continue
 
 .ltorg
@@ -1238,20 +1046,24 @@ ENTRY(op_CLV) // 0xB8
        CoMPare memory and accumulator
    ---------------------------------- */
 
+DoCMP:          GetFromEA_B
+                lsl     wr0, wr0, #24
+                lsl     wr1, A_Reg, #24
+                subs    wr1, wr1, wr0
+                FlagNZC
+                Continue
+
 ENTRY(op_CMP_imm) // 0xc9
                 GetImm
-                DoCMP
-                Continue
+                b       DoCMP
 
 ENTRY(op_CMP_zpage) // 0xc5
                 GetZPage
-                DoCMP
-                Continue
+                b       DoCMP
 
 ENTRY(op_CMP_zpage_x) // 0xd5
                 GetZPage_X
-                DoCMP
-                Continue
+                b       DoCMP
 
 // UNIMPLEMENTED : W65C02S datasheet
 ENTRY(op_CMP_zpage_y)
@@ -1259,34 +1071,28 @@ ENTRY(op_CMP_zpage_y)
 
 ENTRY(op_CMP_abs) // 0xcd
                 GetAbs
-                DoCMP
-                Continue
+                b       DoCMP
 
 ENTRY(op_CMP_abs_x) // 0xdd
                 GetAbs_X
-                DoCMP
-                Continue
+                b       DoCMP
 
 ENTRY(op_CMP_abs_y) // 0xd9
                 GetAbs_Y
-                DoCMP
-                Continue
+                b       DoCMP
 
 ENTRY(op_CMP_ind_x) // 0xc1
                 GetIndZPage_X
-                DoCMP
-                Continue
+                b       DoCMP
 
 ENTRY(op_CMP_ind_y) // 0xd1
                 GetIndZPage_Y
-                DoCMP
-                Continue
+                b       DoCMP
 
 // 65c02 : 0xD2
 ENTRY(op_CMP_ind_zpage)
                 GetIndZPage
-                DoCMP
-                Continue
+                b       DoCMP
 
 .ltorg
 
@@ -1295,46 +1101,68 @@ ENTRY(op_CMP_ind_zpage)
        ComPare memory and X register
    ---------------------------------- */
 
+DoCPX:          GetFromEA_B
+                lsl     wr0, wr0, #24
+                lsl     wr1, X_Reg, #24
+                subs    wr1, wr1, wr0
+                FlagNZC
+                Continue
+
 ENTRY(op_CPX_imm) // 0xe0
                 GetImm
-                DoCPX
-                Continue
+                b       DoCPX
 
 ENTRY(op_CPX_zpage) // 0xe4
                 GetZPage
-                DoCPX
-                Continue
+                b       DoCPX
 
 ENTRY(op_CPX_abs) // 0xec
                 GetAbs
-                DoCPX
-                Continue
+                b       DoCPX
 
 /* ----------------------------------
        CPY instructions
        ComPare memory and Y register
    ---------------------------------- */
 
+DoCPY:
+                GetFromEA_B
+                lsl     wr0, wr0, #24
+                lsl     wr1, Y_Reg, #24
+                subs    wr1, wr1, wr0
+                FlagNZC
+                Continue
+
 ENTRY(op_CPY_imm) // 0xc0
                 GetImm
-                DoCPY
-                Continue
+                b       DoCPY
 
 ENTRY(op_CPY_zpage) // 0xc4
                 GetZPage
-                DoCPY
-                Continue
+                b       DoCPY
 
 ENTRY(op_CPY_abs) // 0xcc
                 GetAbs
-                DoCPY
-                Continue
+                b       DoCPY
 
 .ltorg
 
 /* ----------------------------------
        DEA: DEcrement Accumulator
    ---------------------------------- */
+
+#define _DoDEC(x) \
+                mov     wr1, #1; \
+                lsl     wr1, wr1, #24; \
+                lsl     x, x, #24; \
+                subs    x, x, wr1; \
+                FlagNZ \
+                lsr     x, x, #24;
+
+#define DoDEC \
+                GetFromEA_B \
+                _DoDEC(wr0) \
+                PutToEA_B
 
 ENTRY(op_DEC_acc)
 ENTRY(op_DEA) // 0x3A
@@ -1389,20 +1217,26 @@ ENTRY(op_DEY) // 0x88
        Exclusive OR memory with accumulator
    ---------------------------------- */
 
+DoEOR:          GetFromEA_B
+                lsl     wr0, wr0, #24
+                lsl     A_Reg, A_Reg, #24
+                eor     A_Reg, A_Reg, wr0
+                cmp     A_Reg, #0
+                FlagNZ
+                lsr     A_Reg, A_Reg, #24
+                Continue
+
 ENTRY(op_EOR_imm) // 0x49
                 GetImm
-                DoEOR
-                Continue
+                b       DoEOR
 
 ENTRY(op_EOR_zpage) // 0x45
                 GetZPage
-                DoEOR
-                Continue
+                b       DoEOR
 
 ENTRY(op_EOR_zpage_x) // 0x55
                 GetZPage_X
-                DoEOR
-                Continue
+                b       DoEOR
 
 // UNIMPLEMENTED : W65C02S datasheet
 ENTRY(op_EOR_zpage_y)
@@ -1410,40 +1244,47 @@ ENTRY(op_EOR_zpage_y)
 
 ENTRY(op_EOR_abs) // 0x4d
                 GetAbs
-                DoEOR
-                Continue
+                b       DoEOR
 
 ENTRY(op_EOR_abs_x) // 0x5d
                 GetAbs_X
-                DoEOR
-                Continue
+                b       DoEOR
 
 ENTRY(op_EOR_abs_y) // 0x59
                 GetAbs_Y
-                DoEOR
-                Continue
+                b       DoEOR
 
 ENTRY(op_EOR_ind_x) // 0x41
                 GetIndZPage_X
-                DoEOR
-                Continue
+                b       DoEOR
 
 ENTRY(op_EOR_ind_y) // 0x51
                 GetIndZPage_Y
-                DoEOR
-                Continue
+                b       DoEOR
 
 // 65c02 : 0x52
 ENTRY(op_EOR_ind_zpage)
                 GetIndZPage
-                DoEOR
-                Continue
+                b       DoEOR
 
 .ltorg
 
 /* ----------------------------------
        INA : INcrement Accumulator
    ---------------------------------- */
+
+#define _DoINC(x) \
+                mov     wr1, #1; \
+                lsl    wr1, wr1, #24; \
+                lsl     x, x, #24; \
+                adds    x, x, wr1; \
+                FlagNZ \
+                lsr     x, x, #24;
+
+#define DoINC \
+                GetFromEA_B \
+                _DoINC(wr0) \
+                PutToEA_B
 
 ENTRY(op_INC_acc)
 ENTRY(op_INA) // 0x1A
@@ -1505,39 +1346,40 @@ ENTRY(op_JMP_abs)
 
 ENTRY(op_JMP_ind) // 0x6c
                 GetFromPC_W
-                mov     r1, r0, LSL #24
-                teq     r1, #0xFF000000
-                beq     jmp_special
-                GetFromMem_W(r0)
-                mov     PC_Reg, r0
+                lsl     wr1, wr0, #24
+                eor     wr1, wr1, #0xFF000000
+                cmp     wr1, #0
+                bz      jmp_special
+                GetFromMem_W(wr0)
+                mov     PC_Reg, wr0
                 sub     EffectiveAddr, EffectiveAddr, #1
                 Continue
 jmp_special: // see JMP indirect note in _Understanding the Apple IIe_ 4-25
-                mov     PC_Reg, r0
+                mov     PC_Reg, wr0
                 subs    PC_Reg, PC_Reg, #0xFF
-                movmi   PC_Reg, PC_Reg, LSL #16
-                movmi   PC_Reg, PC_Reg, LSR #16
+                lsl     PC_Reg, PC_Reg, #16
+                lsr     PC_Reg, PC_Reg, #16
                 GetFromMem_B(PC_Reg)
-                mov     r9, r0, LSL #8
+                lsl     wr9, wr0, #8
                 add     PC_Reg, PC_Reg, #0xFF
-                bic     PC_Reg, #0x10000
+                bic     PC_Reg, PC_Reg, #0x10000
                 GetFromMem_B(PC_Reg)
-                orr     r0, r9, r0
-                mov     PC_Reg, r0
+                orr     wr0, wr9, wr0
+                mov     PC_Reg, wr0
                 Continue
 
 // 65c02 : 0x7C
 ENTRY(op_JMP_abs_ind_x)
                 GetFromPC_W
-                mov     EffectiveAddr, r0
-                mov     r0, X_Reg
+                mov     EffectiveAddr, wr0
+                mov     wr0, X_Reg
 #warning HACK FIXME TODO : need to check the Bible here ... is this a signed addition (in which case we need to cbw)
-                //cbw
-                add     EffectiveAddr, EffectiveAddr, r0
-                mov     EffectiveAddr, EffectiveAddr, LSL #16 // 16bit under/overflow protection
-                mov     EffectiveAddr, EffectiveAddr, LSR #16
+                //cbw(wr0)
+                add     EffectiveAddr, EffectiveAddr, wr0
+                lsl     EffectiveAddr, EffectiveAddr, #16 // 16bit under/overflow protection
+                lsr     EffectiveAddr, EffectiveAddr, #16
                 GetFromMem_W(EffectiveAddr)
-                mov     PC_Reg, r0
+                mov     PC_Reg, wr0
                 Continue
 
 /* ----------------------------------
@@ -1546,13 +1388,13 @@ ENTRY(op_JMP_abs_ind_x)
 
 ENTRY(op_JSR) // 0x20
                 GetAbs
-                mov     r0, PC_Reg
-                sub     r0, r0, #1
-                mov     r0, r0, LSL #16 // handle underflow -- can this happen in second mem page?
-                mov     r0, r0, ROR #24
-                Push(r0) // push hi_byte
-                mov     r0, r0, LSR #24
-                Push(r0) // push lo_byte
+                mov     wr0, PC_Reg
+                sub     wr0, wr0, #1
+                lsl     wr0, wr0, #16 // handle underflow -- can this happen in second mem page?
+                ror     wr0, wr0, #24
+                Push(wr0) // push hi byte
+                lsr     wr0, wr0, #24
+                Push(wr0) // push lo byte
                 mov     PC_Reg, EffectiveAddr
                 Continue
 
@@ -1563,20 +1405,25 @@ ENTRY(op_JSR) // 0x20
        LoaD Accumulator with memory
    ---------------------------------- */
 
+DoLDA:          GetFromEA_B
+                mov     A_Reg, wr0
+                lsl     wr0, wr0, #24
+                orr     wr0, wr0, wr0
+                cmp     wr0, #0
+                FlagNZ
+                Continue
+
 ENTRY(op_LDA_imm) // 0xa9
                 GetImm
-                DoLDA
-                Continue
+                b       DoLDA
 
 ENTRY(op_LDA_zpage) // 0xa5
                 GetZPage
-                DoLDA
-                Continue
+                b       DoLDA
 
 ENTRY(op_LDA_zpage_x) // 0xb5
                 GetZPage_X
-                DoLDA
-                Continue
+                b       DoLDA
 
 // UNIMPLEMENTED : W65C02S datasheet
 ENTRY(op_LDA_zpage_y)
@@ -1584,34 +1431,28 @@ ENTRY(op_LDA_zpage_y)
 
 ENTRY(op_LDA_abs) // 0xad
                 GetAbs
-                DoLDA
-                Continue
+                b       DoLDA
 
 ENTRY(op_LDA_abs_x) // 0xbd
                 GetAbs_X
-                DoLDA
-                Continue
+                b       DoLDA
 
 ENTRY(op_LDA_abs_y) // 0xb9
                 GetAbs_Y
-                DoLDA
-                Continue
+                b       DoLDA
 
 ENTRY(op_LDA_ind_x) // 0xa1
                 GetIndZPage_X
-                DoLDA
-                Continue
+                b       DoLDA
 
 ENTRY(op_LDA_ind_y) // 0xb1
                 GetIndZPage_Y
-                DoLDA
-                Continue
+                b       DoLDA
 
 // 65c02 : 0xB2
 ENTRY(op_LDA_ind_zpage)
                 GetIndZPage
-                DoLDA
-                Continue
+                b       DoLDA
 
 .ltorg
 
@@ -1619,66 +1460,92 @@ ENTRY(op_LDA_ind_zpage)
        LDX instructions
    ---------------------------------- */
 
+DoLDX:          GetFromEA_B
+                mov     X_Reg, wr0
+                lsl     wr0, wr0, #24
+                orr     wr0, wr0, wr0
+                cmp     wr0, #0
+                FlagNZ
+                Continue
+
 ENTRY(op_LDX_imm) // 0xa2
                 GetImm
-                DoLDX
-                Continue
+                b       DoLDX
 
 ENTRY(op_LDX_zpage) // 0xa6
                 GetZPage
-                DoLDX
-                Continue
+                b       DoLDX
 
-// HACK : is this used? need to study coverage ...
 ENTRY(op_LDX_zpage_y) // 0xb6
                 GetZPage_Y
-                DoLDX
-                Continue
+                b       DoLDX
 
 ENTRY(op_LDX_abs) // 0xae
                 GetAbs
-                DoLDX
-                Continue
+                b       DoLDX
 
 ENTRY(op_LDX_abs_y) // 0xbe
                 GetAbs_Y
-                DoLDX
-                Continue
+                b       DoLDX
 
 /* ----------------------------------
        LDY instructions
    ---------------------------------- */
 
+DoLDY:          GetFromEA_B
+                mov     Y_Reg, wr0
+                lsl     wr0, wr0, #24
+                orr     wr0, wr0, wr0
+                cmp     wr0, #0
+                FlagNZ
+                Continue
+
 ENTRY(op_LDY_imm) // 0xa0
                 GetImm
-                DoLDY
-                Continue
+                b       DoLDY
 
 ENTRY(op_LDY_zpage) // 0xa4
                 GetZPage
-                DoLDY
-                Continue
+                b       DoLDY
 
 ENTRY(op_LDY_zpage_x) // 0xb4
                 GetZPage_X
-                DoLDY
-                Continue
+                b       DoLDY
 
 ENTRY(op_LDY_abs) // 0xac
                 GetAbs
-                DoLDY
-                Continue
+                b       DoLDY
 
 ENTRY(op_LDY_abs_x) // 0xbc
                 GetAbs_X
-                DoLDY
-                Continue
+                b       DoLDY
 
 .ltorg
 
 /* ----------------------------------
        LSR instructions
    ---------------------------------- */
+
+#if __aarch64__
+// ARM64 does not have lsrs ...
+#   define _DoLSR(x) \
+                and     wr1, x, #1; \
+                lsl     wr1, wr1, #1; /* C_Flag */ \
+                bic     F_Reg, F_Reg, #C_Flag; \
+                orr     F_Reg, F_Reg, wr1; \
+                lsr     x, x, #1; \
+                cmp     x, #0; \
+                FlagNZ
+#else
+#   define _DoLSR(x) \
+                lsrs    x, x, #1; \
+                FlagNZC
+#endif
+
+#define DoLSR \
+                GetFromEA_B \
+                _DoLSR(wr0) \
+                PutToEA_B
 
 ENTRY(op_LSR_acc) // 0x4a
                 _DoLSR(A_Reg)
@@ -1717,20 +1584,26 @@ ENTRY(op_NOP) // 0xea
        ORA instructions
    ---------------------------------- */
 
+DoORA:          GetFromEA_B
+                lsl     wr0, wr0, #24
+                lsl     A_Reg, A_Reg, #24
+                orr     A_Reg, A_Reg, wr0
+                cmp     A_Reg, #0
+                FlagNZ
+                lsr     A_Reg, A_Reg, #24
+                Continue
+
 ENTRY(op_ORA_imm) // 0x09
                 GetImm
-                DoORA
-                Continue
+                b       DoORA
 
 ENTRY(op_ORA_zpage) // 0x05
                 GetZPage
-                DoORA
-                Continue
+                b       DoORA
 
 ENTRY(op_ORA_zpage_x) // 0x15
                 GetZPage_X
-                DoORA
-                Continue
+                b       DoORA
 
 // UNIMPLEMENTED : W65C02S datasheet
 ENTRY(op_ORA_zpage_y)
@@ -1738,34 +1611,28 @@ ENTRY(op_ORA_zpage_y)
 
 ENTRY(op_ORA_abs) // 0x0d
                 GetAbs
-                DoORA
-                Continue
+                b       DoORA
 
 ENTRY(op_ORA_abs_x) // 0x1d
                 GetAbs_X
-                DoORA
-                Continue
+                b       DoORA
 
 ENTRY(op_ORA_abs_y) // 0x19
                 GetAbs_Y
-                DoORA
-                Continue
+                b       DoORA
 
 ENTRY(op_ORA_ind_x) // 0x01
                 GetIndZPage_X
-                DoORA
-                Continue
+                b       DoORA
 
 ENTRY(op_ORA_ind_y) // 0x11
                 GetIndZPage_Y
-                DoORA
-                Continue
+                b       DoORA
 
 // 65c02 : 0x12
 ENTRY(op_ORA_ind_zpage)
                 GetIndZPage
-                DoORA
-                Continue
+                b       DoORA
 
 .ltorg
 
@@ -1783,7 +1650,7 @@ ENTRY(op_PHA) // 0x48
 
 ENTRY(op_PHP) // 0x08
                 EncodeFlags
-                Push(r0)
+                Push(wr0)
                 Continue
 
 /* ----------------------------------
@@ -1808,18 +1675,26 @@ ENTRY(op_PHY)
        PLA instruction
    ---------------------------------- */
 
+#define _DoPLx(x) \
+                Pop(x); \
+                lsl     wr0, x, #24; \
+                orr     wr0, wr0, wr0; \
+                cmp     wr0, #0; \
+                FlagNZ \
+                Continue
+
 ENTRY(op_PLA) // 0x68
                 _DoPLx(A_Reg)
-                Continue
 
 /* ----------------------------------
        PLP instruction
    ---------------------------------- */
 
 ENTRY(op_PLP) // 0x28
-                Pop(r0)
+                Pop(wr0)
                 DecodeFlags
-                orr     F_Reg, F_Reg, #BX_Flags
+                orr     F_Reg, F_Reg, #B_Flag
+                orr     F_Reg, F_Reg, #X_Flag
                 Continue
 
 /* ----------------------------------
@@ -1829,7 +1704,6 @@ ENTRY(op_PLP) // 0x28
 
 ENTRY(op_PLX)
                 _DoPLx(X_Reg)
-                Continue
 
 /* ----------------------------------
        PLY instruction
@@ -1838,7 +1712,6 @@ ENTRY(op_PLX)
 
 ENTRY(op_PLY)
                 _DoPLx(Y_Reg)
-                Continue
 
 .ltorg
 
@@ -1846,8 +1719,40 @@ ENTRY(op_PLY)
        ROL instructions
    ---------------------------------- */
 
+#if __aarch64__
+// ARM64 does not have lsls ...
+#   define _FlagROL(x) \
+                and     xr1, x, #0x8000; /* out carry -> */ \
+                lsr     wr1, wr1, #14; /* C_FLAG */ \
+                bic     F_Reg, F_Reg, #C_Flag; \
+                orr     F_Reg, F_Reg, wr1; \
+                /* Now calc N & Z */ \
+                lsl     x, x, #49; \
+                cmp     x, #0; \
+                FlagNZ \
+                lsr     x, x, #56;
+#else
+#   define _FlagROL(x) \
+                lsls    x, x, #17; \
+                FlagNZC \
+                lsr     x, x, #24;
+#endif
+
+#define _DoROL(x) \
+                lsl     x, x, #8; \
+                lsl     F_Reg, F_Reg, #6; /* C_FLAG (in carry) -> 0x80 */ \
+                and     wr1, F_Reg, #0x80; \
+                orr     x, x, xr1; \
+                lsr     F_Reg, F_Reg, #6; /* undo */ \
+                _FlagROL(x)
+
+#define DoROL \
+                GetFromEA_B \
+                _DoROL(xr0) \
+                PutToEA_B
+
 ENTRY(op_ROL_acc) // 0x2a
-                _DoROL(A_Reg)
+                _DoROL(xA_Reg)
                 Continue
 
 ENTRY(op_ROL_zpage) // 0x26
@@ -1873,6 +1778,32 @@ ENTRY(op_ROL_abs_x) // 0x3e
 /* ----------------------------------
        ROR instructions
    ---------------------------------- */
+
+#define _DoROR(x) \
+                and     wr1, F_Reg, #C_Flag; \
+                lsl     wr1, wr1, #7; /* carry in */ \
+                orr     x, x, wr1; \
+                \
+                ror     x, x, #1; \
+                bic     F_Reg, F_Reg, #NZC_Flags; \
+                \
+                and     wr1, x, #ROR_BIT; \
+                bic     x, x, #ROR_BIT; \
+                lsr     wr1, wr1, #ROR_SHIFT; \
+                orr     F_Reg, F_Reg, wr1; /* C_Flag */ \
+                \
+                ands    wr1, x, #0xFF; \
+                FlagZ \
+                \
+                and     wr1, x, #0x80; \
+                lsr     wr1, wr1, #4; /* N_Flag */ \
+                orr     F_Reg, F_Reg, wr1;
+
+#define DoROR \
+                GetFromEA_B \
+                _DoROR(wr0) \
+                PutToEA_B
+
 ENTRY(op_ROR_acc) // 0x6a
                 _DoROR(A_Reg)
                 Continue
@@ -1904,12 +1835,13 @@ ENTRY(op_ROR_abs_x) // 0x7e
    ---------------------------------- */
 
 ENTRY(op_RTI) // 0x40
-                Pop(r0)
+                Pop(wr0)
                 DecodeFlags
-                orr     F_Reg, F_Reg, #BX_Flags
+                orr     F_Reg, F_Reg, #B_Flag
+                orr     F_Reg, F_Reg, #X_Flag
                 Pop(lo_byte)
                 Pop(hi_byte)
-                mov     hi_byte, hi_byte, LSL #8
+                lsl     hi_byte, hi_byte, #8
                 orr     PC_Reg, hi_byte, lo_byte
                 Continue
 
@@ -1920,7 +1852,7 @@ ENTRY(op_RTI) // 0x40
 ENTRY(op_RTS) // 0x60
                 Pop(lo_byte)
                 Pop(hi_byte)
-                mov     hi_byte, hi_byte, LSL #8
+                lsl     hi_byte, hi_byte, #8
                 orr     PC_Reg, hi_byte, lo_byte
                 IncUint16(PC_Reg)
                 Continue
@@ -1931,75 +1863,109 @@ ENTRY(op_RTS) // 0x60
        SBC instructions
        SuBtract memory from accumulator with Borrow
    ---------------------------------- */
+
 #define borrow carry
+
+// Subtract with carry (borrow) Decimal mode
 ENTRY(op_SBC_dec)
-                IncOpCycles
+                AddOpCycles(#1)
                 GetFromEA_B
                 DebugBCDCheck
                 // isolate lo nybbles
                 mov     lo_nyb, A_Reg
-                mov     r9, r0
+                mov     wr9, wr0
                 and     lo_nyb, lo_nyb, #0x0F
-                and     r9, r9, #0x0F
+                and     wr9, wr9, #0x0F
                 // lo nybble subtraction with borrow
-                sub     lo_nyb, lo_nyb, r9
+                sub     lo_nyb, lo_nyb, wr9
                 and     lo_nyb, lo_nyb, #0xFF
-                tst     F_Reg, #C_Flag
-                subeq   lo_nyb, lo_nyb, #1
-                andeq   lo_nyb, lo_nyb, #0xFF
+                and     wr1, F_Reg, #C_Flag
+                lsr     wr1, wr1, #1
+                mvn     wr1, wr1
+                and     wr1, wr1, #1
+                sub     lo_nyb, lo_nyb, wr1
+                and     lo_nyb, lo_nyb, #0xFF
                 // prep 65c02 flags
-                bic     F_Reg, #NVZC_Flags
-                orr     F_Reg, #C_Flag
+                bic     F_Reg, F_Reg, #NVZC_Flags
+                orr     F_Reg, F_Reg, #C_Flag
                 // lo nybble DAS (Decimal Adjustment after Subtraction), saving borrow
-                eor     borrow, borrow, borrow
+                Zero(borrow)
                 cmp     lo_nyb, #0x09
-                movhi   borrow, #1
-                subhi   lo_nyb, lo_nyb, #6
-                andhi   lo_nyb, lo_nyb, #0x0F
+                bls     1f
+                mov     borrow, #1
+                sub     lo_nyb, lo_nyb, #6
+                and     lo_nyb, lo_nyb, #0x0F
                 // isolate hi nybbles
-                mov     A_Reg, A_Reg, LSR #4
-                mov     r0, r0, LSR #4
+1:              lsr     A_Reg, A_Reg, #4
+                lsr     wr0, wr0, #4
                 // hi nybble subtraction with borrow
-                sub     r0, A_Reg, r0
-                and     r0, r0, #0xFF
-                sub     r0, r0, borrow
-                and     r0, r0, #0xFF
+                sub     wr0, A_Reg, wr0
+                and     wr0, wr0, #0xFF
+                sub     wr0, wr0, borrow
+                and     wr0, wr0, #0xFF
                 // hi nybble DAS
-                cmp     r0, #0x09
-                subhi   r0, #6
-                bichi   F_Reg, #C_Flag
-                andhi   r0, r0, #0x0F
+                cmp     wr0, #0x09
+                bls     2f
+                sub     wr0, wr0, #6
+                bic     F_Reg, F_Reg, #C_Flag
+                and     wr0, wr0, #0x0F
                 // merge nybbles
-                mov     r0, r0, LSL #4
-                orr     A_Reg, r0, lo_nyb
+2:              lsl     wr0, wr0, #4
+                orr     A_Reg, wr0, lo_nyb
                 // NZ flags
-                tst     A_Reg, #0x80
-                orrne   F_Reg, F_Reg, #N_Flag
-                tst     A_Reg, #0xFF
-                orreq   F_Reg, F_Reg, #Z_Flag
+                and     wr1, A_Reg, #0x80
+                lsr     wr1, wr1, #4 /* N_Flag is bit 4 */
+                orr     F_Reg, F_Reg, wr1
+                ands    wr1, A_Reg, #0xFF
+                FlagZ
                 Continue
 
-#define maybe_DoSBC_d \
-                tst     F_Reg, #D_Flag;  /* Decimal mode? */ \
+DoSBC_b:        tst     F_Reg, #D_Flag /* Decimal mode? */
                 bne     CALL(op_SBC_dec) /* Yes, jump to decimal version */
+                GetFromEA_B
+                /* save operand sign bits */
+                lsr     sign_a, A_Reg, #7
+                lsr     sign_0, wr0, #7
+                /* perform SBC with incoming borrow */
+                sub     A_Reg, A_Reg, wr0
+                and     wr1, F_Reg, #C_Flag
+                lsr     wr1, wr1, #1
+                mvn     wr1, wr1
+                and     wr1, wr1, #1
+                sub     A_Reg, A_Reg, wr1
+                /* clear and set flags */
+                bic     F_Reg, F_Reg, #NVZC_Flags
+                and     wr1, A_Reg, #0x80000000
+                and     A_Reg, A_Reg, #0xFF
+                lsr     wr1, wr1, #30
+                mvn     wr1, wr1
+                and     wr1, wr1, #2
+                orr     F_Reg, F_Reg, wr1 /* C_Flag */
+                and     wr1, A_Reg, #0x80
+                lsr     wr1, wr1, #4
+                orr     F_Reg, F_Reg, wr1 /* N_Flag */
+                /* check and set oVerflow (V_Flag) */
+                eor     sign_0, sign_a, sign_0 /* 0: no V, 1: V if signRes != signA */
+                lsr     sign_res, A_Reg, #7
+                eor     sign_a, sign_a, sign_res
+                and     sign_a, sign_a, sign_0
+                orr     F_Reg, F_Reg, sign_a /* V_Flag */
+                /* finally set Z -- this is here to avoid collision with overloaded xr12 */
+                ands    wr1, A_Reg, #0xFF
+                FlagZ
+                Continue
 
 ENTRY(op_SBC_imm) // 0xe9
                 GetImm
-          maybe_DoSBC_d
-                DoSBC_b
-                Continue
+                b       DoSBC_b
 
 ENTRY(op_SBC_zpage) // 0xe5
                 GetZPage
-          maybe_DoSBC_d
-                DoSBC_b
-                Continue
+                b       DoSBC_b
 
 ENTRY(op_SBC_zpage_x) // 0xf5
                 GetZPage_X
-          maybe_DoSBC_d
-                DoSBC_b
-                Continue
+                b       DoSBC_b
 
 // UNIMPLEMENTED : W65C02S datasheet
 ENTRY(op_SBC_zpage_y)
@@ -2007,40 +1973,28 @@ ENTRY(op_SBC_zpage_y)
 
 ENTRY(op_SBC_abs) // 0xed
                 GetAbs
-          maybe_DoSBC_d
-                DoSBC_b
-                Continue
+                b       DoSBC_b
 
 ENTRY(op_SBC_abs_x) // 0xfd
                 GetAbs_X
-          maybe_DoSBC_d
-                DoSBC_b
-                Continue
+                b       DoSBC_b
 
 ENTRY(op_SBC_abs_y) // 0xf9
                 GetAbs_Y
-          maybe_DoSBC_d
-                DoSBC_b
-                Continue
+                b       DoSBC_b
 
 ENTRY(op_SBC_ind_x) // 0xe1
                 GetIndZPage_X
-          maybe_DoSBC_d
-                DoSBC_b
-                Continue
+                b       DoSBC_b
 
 ENTRY(op_SBC_ind_y) // 0xf1
                 GetIndZPage_Y
-          maybe_DoSBC_d
-                DoSBC_b
-                Continue
+                b       DoSBC_b
 
 // 65c02 : 0xF2
 ENTRY(op_SBC_ind_zpage)
                 GetIndZPage
-          maybe_DoSBC_d
-                DoSBC_b
-                Continue
+                b       DoSBC_b
 
 .ltorg
 
@@ -2049,7 +2003,7 @@ ENTRY(op_SBC_ind_zpage)
    ---------------------------------- */
 
 ENTRY(op_SEC) // 0x38
-                orr     F_Reg, #C_Flag
+                orr     F_Reg, F_Reg, #C_Flag
                 Continue
 
 /* ----------------------------------
@@ -2057,7 +2011,7 @@ ENTRY(op_SEC) // 0x38
    ---------------------------------- */
 
 ENTRY(op_SED) // 0xf8
-                orr     F_Reg, #D_Flag
+                orr     F_Reg, F_Reg, #D_Flag
                 Continue
 
 /* ----------------------------------
@@ -2065,7 +2019,7 @@ ENTRY(op_SED) // 0xf8
    ---------------------------------- */
 
 ENTRY(op_SEI) // 0x78
-                orr     F_Reg, #I_Flag
+                orr     F_Reg, F_Reg, #I_Flag
                 Continue
 
 /* ----------------------------------
@@ -2103,15 +2057,17 @@ ENTRY(op_SMB7_65c02)
        STA instructions
    ---------------------------------- */
 
+DoSTA:          mov     wr0, A_Reg
+                PutToEA_B
+                Continue
+
 ENTRY(op_STA_zpage) // 0x85
                 GetZPage
-                DoSTA
-                Continue
+                b       DoSTA
 
 ENTRY(op_STA_zpage_x) // 0x95
                 GetZPage_X
-                DoSTA
-                Continue
+                b       DoSTA
 
 // UNIMPLEMENTED : W65C02S datasheet
 ENTRY(op_STA_zpage_y)
@@ -2119,34 +2075,28 @@ ENTRY(op_STA_zpage_y)
 
 ENTRY(op_STA_abs) // 0x8d
                 GetAbs
-                DoSTA
-                Continue
+                b       DoSTA
 
 ENTRY(op_STA_abs_x) // 0x9d
                 GetAbs_X_STx
-                DoSTA
-                Continue
+                b       DoSTA
 
 ENTRY(op_STA_abs_y) // 0x99
                 GetAbs_Y_STA
-                DoSTA
-                Continue
+                b       DoSTA
 
 ENTRY(op_STA_ind_x) // 0x81
                 GetIndZPage_X
-                DoSTA
-                Continue
+                b       DoSTA
 
 ENTRY(op_STA_ind_y) // 0x91
                 GetIndZPage_Y_STA
-                DoSTA
-                Continue
+                b       DoSTA
 
 // 65c02 : 0x92
 ENTRY(op_STA_ind_zpage)
                 GetIndZPage
-                DoSTA
-                Continue
+                b       DoSTA
 
 .ltorg
 
@@ -2193,69 +2143,71 @@ ENTRY(op_RMB7_65c02)
        STX instructions
    ---------------------------------- */
 
+DoSTX:          mov     wr0, X_Reg
+                PutToEA_B
+                Continue
+
 ENTRY(op_STX_zpage) // 0x86
                 GetZPage
-                DoSTX
-                Continue
+                b       DoSTX
 
 // HACK : is this used? need to study coverage ...
 ENTRY(op_STX_zpage_y) // 0x96
                 GetZPage_Y
-                DoSTX
-                Continue
+                b       DoSTX
 
 ENTRY(op_STX_abs) // 0x8e
                 GetAbs
-                DoSTX
-                Continue
+                b       DoSTX
 
 /* ----------------------------------
        STY instructions
    ---------------------------------- */
 
+DoSTY:          mov     wr0, Y_Reg
+                PutToEA_B
+                Continue
+
 ENTRY(op_STY_zpage) // 0x84
                 GetZPage
-                DoSTY
-                Continue
+                b       DoSTY
 
 ENTRY(op_STY_zpage_x) // 0x94
                 GetZPage_X
-                DoSTY
-                Continue
+                b       DoSTY
 
 ENTRY(op_STY_abs) // 0x8c
                 GetAbs
-                DoSTY
-                Continue
+                b       DoSTY
 
 /* ----------------------------------
        STZ instructions
        65c02 only
    ---------------------------------- */
 
+DoSTZ:          mov     wr0, #0
+                PutToEA_B
+                Continue
+
 // 65c02 : 0x64
 ENTRY(op_STZ_zpage)
                 GetZPage
-                DoSTZ
-                Continue
+                b       DoSTZ
 
 // 65c02 : 0x74
 ENTRY(op_STZ_zpage_x)
                 GetZPage_X
-                DoSTZ
-                Continue
+                b       DoSTZ
 
 // 65c02 : 0x9C
 ENTRY(op_STZ_abs)
                 GetAbs
-                DoSTZ
-                Continue
+                b       DoSTZ
 
 // 65c02 : 0x9E
 ENTRY(op_STZ_abs_x)
                 GetAbs_X_STx
-                DoSTZ
-                Continue
+                b       DoSTZ
 
 .ltorg
 
@@ -2265,8 +2217,9 @@ ENTRY(op_STZ_abs_x)
 
 ENTRY(op_TAX) // 0xaa
                 mov     X_Reg, A_Reg
-                mov     r0, A_Reg, LSL #24
-                orrs    r0, r0, r0
+                lsl     wr0, A_Reg, #24
+                orr     wr0, wr0, wr0
+                cmp     wr0, #0
                 FlagNZ
                 Continue
 
@@ -2276,8 +2229,9 @@ ENTRY(op_TAX) // 0xaa
 
 ENTRY(op_TAY) // 0xa8
                 mov     Y_Reg, A_Reg
-                mov     r0, A_Reg, LSL #24
-                orrs    r0, r0, r0
+                lsl     wr0, A_Reg, #24
+                orr     wr0, wr0, wr0
+                cmp     wr0, #0
                 FlagNZ
                 Continue
 
@@ -2286,34 +2240,45 @@ ENTRY(op_TAY) // 0xa8
        65c02 only
    ---------------------------------- */
 
+DoTRB:          GetFromEA_B
+                tst     wr0, A_Reg
+                FlagZ
+                mvn     wr1, A_Reg
+                and     wr0, wr0, wr1
+                PutToEA_B
+                Continue
+
 // 65c02 : 0x1C
 ENTRY(op_TRB_abs)
                 GetAbs
-                DoTRB
-                Continue
+                b       DoTRB
 
 // 65c02 : 0x14
 ENTRY(op_TRB_zpage)
                 GetZPage
-                DoTRB
-                Continue
+                b       DoTRB
 
 /* ----------------------------------
        TSB instructions
        65c02 only
    ---------------------------------- */
 
+DoTSB:          GetFromEA_B
+                tst     wr0, A_Reg
+                FlagZ
+                orr     wr0, A_Reg, wr0
+                PutToEA_B
+                Continue
+
 // 65c02 : 0x0C
 ENTRY(op_TSB_abs)
                 GetAbs
-                DoTSB
-                Continue
+                b       DoTSB
 
 // 65c02 : 0x04
 ENTRY(op_TSB_zpage)
                 GetZPage
-                DoTSB
-                Continue
+                b       DoTSB
 
 /* ----------------------------------
        TSX instruction
@@ -2321,8 +2286,9 @@ ENTRY(op_TSB_zpage)
 
 ENTRY(op_TSX) // 0xba
                 mov     X_Reg, SP_Reg
-                mov     r0, SP_Reg, LSL #24
-                orrs    r0, r0, r0
+                lsl     wr0, SP_Reg, #24
+                orr     wr0, wr0, wr0
+                cmp     wr0, #0
                 FlagNZ
                 Continue
 
@@ -2332,8 +2298,9 @@ ENTRY(op_TSX) // 0xba
 
 ENTRY(op_TXA) // 0x8a
                 mov     A_Reg, X_Reg
-                mov     r0, X_Reg, LSL #24
-                orrs    r0, r0, r0
+                lsl     wr0, X_Reg, #24
+                orr     wr0, wr0, wr0
+                cmp     wr0, #0
                 FlagNZ
                 Continue
 
@@ -2351,8 +2318,9 @@ ENTRY(op_TXS) // 0x9a
 
 ENTRY(op_TYA) // 0x98
                 mov     A_Reg, Y_Reg
-                mov     r0, Y_Reg, LSL #24
-                orrs    r0, r0, r0
+                lsl     wr0, Y_Reg, #24
+                orr     wr0, wr0, wr0
+                cmp     wr0, #0
                 FlagNZ
                 Continue
 
@@ -2380,37 +2348,37 @@ ENTRY(op_WAI_65c02)
         Keep executing until we've executed >= cpu65_cycles_to_execute
    ------------------------------------------------------------------------- */
 
-#define cycles_exe r0
+#define cycles_exe wr12
 continue:
-                ldr     r1, [reg_args, #CPU65__OPCYCLES]
-                ldrb    r0, [reg_args, #CPU65_OPCODE]
-                ldrb    cycles_exe, [r1, r0]
-                ldrb    r1, [reg_args, #CPU65_OPCYCLES]
-                add     cycles_exe, cycles_exe, r1
+                ldr     xr1, [reg_args, #CPU65__OPCYCLES]
+                ldrb    wr0, [reg_args, #CPU65_OPCODE]
+                ldrb    cycles_exe, [xr1, xr0]
+                ldrb    wr1, [reg_args, #CPU65_OPCYCLES]
+                add     cycles_exe, cycles_exe, wr1
                 strb    cycles_exe, [reg_args, #CPU65_OPCYCLES]
                 TRACE_EPILOGUE
 
-                ldr     r1, [reg_args, #GC_CYCLES_TIMER_0]
-                sub     r1, r1, cycles_exe
-                str     r1, [reg_args, #GC_CYCLES_TIMER_0]
+                ldr     wr1, [reg_args, #GC_CYCLES_TIMER_0]
+                sub     wr1, wr1, cycles_exe
+                str     wr1, [reg_args, #GC_CYCLES_TIMER_0]
 
-                ldr     r1, [reg_args, #GC_CYCLES_TIMER_1]
-                sub     r1, r1, cycles_exe
-                str     r1, [reg_args, #GC_CYCLES_TIMER_1]
+                ldr     wr1, [reg_args, #GC_CYCLES_TIMER_1]
+                sub     wr1, wr1, cycles_exe
+                str     wr1, [reg_args, #GC_CYCLES_TIMER_1]
 
-                ldr     r1, [reg_args, #CPU65_CYCLE_COUNT]
-                add     r1, r1, cycles_exe
-                str     r1, [reg_args, #CPU65_CYCLE_COUNT]
+                ldr     wr1, [reg_args, #CPU65_CYCLE_COUNT]
+                add     wr1, wr1, cycles_exe
+                str     wr1, [reg_args, #CPU65_CYCLE_COUNT]
 
-continue1:      ldr     r1, [reg_args, #CPU65_CYCLES_TO_EXECUTE]
-                subs    r1, r1, cycles_exe
-                str     r1, [reg_args, #CPU65_CYCLES_TO_EXECUTE]
+continue1:      ldr     wr1, [reg_args, #CPU65_CYCLES_TO_EXECUTE]
+                subs    wr1, wr1, cycles_exe
+                str     wr1, [reg_args, #CPU65_CYCLES_TO_EXECUTE]
                 bmi     exit_cpu65_run
                 beq     exit_cpu65_run
 
-continue2:      ldrb    r0, [reg_args, #CPU65__SIGNAL]
-                orrs    r0, r0, r0
-                bne     exception
+continue2:      ldrb    wr0, [reg_args, #CPU65__SIGNAL]
+                tst     wr0, #0xFF
+                bnz     exception
                 CPUStatsReset
                 JumpNextInstruction
 
@@ -2418,20 +2386,20 @@ continue2:      ldrb    r0, [reg_args, #CPU65__SIGNAL]
         Exception handlers
    ------------------------------------------------------------------------- */
 
-exception:      tst     r0, #ResetSig
+exception:      tst     wr0, #ResetSig
                 beq     ex_irq
-                ldrb    r0, [reg_args, #JOY_BUTTON0] // OpenApple
-                tst     r0, #0xFF
+                ldrb    wr0, [reg_args, #JOY_BUTTON0] // OpenApple
+                tst     wr0, #0xFF
                 bne     exit_reinit
-                ldr     r0, [reg_args, #JOY_BUTTON1] // ClosedApple
-                tst     r0, #0xFF
+                ldrb    wr0, [reg_args, #JOY_BUTTON1] // ClosedApple
+                tst     wr0, #0xFF
                 bne     exit_reinit
 
-ex_reset:       eor     r0, r0, r0
-                strb    r0, [reg_args, #CPU65__SIGNAL]
+ex_reset:       Zero(wr0)
+                strb    wr0, [reg_args, #CPU65__SIGNAL]
                 ldrh    EffectiveAddr, [reg_args, #RESET_VECTOR]
                 GetFromEA_W
-                mov     PC_Reg, r0
+                mov     PC_Reg, wr0
                 CPUStatsReset
                 JumpNextInstruction
 
@@ -2440,23 +2408,23 @@ ex_irq:         tst     F_Reg, #I_Flag                      // Already interrupt
                 CPUStatsReset
                 JumpNextInstruction                         // Yes (ignored) ...
 1:              TRACE_IRQ                                   // No (handle IRQ) ...
-                mov     r0, PC_Reg
-                mov     r0, r0, ROR #8
-                Push(r0)
-                mov     r0, r0, LSR #24
-                Push(r0)
+                mov     wr0, PC_Reg
+                ror     wr0, wr0, #8
+                Push(wr0)
+                lsr     wr0, wr0, #24
+                Push(wr0)
                 orr     F_Reg, F_Reg, #X_Flag
                 EncodeFlags
-                Push(r0)
+                Push(wr0)
                 orr     F_Reg, F_Reg, #BI_Flags
                 //bic   F_Reg, F_Reg, #D_Flag // AppleWin clears Decimal bit?
                 ldrh    EffectiveAddr, [reg_args, #INTERRUPT_VECTOR]
                 GetFromEA_W
-                mov     PC_Reg, r0
+                mov     PC_Reg, wr0
                 CPUStatsReset
-                ldrb    r0, [reg_args, #CPU65_OPCYCLES]
-                add     r0, r0, #7                          // IRQ handling will take additional 7 cycles
-                strb    r0, [reg_args, #CPU65_OPCYCLES]
+                ldrb    wr0, [reg_args, #CPU65_OPCYCLES]
+                add     wr0, wr0, #7                          // IRQ handling will take additional 7 cycles
+                strb    wr0, [reg_args, #CPU65_OPCYCLES]
                 JumpNextInstruction
 
 /* -------------------------------------------------------------------------
@@ -2464,24 +2432,24 @@ ex_irq:         tst     F_Reg, #I_Flag                      // Already interrupt
    ------------------------------------------------------------------------- */
 
 ENTRY(cpu65_run)
-                push    {r4, r5, r6, r7, r8, r9, r10, r11, lr}
+                Enter
                 // Restore CPU state when being called from C.
-                mov     reg_args, r0
+                mov     reg_args, xr0
                 ldr     reg_vmem_r, [reg_args, #CPU65_VMEM_R]
                 ldrh    EffectiveAddr, [reg_args, #CPU65_EA]
                 ldrh    PC_Reg, [reg_args, #CPU65_PC]
                 ldrb    A_Reg, [reg_args, #CPU65_A]
-                ldrb    r0, [reg_args, #CPU65_F]
+                ldrb    wr0, [reg_args, #CPU65_F]
                 DecodeFlags
                 ldrb    X_Reg, [reg_args, #CPU65_X]
                 ldrb    Y_Reg, [reg_args, #CPU65_Y]
                 ldrb    SP_Reg, [reg_args, #CPU65_SP]
-                ldrb    r0, [reg_args, #EMUL_REINITIALIZE]
-                teq     r0, #0
-                eorne   r0, r0, r0
-                STRBNE  r0, [reg_args, #EMUL_REINITIALIZE]
-                bne     ex_reset
-                b       continue2
+                ldrb    wr0, [reg_args, #EMUL_REINITIALIZE]
+                cmp     wr0, #0
+                bz      continue2
+                Zero(wr0)
+                strb    wr0, [reg_args, #EMUL_REINITIALIZE]
+                b       ex_reset
 
 /* -------------------------------------------------------------------------
         65c02 CPU processing loop exit point
@@ -2491,13 +2459,13 @@ exit_cpu65_run:
                 // Save CPU state when returning from being called from C
                 strh    PC_Reg, [reg_args, #CPU65_PC]
                 CommonSaveCPUState
-                pop     {r4, r5, r6, r7, r8, r9, r10, r11, pc}
+                Exit
 
-exit_reinit:    mov     r0, #0
-                strb    r0, [reg_args, #CPU65__SIGNAL]
-                mov     r0, #1
-                strb    r0, [reg_args, #EMUL_REINITIALIZE]
-                pop     {r4, r5, r6, r7, r8, r9, r10, r11, pc}
+exit_reinit:    mov     wr0, #0
+                strb    wr0, [reg_args, #CPU65__SIGNAL]
+                mov     wr0, #1
+                strb    wr0, [reg_args, #EMUL_REINITIALIZE]
+                Exit
 
 /* -------------------------------------------------------------------------
         Debugger hooks
@@ -2505,9 +2473,8 @@ exit_reinit:    mov     r0, #0
 
 ENTRY(cpu65_direct_write)
 #warning FIXME TODO implement cpu65_direct_write ...
-                mov     r0, #42
-                ldr     r0, [r0] // segfault
-                mov     pc, lr
+                mov     wr0, #42
+                ldr     wr0, [xr0] // segfault
 
 .ltorg
 

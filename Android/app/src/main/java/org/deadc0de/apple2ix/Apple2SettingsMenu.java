@@ -11,15 +11,14 @@
 
 package org.deadc0de.apple2ix;
 
-import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.net.Uri;
+import androidx.appcompat.app.AlertDialog;
 import android.util.Log;
 import android.view.View;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
-import android.widget.TextView;
 
 import org.deadc0de.apple2ix.basic.BuildConfig;
 import org.deadc0de.apple2ix.basic.R;
@@ -162,7 +161,7 @@ public class Apple2SettingsMenu extends Apple2AbstractMenu {
 
             @Override
             public void handleSelection(final Apple2Activity activity, final Apple2AbstractMenu settingsMenu, boolean isChecked) {
-                new Apple2JoystickSettingsMenu(activity).show();
+                new Apple2JoystickSettingsMenu(activity, Apple2SettingsMenu.TouchDeviceVariant.JOYSTICK).show();
             }
         },
         KEYPAD_CONFIGURE {
@@ -178,7 +177,7 @@ public class Apple2SettingsMenu extends Apple2AbstractMenu {
 
             @Override
             public void handleSelection(final Apple2Activity activity, final Apple2AbstractMenu settingsMenu, boolean isChecked) {
-                new Apple2KeypadSettingsMenu(activity).show();
+                new Apple2KeypadSettingsMenu(activity, Apple2SettingsMenu.TouchDeviceVariant.JOYSTICK_KEYPAD).show();
             }
         },
         KEYBOARD_CONFIGURE {
@@ -350,15 +349,31 @@ public class Apple2SettingsMenu extends Apple2AbstractMenu {
 
             @Override
             public void handleSelection(final Apple2Activity activity, final Apple2AbstractMenu settingsMenu, boolean isChecked) {
-                AlertDialog.Builder builder = new AlertDialog.Builder(activity).setIcon(R.drawable.ic_launcher).setCancelable(true).setTitle(R.string.preferences_reset_really).setMessage(R.string.preferences_reset_warning).setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
+                AlertDialog.Builder builder = new AlertDialog.Builder(activity).setIcon(R.drawable.ic_launcher).setCancelable(true).setTitle(R.string.preferences_reset_really).setMessage(R.string.preferences_reset_warning).setPositiveButton(R.string.reset, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         dialog.dismiss();
                         Apple2Preferences.reset(activity);
                     }
-                }).setNegativeButton(R.string.no, null);
+                });
                 AlertDialog dialog = builder.create();
                 activity.registerAndShowDialog(dialog);
+            }
+        },
+        EMAIL_LOGS {
+            @Override
+            public final String getTitle(Apple2Activity activity) {
+                return activity.getResources().getString(R.string.preferences_email_logs);
+            }
+
+            @Override
+            public final String getSummary(Apple2Activity activity) {
+                return activity.getResources().getString(R.string.preferences_email_logs_summary);
+            }
+
+            @Override
+            public void handleSelection(final Apple2Activity activity, final Apple2AbstractMenu settingsMenu, boolean isChecked) {
+                Apple2CrashHandler.getInstance().emailCrashesAndLogs(activity);
             }
         },
         CRASH {
@@ -426,7 +441,7 @@ public class Apple2SettingsMenu extends Apple2AbstractMenu {
                                     activity.runOnUiThread(new Runnable() {
                                         @Override
                                         public void run() {
-                                            Log.d(TAG, "About to NPE : " + str[0].length());
+                                            Apple2Activity.logMessage(Apple2Activity.LogType.DEBUG, TAG, "About to NPE : " + str[0].length());
                                         }
                                     });
                                 }

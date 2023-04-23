@@ -16,6 +16,15 @@
 extern "C" {
 #endif
 
+// NOTE: These match Android settings
+typedef enum log_type_t {
+    LOG_TYPE_VERBOSE = 2,
+    LOG_TYPE_DEBUG,
+    LOG_TYPE_INFO,
+    LOG_TYPE_WARN,
+    LOG_TYPE_ERROR,
+} log_type_t;
+
 #if VIDEO_OPENGL
 extern GLenum safeGLGetError(void);
 #else
@@ -23,31 +32,32 @@ extern GLenum safeGLGetError(void);
 #   define safeGLGetError() 0
 #endif
 
-// global logging kill switch
-extern bool do_logging;
-
-// log to the standard log facility (e.g., stderr)
-extern bool do_std_logging;
-
 // initialize logging facility
 void log_init(void);
 
 // print a string to the log file.  Terminating '\n' is added.
 void log_outputString(const char * const str);
 
+// print a tag + string to the log file.  Terminating '\n' is added.
+void log_taggedOutputString(log_type_t type, const char * const tag, const char * const str);
+
 #define _MYFILE_ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+
+#define _SIMPLE_LOG(...) \
+    do { \
+        char *buf = NULL; \
+        int ignored = asprintf(&buf, __VA_ARGS__); \
+        (void)ignored; \
+        \
+        log_outputString(buf); \
+        \
+        free(buf); \
+    } while (0)
 
 #define _LOG(...) \
     do { \
-        int _err = errno; \
-        errno = 0; \
-        \
-        char *syserr_str = NULL; \
         char *glerr_str = NULL; \
         int ignored; \
-        if (_err) { \
-            ignored = asprintf(&syserr_str, " (syserr:%s)", strerror(_err)); \
-        } \
         if (_glerr) { \
             ignored = asprintf(&glerr_str, " (glerr:%04X)", _glerr); \
         } \
@@ -56,23 +66,19 @@ void log_outputString(const char * const str);
         ignored = asprintf(&buf0, __VA_ARGS__); \
         \
         char *buf = NULL; \
-        ignored = asprintf(&buf, "%s:%d (%s) -%s%s %s", _MYFILE_, __LINE__, __func__, (syserr_str ? : ""), (glerr_str ? : ""), buf0); \
+        ignored = asprintf(&buf, "%s:%d (%s) -%s %s", _MYFILE_, __LINE__, __func__, (glerr_str ? : ""), buf0); \
         (void)ignored; \
         \
         log_outputString(buf); \
         \
         free(buf0); \
         free(buf); \
-        if (syserr_str) { \
-            free(syserr_str); \
-        } \
         if (glerr_str) { \
             free(glerr_str); \
         } \
     } while (0)
 
-
-#ifdef ANDROID
+#if defined(__ANDROID__)
 // Apparently some non-conformant Android devices (ahem, Spamsung, ahem) do not actually let me see what the assert
 // actually was before aborting/segfaulting ...
 #   undef assert
@@ -98,22 +104,22 @@ void log_outputString(const char * const str);
 #endif
 
 #define LOG(...) \
-    if (LIKELY(do_logging)) { \
+    do { \
         GLenum _glerr = safeGLGetError(); \
         _LOG(__VA_ARGS__); \
         while ( (_glerr = safeGLGetError()) ) { \
             _LOG(__VA_ARGS__); \
         } \
-    } //
+    } while(0) //
 
 // GL_MAYBELOG() only logs if an OpenGL error occurred
-#define GL_MAYBELOG(...) \
-    if (LIKELY(do_logging)) { \
+#   define GL_MAYBELOG(...) \
+    do { \
         GLenum _glerr = 0; \
         while ( (_glerr = safeGLGetError()) ) { \
             _LOG(__VA_ARGS__); \
         } \
-    } //
+    } while(0) //
 
 #define QUIT_FUNCTION(x) exit(x)
 

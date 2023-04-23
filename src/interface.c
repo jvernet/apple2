@@ -552,6 +552,9 @@ void c_interface_select_diskette( int drive )
                     {
                         int fd = -1;
                         TEMP_FAILURE_RETRY(fd = open(temp, O_RDWR));
+                        if (fd == -1) {
+                            LOG("OOPS, could not open disk path %s (%s)", temp, strerror(errno));
+                        }
                         const char *err_str = disk6_insert(fd, drive, temp, /*readonly:*/0);
                         if (fd > 0) {
                             TEMP_FAILURE_RETRY(close(fd));
@@ -627,6 +630,9 @@ void c_interface_select_diskette( int drive )
 
                 int fd = -1;
                 TEMP_FAILURE_RETRY(fd = open(temp, O_RDWR));
+                if (fd == -1) {
+                    LOG("OOPS, could not open disk path %s (%s)", temp, strerror(errno));
+                }
                 const char *err_str = disk6_insert(fd, drive, temp, /*readonly:*/(toupper(ch) != 'W'));
                 if (fd > 0) {
                     TEMP_FAILURE_RETRY(close(fd));
@@ -1083,8 +1089,7 @@ void c_interface_parameters()
         else if ((ch == kESC) || c_keys_is_interface_key(ch))
         {
             timing_initialize();
-            vm_reinitializeAudio();
-            c_joystick_reset();
+            joystick_reset();
 #if !TESTING
             prefs_save();
 #endif
@@ -1178,7 +1183,7 @@ void c_interface_parameters()
             /* calibrate joystick */
             if ((ch == 13) && (option == OPT_CALIBRATE))
             {
-                c_joystick_reset();
+                joystick_reset();
                 c_calibrate_joystick();
                 c_interface_print_screen( screen );
             }
@@ -1241,7 +1246,7 @@ void c_interface_parameters()
                     ch = toupper(ch);
                     if (ch == 'Y')
                     {
-                        c_joystick_reset();
+                        joystick_reset();
                         cpu65_reboot();
                         c_interface_exit(ch);
                         break;
@@ -1565,7 +1570,8 @@ void c_interface_begin(int current_key)
     pthread_mutex_lock(&classic_interface_lock);
     interface_thread_id=1; // interface thread starting ...
     interface_key.current_key = current_key;
-    pthread_create(&interface_thread_id, NULL, (void *)&interface_thread, &interface_key);
+    int err = TEMP_FAILURE_RETRY(pthread_create(&interface_thread_id, NULL, (void *)&interface_thread, &interface_key));
+    assert(!err);
     pthread_detach(interface_thread_id);
 }
 

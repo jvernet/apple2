@@ -97,9 +97,9 @@ static void *systrace_thread(void *ignored) {
     LOG("Starting systrace writer thread ...");
 
     writeBuf0 = CALLOC(1, TRACE_BUF_SIZ);
-    assert(writeBuf0);
+    assert((uintptr_t)writeBuf0);
     writeBuf1 = CALLOC(1, TRACE_BUF_SIZ);
-    assert(writeBuf1);
+    assert((uintptr_t)writeBuf1);
 
     bool swapped = __sync_bool_compare_and_swap(&writeHead, /*oldval:*/NULL, /*newval:*/writeBuf0);
     assert(swapped);
@@ -174,10 +174,7 @@ static void _trace_init(void) {
 
     assert(systrace_thread_id == 0);
     int err = TEMP_FAILURE_RETRY(pthread_create(&systrace_thread_id, NULL, (void *)&systrace_thread, (void *)NULL));
-    if (err) {
-        LOG("pthread_create for systrace writer failed!");
-        assert(false);
-    }
+    assert(!err);
 
     while (!systrace_thread_initialized) {
         usleep(FILE_WRITER_USLEEP);

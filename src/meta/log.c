@@ -11,6 +11,8 @@
 
 #include "common.h"
 
+#define DO_STDERR_LOGGING 0
+
 // log.c :
 //  - simple and not-particularly-performant logging functions
 //  - do not call in a tight loop!
@@ -20,9 +22,6 @@
 #endif
 
 #define LOG_PATH_TEMPLATE "%s%sapple2ix_log.%u.txt"
-
-bool do_logging = true;
-bool do_std_logging = true;
 
 static int logFd = -1;
 static off_t logSiz = 0;
@@ -91,38 +90,65 @@ GLenum safeGLGetError(void) {
 #endif
 
 void log_init(void) {
+    assert((uintptr_t)data_dir);
     _log_rotate(/*performRotation:*/false);
 }
 
 void log_outputString(const char * const str) {
+    log_taggedOutputString(LOG_TYPE_INFO, NULL, str);
+}
+
+void log_taggedOutputString(log_type_t type, const char * const tag, const char * const str) {
     if (UNLIKELY(!str)) {
         return;
     }
 
-    if (UNLIKELY(!do_logging)) {
+#if defined(NDEBUG)
+    // TODO : make logging level dynamic+configurable ...
+    if (type <= LOG_TYPE_DEBUG) {
         return;
     }
+#endif
 
-    if (do_std_logging) {
+#if DO_STDERR_LOGGING
+    {
 #if defined(__ANDROID__) && !defined(NDEBUG)
-        __android_log_print(ANDROID_LOG_ERROR, "apple2ix", "%s", str);
+        __android_log_print(type, tag ? tag : "apple2ix", "%s", str);
 #else
         fprintf(stderr, "%s\n", str);
 #endif
     }
+#endif
 
     if (UNLIKELY(logFd < 0)) {
         return;
     }
 
+    // calculate timestamp ...
+    char timestamp[32];
+    {
+        time_t secs = time(NULL);
+        struct tm timeinfo = { 0 };
+        struct tm *t = gmtime_r(&secs, &timeinfo);
+        assert(t != NULL);
+        size_t count = strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &timeinfo);
+        assert(count == 19);
+    }
+
+    char *buf = NULL;
+    ASPRINTF(&buf, "%s %s %s", timestamp, tag ? tag : "-", str);
+    if (UNLIKELY(!buf)) {
+        return;
+    }
+
     pthread_mutex_lock(&log_mutex);
 
-    size_t expected_bytescount = strlen(str);
+    size_t expected_bytescount = strlen(buf);
     size_t bytescount = 0;
 
     do {
         ssize_t byteswritten = 0;
-        TEMP_FAILURE_RETRY(byteswritten = write(logFd, str+bytescount, expected_bytescount-bytescount));
+        TEMP_FAILURE_RETRY(byteswritten = write(logFd, buf+bytescount, expected_bytescount-bytescount));
         if (UNLIKELY(byteswritten <= 0)) {
             break; // OOPS !
         }
@@ -140,6 +166,8 @@ void log_outputString(const char * const str) {
             break; // OKAY
         }
     } while (1);
+
+    FREE(buf);
 
     if (UNLIKELY(bytescount != expected_bytescount)) {
         // logging is b0rked, shut it down ...

@@ -96,7 +96,7 @@ static void _glnode_updateGLUT(int unused) {
     }
 #endif
 
-    c_keys_handle_input(-1, 0, 0);
+    keys_handleInput(/*scancode:*/-1, /*is_pressed:*/false, /*is_ascii:*/false);
     glutPostRedisplay();
     glutTimerFunc(17, _glnode_updateGLUT, 0);
 }
@@ -134,7 +134,7 @@ static void _glnode_initGLUTPost(void) {
     glutSpecialUpFunc(gldriver_on_key_special_up);
     //glutMouseFunc(gldriver_mouse);
     //glutMotionFunc(gldriver_mouse_drag);
-    c_joystick_reset();
+    joystick_reset();
 }
 #endif
 

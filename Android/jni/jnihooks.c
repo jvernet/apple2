@@ -123,8 +123,9 @@ static void discover_cpu_family(void) {
 
     AndroidCpuFamily family = android_getCpuFamily();
     uint64_t features = android_getCpuFeatures();
-    if (family == ANDROID_CPU_FAMILY_X86) {
-        android_x86 = true;
+    if (family == ANDROID_CPU_FAMILY_X86 || family == ANDROID_CPU_FAMILY_X86_64) {
+        android_x86 = (family == ANDROID_CPU_FAMILY_X86);
+        android_x86_64 = (family == ANDROID_CPU_FAMILY_X86_64);
         if (features & ANDROID_CPU_X86_FEATURE_SSSE3) {
             LOG("nANDROID_CPU_X86_FEATURE_SSSE3");
             android_x86SSSE3Enabled = true;
@@ -155,9 +156,7 @@ static void discover_cpu_family(void) {
             LOG("ANDROID_CPU_ARM_FEATURE_LDREX_STREX");
         }
     } else if (family == ANDROID_CPU_FAMILY_ARM64) {
-#warning FIXME TODO ...
-        //android_arm64Arch = true;
-        android_armArchV7A = true;
+        android_arm64Arch = true;
     }
 }
 
@@ -292,7 +291,7 @@ void Java_org_deadc0de_apple2ix_Apple2View_nativeRender(JNIEnv *env, jclass cls)
 void Java_org_deadc0de_apple2ix_Apple2Activity_nativeReboot(JNIEnv *env, jclass cls, jint resetState) {
     LOG("...");
     if (resetState) {
-        // joystick button settings should be balanced by c_joystick_reset() triggered on CPU thread
+        // joystick button settings should be balanced by joystick_reset() triggered on CPU thread
         if (resetState == 1) {
             run_args.joy_button0 = 0xff;
             run_args.joy_button1 = 0x0;
@@ -388,12 +387,12 @@ jstring Java_org_deadc0de_apple2ix_Apple2DisksMenu_nativeChooseDisk(JNIEnv *env,
     if (!json_mapParseLongValue(jsonData, "fd", &fd, 10)) {
         TEMP_FAILURE_RETRY(fd = open(path, readOnly ? O_RDONLY : O_RDWR));
         if (fd == -1) {
-            LOG("OOPS could not open disk path : %s", path);
+            LOG("OOPS could not open disk path : %s (%s)", path, strerror(errno));
         }
     } else {
-        fd = dup(fd);
+        TEMP_FAILURE_RETRY(fd = dup(fd));
         if (fd == -1) {
-            LOG("OOPS could not dup file descriptor!");
+            LOG("OOPS could not dup file descriptor! (%s)", strerror(errno));
         }
     }
 
@@ -442,7 +441,7 @@ void Java_org_deadc0de_apple2ix_Apple2DisksMenu_nativeEjectDisk(JNIEnv *env, jcl
     disk6_eject(driveA ? 0 : 1);
 }
 
-static int _openFdFromJson(OUTPARM int *fdOut, JSON_ref jsonData, const char * const fdKey, const char * const pathKey, int flags, int mode) {
+static void _openFdFromJson(OUTPARM int *fdOut, JSON_ref jsonData, const char * const fdKey, const char * const pathKey, int flags, int mode) {
 
     long fd = -1;
     char *path = NULL;
@@ -463,12 +462,12 @@ static int _openFdFromJson(OUTPARM int *fdOut, JSON_ref jsonData, const char * c
                 TEMP_FAILURE_RETRY(fd = open(path, flags, mode));
             }
             if (fd == -1) {
-                LOG("OOPS could not open state file path %s", path);
+                LOG("OOPS could not open state file path %s (%s)", path, strerror(errno));
             }
         } else {
-            fd = dup(fd);
+            TEMP_FAILURE_RETRY(fd = dup(fd));
             if (fd == -1) {
-                LOG("OOPS could not dup file descriptor!");
+                LOG("OOPS could not dup file descriptor! (%s)", strerror(errno));
             }
         }
     } while (0);
@@ -613,5 +612,52 @@ void Java_org_deadc0de_apple2ix_Apple2Preferences_nativePrefsSync(JNIEnv *env, j
     if (jDomain) {
         (*env)->ReleaseStringUTFChars(env, jDomain, domain);
     }
+}
+
+jlong Java_org_deadc0de_apple2ix_Apple2JoystickCalibration_nativePollJoystick(JNIEnv *env, jclass cls) {
+    jlong cxy = 0;
+
+    long c = keys_consumeLastKey();
+
+    cxy |= (c << 16);
+    cxy |= ((joy_x & 0xFF) << 8);
+    cxy |= ((joy_y & 0xFF) << 0);
+
+    // last_ascii | last_scancode | joy_x | joy_y
+    return cxy;
+}
+
+void Java_org_deadc0de_apple2ix_Apple2Activity_nativeLogMessage(JNIEnv *env, jclass cls, jstring jJsonString) {
+#if TESTING
+    return NULL;
+#endif
+
+    const char *jsonString = (*env)->GetStringUTFChars(env, jJsonString, NULL);
+
+    JSON_ref jsonData = NULL;
+    bool ret = json_createFromString(jsonString, &jsonData);
+    assert(ret > 0);
+
+    (*env)->ReleaseStringUTFChars(env, jJsonString, jsonString); jsonString = NULL;
+
+    long type = LOG_TYPE_INFO;
+    json_mapParseLongValue(jsonData, "type", &type, 10);
+
+    char *tag = NULL;
+    json_mapCopyStringValue(jsonData, "tag", &tag);
+
+    char *mesg = NULL;
+    json_mapCopyStringValue(jsonData, "mesg", &mesg);
+
+    log_taggedOutputString((log_type_t)type, tag, mesg);
+
+    if (tag) {
+        FREE(tag);
+    }
+    if (mesg) {
+        FREE(mesg);
+    }
+
+    json_destroy(&jsonData);
 }
 

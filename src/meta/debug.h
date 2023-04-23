@@ -14,47 +14,15 @@
  */
 
 
-#ifndef A2_DEBUG_H
-#define A2_DEBUG_H
+#ifndef _A2_DEBUG_H_
+#define _A2_DEBUG_H_
 
 #include "common.h"
 
-extern volatile bool is_debugging;
+extern bool is_debugging;
 
 typedef enum {
-    STEPPING = 0,
-    NEXTING,
-    FINISHING,
-    UNTILING,
-    TYPING,
-    LOADING,
-    GOING
-} stepping_type_t;
-
-// FIXME TODO : make opaque type ...
-typedef struct stepping_struct_t {
-    stepping_type_t step_type;
-    uint16_t step_count;
-    uint16_t step_frame;
-    uint16_t step_pc;
-    bool should_break;
-    time_t timeout;
-    const char *step_text;
-    const bool step_deterministically;
-} stepping_struct_t;
-
-#define DEBUGGER_BUF_X  39
-#define DEBUGGER_BUF_Y  22
-#define MAX_BRKPTS      16
-
-/* debugger commands */
-enum token_type { MEM, DIS, REGS, SETMEM, STEP, FINISH, UNTIL, GO, VM,
-                  BREAK, WATCH, CLEAR, IGNORE, STATUS, OPCODES, LC, DRIVE,
-                  SEARCH, HELP, LOG, BSAVE, BLOAD, SAVE, FBSHA1, TYPE,
-                  LOAD, UNKNOWN };
-
-typedef enum {
-    addr_implied,
+    addr_implied = 0,
     addr_accumulator,
     addr_immediate,
     addr_zeropage,
@@ -68,33 +36,31 @@ typedef enum {
     addr_indirect_y,
     addr_j_indirect,    /* non-zeropage indirects, used in JMP only */
     addr_j_indirect_x,
-    addr_relative
+    addr_relative,
+    NUM_ADDRESSING_MODES,
 } addressing_mode_t;
 
-struct opcode_struct
-{
+typedef struct opcode_struct_s {
     const char *mnemonic;
     addressing_mode_t mode;
-};
+} opcode_struct_s;
 
-extern const struct opcode_struct *opcodes;
+extern const struct opcode_struct_s *opcodes;
+extern const char* const disasm_templates[NUM_ADDRESSING_MODES];
 
 #ifdef INTERFACE_CLASSIC
 void c_interface_debugging(void);
 #endif
 
+bool debugger_shouldBreak(void) CALL_ON_CPU_THREAD;
+
+#if TESTING
 void debugger_setInputText(const char *text, const bool deterministically);
 void debugger_setBreakCallback(bool(*cb)(void));
-void c_debugger_go(void);
-bool c_debugger_should_break(void);
-void c_debugger_set_timeout(const unsigned int secs);
-bool c_debugger_set_watchpoint(const uint16_t addr);
-void c_debugger_clear_watchpoints(void);
-
-extern const struct opcode_struct opcodes_6502[256];
-extern const struct opcode_struct opcodes_65c02[256];
-extern const struct opcode_struct opcodes_undoc[256];
-extern const char* const disasm_templates[15];
-extern const uint8_t opcodes_65c02_numargs[256];
-
+void debugger_go(void);
+void debugger_setTimeout(const unsigned int secs);
+bool debugger_setWatchpoint(const uint16_t addr);
+void debugger_clearWatchpoints(void);
 #endif
+
+#endif // _A2_DEBUG_H_

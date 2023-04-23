@@ -14,6 +14,7 @@ package org.deadc0de.apple2ix;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
+import android.os.AsyncTask;
 import android.os.Environment;
 import android.util.Log;
 import android.view.View;
@@ -22,6 +23,8 @@ import android.widget.ProgressBar;
 import org.deadc0de.apple2ix.basic.BuildConfig;
 import org.deadc0de.apple2ix.basic.R;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -35,6 +38,8 @@ import java.io.InputStream;
 import java.io.InterruptedIOException;
 import java.io.OutputStream;
 import java.util.zip.GZIPOutputStream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 public class Apple2Utils {
 
@@ -61,7 +66,7 @@ public class Apple2Utils {
             } catch (InterruptedIOException ie) {
                 /* EINTR, EAGAIN ... */
             } catch (IOException e) {
-                Log.d(TAG, "Error reading file at path : " + file.toString());
+                Apple2Activity.logMessage(Apple2Activity.LogType.DEBUG, TAG, "Error reading file at path : " + file.toString());
             }
 
             try {
@@ -89,7 +94,7 @@ public class Apple2Utils {
             } catch (InterruptedIOException ie) {
                 /* EINTR, EAGAIN ... */
             } catch (IOException e) {
-                Log.e(TAG, "Exception attempting to write data : " + e);
+                Apple2Activity.logMessage(Apple2Activity.LogType.ERROR, TAG, "Exception attempting to write data : " + e);
             }
 
             try {
@@ -102,6 +107,93 @@ public class Apple2Utils {
 
         return attempts < maxAttempts;
     }
+
+    public static File zipFiles(File[] files, File zipFile) {
+
+        zipFile.delete();
+        ZipOutputStream out = null;
+
+        do {
+            try {
+                zipFile.createNewFile();
+            } catch (IOException ioe) {
+                Apple2Activity.logMessage(Apple2Activity.LogType.ERROR, TAG, "Could not create zipfile " + zipFile.getAbsolutePath() + " : " + ioe.getMessage());
+                break;
+            }
+
+            final int BUF_SIZ = 4096;
+            BufferedInputStream origin = null;
+
+            try {
+                out = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(zipFile)));
+            } catch (IOException ioe) {
+                Apple2Activity.logMessage(Apple2Activity.LogType.ERROR, TAG, "Could not create zip outputStream : " + ioe.getMessage());
+                break;
+            }
+
+            byte data[] = new byte[BUF_SIZ];
+
+            for (File file : files) {
+                FileInputStream fi = null;
+
+                try {
+                    fi = new FileInputStream(file);
+                } catch (IOException ioe) {
+                    Apple2Activity.logMessage(Apple2Activity.LogType.ERROR, TAG, "Could not create file input stream : " + ioe.getMessage());
+                    continue;
+                }
+
+                origin = new BufferedInputStream(fi, BUF_SIZ);
+
+                ZipEntry entry = new ZipEntry(file.getName());
+                try {
+                    out.putNextEntry(entry);
+                } catch (IOException ioe) {
+                    Apple2Activity.logMessage(Apple2Activity.LogType.ERROR, TAG, "Could not put next zip entry : " + ioe.getMessage());
+                    continue;
+                }
+
+                final int maxAttempts = 5;
+                int attempts = 0;
+                do {
+                    int count;
+                    try {
+                        while ((count = origin.read(data, 0, BUF_SIZ)) != -1) {
+                            out.write(data, 0, count);
+                        }
+                        break;
+                    } catch (InterruptedIOException ie) {
+                        /* EINTR, EAGAIN ... */
+                    } catch (IOException ioe) {
+                        Apple2Activity.logMessage(Apple2Activity.LogType.ERROR, TAG, "Could read/write zip data : " + ioe.getMessage());
+                        break;
+                    }
+                    ++attempts;
+                } while (attempts < maxAttempts);
+
+                try {
+                    origin.close();
+                } catch (IOException ioe) {
+                    // ...
+                }
+            }
+        } while (false);
+
+        if (out != null) {
+            try {
+                out.close();
+            } catch (IOException ioe) {
+                // ...
+            }
+        }
+
+        if (zipFile.exists()) {
+            return zipFile;
+        }
+
+        return null;
+    }
+
 
     public static void migrateToExternalStorage(Apple2Activity activity) {
 
@@ -182,7 +274,7 @@ public class Apple2Utils {
             if (!externalDir.exists()) {
                 boolean made = externalDir.mkdirs();
                 if (!made) {
-                    Log.d(TAG, "WARNING: could not make directory : " + sExternalFilesDir);
+                    Apple2Activity.logMessage(Apple2Activity.LogType.DEBUG, TAG, "WARNING: could not make directory : " + sExternalFilesDir);
                     break;
                 }
             }
@@ -218,7 +310,7 @@ public class Apple2Utils {
             PackageInfo pi = pm.getPackageInfo(activity.getPackageName(), 0);
             sDataDir = pi.applicationInfo.dataDir;
         } catch (PackageManager.NameNotFoundException e) {
-            Log.e(TAG, "" + e);
+            Apple2Activity.logMessage(Apple2Activity.LogType.ERROR, TAG, "" + e);
             if (sDataDir == null) {
                 sDataDir = "/data/local/tmp";
             }
@@ -227,7 +319,7 @@ public class Apple2Utils {
         return sDataDir;
     }
 
-    public static void exposeAPKAssetsToExternal(Apple2Activity activity) {
+    public static void exposeAPKAssetsToExternal(final Apple2Activity activity) {
         getExternalStorageDirectory(activity);
         if (sExternalFilesDir == null) {
             return;
@@ -240,29 +332,34 @@ public class Apple2Utils {
                 try {
                     bar.setVisibility(View.VISIBLE);
                     bar.setIndeterminate(true);
+
+                    AsyncTask.execute(new Runnable() {
+                        @Override
+                        public void run() {
+                            Log.v(TAG, "Overwriting system files in /sdcard/apple2ix/ (external storage) ...");
+                            recursivelyCopyAPKAssets(activity, /*from APK directory:*/"keyboards", /*to location:*/sExternalFilesDir.getAbsolutePath(), false);
+
+                            activity.runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    try {
+                                        bar.setVisibility(View.INVISIBLE);
+                                        bar.setIndeterminate(false);
+                                    } catch (NullPointerException npe) {
+                                        Log.v(TAG, "Avoid NPE in exposeAPKAssetsToExternal #2");
+                                    }
+                                }
+                            });
+                        }
+                    });
                 } catch (NullPointerException npe) {
                     Log.v(TAG, "Avoid NPE in exposeAPKAssetsToExternal #1");
                 }
             }
         });
-
-        Log.v(TAG, "Overwriting system files in /sdcard/apple2ix/ (external storage) ...");
-        recursivelyCopyAPKAssets(activity, /*from APK directory:*/"keyboards", /*to location:*/sExternalFilesDir.getAbsolutePath(), false);
-
-        activity.runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    bar.setVisibility(View.INVISIBLE);
-                    bar.setIndeterminate(false);
-                } catch (NullPointerException npe) {
-                    Log.v(TAG, "Avoid NPE in exposeAPKAssetsToExternal #2");
-                }
-            }
-        });
     }
 
-    public static void exposeAPKAssets(Apple2Activity activity) {
+    public static void exposeAPKAssets(final Apple2Activity activity) {
         final ProgressBar bar = (ProgressBar) activity.findViewById(R.id.crash_progressBar);
         activity.runOnUiThread(new Runnable() {
             @Override
@@ -270,39 +367,45 @@ public class Apple2Utils {
                 try {
                     bar.setVisibility(View.VISIBLE);
                     bar.setIndeterminate(true);
+
+                    AsyncTask.execute(new Runnable() {
+                        @Override
+                        public void run() {
+                            getDataDir(activity);
+
+                            // FIXME TODO : Heavy-handed migration to 1.1.3 ...
+                            recursivelyDelete(new File(new File(sDataDir, "disks").getAbsolutePath(), "blanks"));
+                            recursivelyDelete(new File(new File(sDataDir, "disks").getAbsolutePath(), "demo"));
+                            recursivelyDelete(new File(new File(sDataDir, "disks").getAbsolutePath(), "eamon"));
+                            recursivelyDelete(new File(new File(sDataDir, "disks").getAbsolutePath(), "logo"));
+                            recursivelyDelete(new File(new File(sDataDir, "disks").getAbsolutePath(), "miscgame"));
+
+                            Apple2Activity.logMessage(Apple2Activity.LogType.DEBUG, TAG, "First time copying stuff-n-things out of APK for ease-of-NDK access...");
+
+                            getExternalStorageDirectory(activity);
+                            recursivelyCopyAPKAssets(activity, /*from APK directory:*/"disks",     /*to location:*/new File(sDataDir, "disks").getAbsolutePath(), true);
+                            recursivelyCopyAPKAssets(activity, /*from APK directory:*/"keyboards", /*to location:*/new File(sDataDir, "keyboards").getAbsolutePath(), false);
+                            recursivelyCopyAPKAssets(activity, /*from APK directory:*/"shaders",   /*to location:*/new File(sDataDir, "shaders").getAbsolutePath(), false);
+
+                            activity.runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    try {
+                                        bar.setVisibility(View.INVISIBLE);
+                                        bar.setIndeterminate(false);
+                                    } catch (NullPointerException npe) {
+                                        Log.v(TAG, "Avoid NPE in exposeAPKAssets #1");
+                                    }
+                                }
+                            });
+                        }
+                    });
                 } catch (NullPointerException npe) {
                     Log.v(TAG, "Avoid NPE in exposeAPKAssets #1");
                 }
             }
         });
 
-        getDataDir(activity);
-
-        // FIXME TODO : Heavy-handed migration to 1.1.3 ...
-        recursivelyDelete(new File(new File(sDataDir, "disks").getAbsolutePath(), "blanks"));
-        recursivelyDelete(new File(new File(sDataDir, "disks").getAbsolutePath(), "demo"));
-        recursivelyDelete(new File(new File(sDataDir, "disks").getAbsolutePath(), "eamon"));
-        recursivelyDelete(new File(new File(sDataDir, "disks").getAbsolutePath(), "logo"));
-        recursivelyDelete(new File(new File(sDataDir, "disks").getAbsolutePath(), "miscgame"));
-
-        Log.d(TAG, "First time copying stuff-n-things out of APK for ease-of-NDK access...");
-
-        getExternalStorageDirectory(activity);
-        recursivelyCopyAPKAssets(activity, /*from APK directory:*/"disks",     /*to location:*/new File(sDataDir, "disks").getAbsolutePath(), true);
-        recursivelyCopyAPKAssets(activity, /*from APK directory:*/"keyboards", /*to location:*/new File(sDataDir, "keyboards").getAbsolutePath(), false);
-        recursivelyCopyAPKAssets(activity, /*from APK directory:*/"shaders",   /*to location:*/new File(sDataDir, "shaders").getAbsolutePath(), false);
-
-        activity.runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    bar.setVisibility(View.INVISIBLE);
-                    bar.setIndeterminate(false);
-                } catch (NullPointerException npe) {
-                    Log.v(TAG, "Avoid NPE in exposeAPKAssets #1");
-                }
-            }
-        });
     }
 
     public static void exposeSymbols(Apple2Activity activity) {
@@ -316,12 +419,15 @@ public class Apple2Utils {
     // TODO FIXME : WARNING : this is super dangerous if there are symlinks !!!
     private static void recursivelyDelete(File file) {
         if (file.isDirectory()) {
-            for (File f : file.listFiles()) {
-                recursivelyDelete(f);
+            File[] files = file.listFiles();
+            if (files != null) {
+                for (File f : files) {
+                    recursivelyDelete(f);
+                }
             }
         }
         if (!file.delete()) {
-            Log.d(TAG, "Failed to delete file: " + file);
+            Apple2Activity.logMessage(Apple2Activity.LogType.DEBUG, TAG, "Failed to delete file: " + file);
         }
     }
 
@@ -338,7 +444,7 @@ public class Apple2Utils {
             } catch (InterruptedIOException e) {
                 /* EINTR, EAGAIN ... */
             } catch (IOException e) {
-                Log.d(TAG, "OOPS exception attempting to list APK files at : " + srcFileOrDir + " : " + e);
+                Apple2Activity.logMessage(Apple2Activity.LogType.DEBUG, TAG, "OOPS exception attempting to list APK files at : " + srcFileOrDir + " : " + e);
             }
 
             try {
@@ -350,7 +456,7 @@ public class Apple2Utils {
         } while (attempts < maxAttempts);
 
         if (files == null) {
-            Log.d(TAG, "OOPS, could not list APK assets at : " + srcFileOrDir);
+            Apple2Activity.logMessage(Apple2Activity.LogType.DEBUG, TAG, "OOPS, could not list APK assets at : " + srcFileOrDir);
             return;
         }
 
@@ -359,7 +465,7 @@ public class Apple2Utils {
             File dstPath = new File(dstFileOrDir);
             if (!dstPath.mkdirs()) {
                 if (!dstPath.exists()) {
-                    Log.d(TAG, "OOPS, could not mkdirs on " + dstPath);
+                    Apple2Activity.logMessage(Apple2Activity.LogType.DEBUG, TAG, "OOPS, could not mkdirs on " + dstPath);
                     return;
                 }
             }
@@ -387,7 +493,7 @@ public class Apple2Utils {
             } catch (InterruptedIOException e) {
                 /* EINTR, EAGAIN */
             } catch (IOException e) {
-                Log.e(TAG, "Failed to copy asset file: " + srcFileOrDir, e);
+                Apple2Activity.logMessage(Apple2Activity.LogType.ERROR, TAG, "Failed to copy asset file: " + srcFileOrDir + " : " + e.getMessage());
             } finally {
                 if (is != null) {
                     try {
@@ -462,7 +568,7 @@ public class Apple2Utils {
                 }
             }
         } catch (Exception e) {
-            Log.e(TAG, "OOPS : {e}");
+            Apple2Activity.logMessage(Apple2Activity.LogType.ERROR, TAG, "OOPS : {e}");
         }
     }
 
@@ -478,7 +584,7 @@ public class Apple2Utils {
             } catch (InterruptedIOException e) {
                 // EINTR, EAGAIN ...
             } catch (IOException e) {
-                Log.d(TAG, "OOPS exception attempting to copy emulator state file : " + e);
+                Apple2Activity.logMessage(Apple2Activity.LogType.DEBUG, TAG, "OOPS exception attempting to copy emulator state file : " + e);
             }
 
             try {

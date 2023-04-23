@@ -41,6 +41,8 @@
 #define KBD_OBJ_W GL_MODEL_MAX // model width fits screen
 #define KBD_OBJ_H_LANDSCAPE GL_MODEL_MAX
 
+#define KBD_BUTTON_HOLD_FRAMES 7 // >= 1/10 sec (seems reasonable for AppleSoft BASIC sampling ;)
+
 typedef enum keyboard_variant_t {
     KBD_VARIANT_DEFAULT=0,
     KBD_VARIANT_LOWERCASE,
@@ -122,6 +124,8 @@ static struct {
 static struct {
     GLModel *model;
 
+    video_frame_callback_fn frameCallback;
+
     GLfloat modelHeight;
     GLfloat modelSkewY;
     bool modelDirty;
@@ -133,12 +137,16 @@ static struct {
     int ctrlRow;
 
     bool ctrlPressed;
+    bool duoTouch;
 
     unsigned int glyphMultiplier;
     float portraitHeightScale;
     float portraitPositionScale;
 
     struct timespec timingBegin;
+
+    uint8_t button0Count;
+    uint8_t button1Count;
 
     bool prefsChanged;
 } kbd = { 0 };
@@ -147,6 +155,54 @@ static void gltouchkbd_applyPrefs(void);
 
 // ----------------------------------------------------------------------------
 // Misc internal methods
+
+// End-of-video-frame callback ...
+//
+// NOTE : Currently this is only handling the joystick buttons being pressed for a set number of frames.
+//
+// But could we augment the touch keyboard to implement full auto-repeat functionality (following a similar state machine to
+// gltouchjoy_kpad variant)?
+//
+// At present time, the show-stopper for auto-repeat is that it breaks fundamental existing UI/UX:
+//
+//      - It is possible now with this touch keyboard to place a thumb down indefinitely, keeping the keyboard lit up rather than
+//        invisible, while you then hunt for the key you want to select on the touch up.  This is fundamental UI/UX that has always
+//        been supported, and auto-repeat functionality directly challenges that!
+//
+//      - Presumably an auto-repeat keyboard would press the key tapped on touch down (possibly after a delay to detect either
+//        long-press or motion beyond the x/y threshold of the touch down key) ... and this would break the existing "hold-and-hunt"
+//        functionality.
+//
+//      - It's worth noting that auto-repeat is implicitly handled by hardware keyboards on all major platforms we compile on.
+//        Presumably if auto-repeat is important, then just use a hardware keyboard...
+//
+//      - What about a special gesture or special sticky (AUTO-LOCK) key that engages the auto-repeat behavior?
+//
+static void touchkbd_frameCallback(uint8_t textFlashCounter) {
+
+    // When activated, this is called every video frame -- ~16.688 millis
+
+    ASSERT_ON_CPU_THREAD();
+
+    if (kbd.button0Count) {
+        --kbd.button0Count;
+    }
+    if (!kbd.button0Count) {
+        run_args.joy_button0 = 0x0;
+    }
+
+    if (kbd.button1Count) {
+        --kbd.button1Count;
+    }
+    if (!kbd.button1Count) {
+        run_args.joy_button1 = 0x0;
+    }
+
+    if (!kbd.button0Count && !kbd.button1Count) {
+        // unlatch frame callback ...
+        kbd.frameCallback = NULL;
+    }
+}
 
 #warning FIXME TODO ... make this a generic GLModelHUDElement function
 static void _rerender_character(int col, int row) {
@@ -364,7 +420,6 @@ static inline int64_t _tap_key_at_point(float x, float y) {
             break;
 
         case ICONTEXT_NONACTIONABLE:
-            scancode = 0;
             handled = false;
             break;
 
@@ -407,13 +462,15 @@ static inline int64_t _tap_key_at_point(float x, float y) {
             break;
 
         case MOUSETEXT_OPENAPPLE:
-            run_args.joy_button0 = run_args.joy_button0 ? 0x0 : 0x80;
-            scancode = SCODE_L_ALT;
+            run_args.joy_button0 = 0x80;
+            kbd.button0Count = KBD_BUTTON_HOLD_FRAMES;
+            kbd.frameCallback = touchkbd_frameCallback;
             break;
 
         case MOUSETEXT_CLOSEDAPPLE:
-            run_args.joy_button1 = run_args.joy_button1 ? 0x0 : 0x80;
-            scancode = SCODE_R_ALT;
+            run_args.joy_button1 = 0x80;
+            kbd.button1Count = KBD_BUTTON_HOLD_FRAMES;
+            kbd.frameCallback = touchkbd_frameCallback;
             break;
 
         case MOUSETEXT_CURSOR0:
@@ -453,22 +510,24 @@ static inline int64_t _tap_key_at_point(float x, float y) {
     assert(scancode < 0x80);
     if (isASCII) {
         assert(key < 0x80);
-        scancode = c_keys_ascii_to_scancode(key);
+        scancode = keys_ascii2Scancode(key);
         if (kbd.ctrlPressed) {
-            c_keys_handle_input(scancode, /*pressed*/true, /*ASCII:*/false);
-            c_keys_handle_input(scancode, /*pressed*/false, /*ASCII:*/false);
+            keys_handleInput(scancode, /*is_pressed*/true,  /*is_ascii:*/false);
+            keys_handleInput(scancode, /*is_pressed*/false, /*is_ascii:*/false);
         } else {
-            c_keys_handle_input(key, /*pressed:*/true,  /*ASCII:*/true);
+            keys_handleInput(key, /*is_pressed:*/true,  /*is_ascii:*/true);
+            keys_handleInput(key, /*is_pressed:*/false, /*is_ascii:*/true);
         }
         if (key == ' ' && isCalibrating) {
             key = ICONTEXT_SPACE_VISUAL;
         }
     } else if (isCTRL) {
-        c_keys_handle_input(scancode, /*pressed:*/kbd.ctrlPressed,  /*ASCII:*/false);
+        assert(scancode == SCODE_L_CTRL);
+        keys_handleInput(scancode, /*is_pressed:*/kbd.ctrlPressed, /*is_ascii:*/false);
     } else if (scancode) {
         // perform a press of other keys (ESC, Arrows, etc)
-        c_keys_handle_input(scancode, /*pressed:*/true,  /*ASCII:*/false);
-        c_keys_handle_input(scancode, /*pressed:*/false, /*ASCII:*/false);
+        keys_handleInput(scancode, /*is_pressed:*/true,  /*is_ascii:*/false);
+        keys_handleInput(scancode, /*is_pressed:*/false, /*is_ascii:*/false);
     }
 
     // draw current selected key (if any)
@@ -480,9 +539,6 @@ static inline int64_t _tap_key_at_point(float x, float y) {
     if (handled) {
         flags |= TOUCH_FLAGS_HANDLED;
     }
-
-    key = key & 0xff;
-    scancode = scancode & 0xff;
 
     flags |= ( (int64_t)((key << 8) | scancode) << TOUCH_FLAGS_ASCII_AND_SCANCODE_SHIFT);
     return flags;
@@ -670,13 +726,27 @@ static void gltouchkbd_reshape(int w, int h, bool landscape) {
 
 static int64_t gltouchkbd_onTouchEvent(interface_touch_event_t action, int pointer_count, int pointer_idx, float *x_coords, float *y_coords) {
 
-    if (!isAvailable) {
+    if (UNLIKELY(pointer_idx < 0)) {
+        TOUCH_KBD_LOG("!!!KBD : IGNORING TRACKING INDEX %d", pointer_idx);
+        return 0x0LL;
+    }
+
+    static int trackingIndex0 = TRACKING_NONE;
+    static int trackingIndex1 = TRACKING_NONE;
+
+    if (UNLIKELY(!isAvailable)) {
+        trackingIndex0 = TRACKING_NONE;
+        trackingIndex1 = TRACKING_NONE;
         return 0x0LL;
     }
     if (UNLIKELY(kbd.prefsChanged)) {
-        return 0x0;
+        trackingIndex0 = TRACKING_NONE;
+        trackingIndex1 = TRACKING_NONE;
+        return 0x0LL;
     }
     if (!ownsScreen) {
+        trackingIndex0 = TRACKING_NONE;
+        trackingIndex1 = TRACKING_NONE;
         return 0x0LL;
     }
 
@@ -687,41 +757,72 @@ static int64_t gltouchkbd_onTouchEvent(interface_touch_event_t action, int point
 
     clock_gettime(CLOCK_MONOTONIC, &kbd.timingBegin);
 
-    static int trackingIndex = TRACKING_NONE;
-
     switch (action) {
         case TOUCH_DOWN:
         case TOUCH_POINTER_DOWN:
             if (/*isOnKeyboardModel:*/true) {// TODO FIXME : nonactionable areas could defer to joystick ...
-                trackingIndex = pointer_idx;
-                flags |= TOUCH_FLAGS_HANDLED;
-            }
-            break;
 
-        case TOUCH_MOVE:
-            flags |= ((pointer_idx == trackingIndex) ? TOUCH_FLAGS_HANDLED : 0);
-            break;
-
-        case TOUCH_UP:
-        case TOUCH_POINTER_UP:
-            {
-                if (trackingIndex == pointer_idx) {
-                    int64_t handledAndData = _tap_key_at_point(x, y);
-                    flags |= ((handledAndData & TOUCH_FLAGS_HANDLED) ? (TOUCH_FLAGS_HANDLED|TOUCH_FLAGS_KEY_TAP) : 0x0LL);
-                    flags |= (handledAndData & TOUCH_FLAGS_REQUEST_SYSTEM_KBD);
-                    flags |= (handledAndData & TOUCH_FLAGS_ASCII_AND_SCANCODE_MASK);
-                    trackingIndex = TRACKING_NONE;
+                if (trackingIndex0 == TRACKING_NONE) {
+                    trackingIndex0 = pointer_idx;
+                    flags |= TOUCH_FLAGS_HANDLED;
+                    TOUCH_KBD_LOG("---KBD TOUCH DOWN 0");
+                } else if (kbd.duoTouch && trackingIndex1 == TRACKING_NONE) {
+                    trackingIndex1 = pointer_idx;
+                    flags |= TOUCH_FLAGS_HANDLED;
+                    TOUCH_KBD_LOG("---KBD TOUCH DOWN 1");
+                } else {
+                    TOUCH_KBD_LOG("!!!KBD : IGNORING OTHER TOUCH DOWN %d", pointer_idx);
                 }
             }
             break;
 
+        case TOUCH_MOVE:
+            if (pointer_idx == trackingIndex0) {
+                flags |= TOUCH_FLAGS_HANDLED;
+            } else if (kbd.duoTouch && pointer_idx == trackingIndex1) {
+                flags |= TOUCH_FLAGS_HANDLED;
+            } else {
+                // ...
+            }
+            break;
+
+        case TOUCH_UP:
+        case TOUCH_POINTER_UP:
+            // tap is performed on touch up ...
+            if (trackingIndex0 == pointer_idx || (kbd.duoTouch && trackingIndex1 == pointer_idx)) {
+                int64_t handledAndData = _tap_key_at_point(x, y);
+                flags |= ((handledAndData & TOUCH_FLAGS_HANDLED) ? (TOUCH_FLAGS_HANDLED|TOUCH_FLAGS_KEY_TAP) : 0x0LL);
+                flags |= (handledAndData & TOUCH_FLAGS_REQUEST_SYSTEM_KBD);
+                flags |= (handledAndData & TOUCH_FLAGS_ASCII_AND_SCANCODE_MASK);
+
+                if (trackingIndex0 == pointer_idx) {
+                    TOUCH_KBD_LOG("---KBD TOUCH UP 0");
+                    if (trackingIndex1 != TRACKING_NONE) {
+                        // TODO FIXME ... verify this is needed for iOS ... it is apparently needed for Android, ugh
+                        TOUCH_KBD_LOG("---KBD MIGRATING TRACKING 1 -> 0");
+                        trackingIndex1 = TRACKING_NONE;
+                    } else {
+                        trackingIndex0 = TRACKING_NONE;
+                    }
+                } else {
+                    TOUCH_KBD_LOG("---KBD TOUCH UP 1");
+                    trackingIndex1 = TRACKING_NONE;
+                }
+            } else {
+                TOUCH_KBD_LOG("!!!KBD : IGNORING OTHER TOUCH UP %d", pointer_idx);
+                // ...
+            }
+            break;
+
         case TOUCH_CANCEL:
-            trackingIndex = TRACKING_NONE;
+            trackingIndex0 = TRACKING_NONE;
+            trackingIndex1 = TRACKING_NONE;
             LOG("---KBD TOUCH CANCEL");
             return 0x0LL;
 
         default:
-            trackingIndex = TRACKING_NONE;
+            trackingIndex0 = TRACKING_NONE;
+            trackingIndex1 = TRACKING_NONE;
             LOG("!!!KBD UNKNOWN TOUCH EVENT : %d", action);
             return 0x0LL;
     }
@@ -913,6 +1014,8 @@ static void gltouchkbd_applyPrefs(void) {
                               = prefs_parseLongValue (PREF_DOMAIN_TOUCHSCREEN, PREF_SCREEN_OWNER, &lVal, /*base:*/10)  ? (interface_device_t)lVal : TOUCH_DEVICE_KEYBOARD;
     ownsScreen = (screenOwner == TOUCH_DEVICE_KEYBOARD || screenOwner == TOUCH_DEVICE_NONE);
 
+    kbd.duoTouch = prefs_parseBoolValue(PREF_DOMAIN_KEYBOARD, PREF_KEYBOARD_DUO_TOUCH, &bVal) ? bVal : false;
+
     if (ownsScreen) {
         minAlpha = minAlphaWhenOwnsScreen;
         if (allowLowercase) {
@@ -931,9 +1034,9 @@ static void gltouchkbd_applyPrefs(void) {
             glhud_setupDefault(kbd.model);
         }
 
-        // reset CTRL state upon leaving this touch device
+        // reset CTRL pressed state upon leaving this touch device
         kbd.ctrlPressed = false;
-        c_keys_handle_input(SCODE_L_CTRL, /*pressed:*/false, /*ASCII:*/false);
+        keys_handleInput(SCODE_L_CTRL, /*is_pressed:*/false, /*is_ascii:*/false);
     }
 
     char *kbdPath = NULL;
@@ -1100,6 +1203,8 @@ static void _init_gltouchkbd(void) {
     prefs_registerListener(PREF_DOMAIN_KEYBOARD, &gltouchkbd_prefsChanged);
     prefs_registerListener(PREF_DOMAIN_TOUCHSCREEN, &gltouchkbd_prefsChanged);
     prefs_registerListener(PREF_DOMAIN_INTERFACE, &gltouchkbd_prefsChanged);
+
+    video_registerFrameCallback(&kbd.frameCallback);
 }
 
 static __attribute__((constructor)) void __init_gltouchkbd(void) {

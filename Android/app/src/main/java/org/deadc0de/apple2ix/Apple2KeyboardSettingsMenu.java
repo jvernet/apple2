@@ -29,6 +29,15 @@ public class Apple2KeyboardSettingsMenu extends Apple2AbstractMenu {
     private final static String TAG = "KeyboardSettingsMenu";
 
     // These settings must match native side
+    public final static int kLT = 8;
+    public final static int kTAB = 9;
+    public final static int kDN = 10;
+    public final static int kUP = 11;
+    public final static int kRET = 13;
+    public final static int kRT = 21;
+    public final static int kESC = 27;
+    public final static int kDEL = 127;
+
     public final static int MOUSETEXT_BEGIN = 0x80;
     public final static int MOUSETEXT_CLOSEDAPPLE = MOUSETEXT_BEGIN/*+0x00*/;
     public final static int MOUSETEXT_OPENAPPLE = MOUSETEXT_BEGIN + 0x01;
@@ -46,7 +55,9 @@ public class Apple2KeyboardSettingsMenu extends Apple2AbstractMenu {
     public final static int ICONTEXT_NONACTION = ICONTEXT_KBD_BEGIN + 0x0C;
 
     public final static int SCANCODE_A = 30;
+    public final static int SCANCODE_C = 46;
     public final static int SCANCODE_D = 32;
+    public final static int SCANCODE_E = 18;
     public final static int SCANCODE_F = 33;
     public final static int SCANCODE_H = 35;
     public final static int SCANCODE_I = 23;
@@ -56,17 +67,23 @@ public class Apple2KeyboardSettingsMenu extends Apple2AbstractMenu {
     public final static int SCANCODE_M = 50;
     public final static int SCANCODE_N = 49;
     public final static int SCANCODE_O = 24;
+    public final static int SCANCODE_P = 25;
+    public final static int SCANCODE_Q = 16;
+    public final static int SCANCODE_S = 31;
     public final static int SCANCODE_U = 22;
     public final static int SCANCODE_W = 17;
     public final static int SCANCODE_X = 45;
     public final static int SCANCODE_Y = 21;
     public final static int SCANCODE_Z = 44;
     public final static int SCANCODE_SPACE = 57;
+    public final static int SCANCODE_SEMICOLON = 39;
     public final static int SCANCODE_UP = 103;
     public final static int SCANCODE_LEFT = 105;
     public final static int SCANCODE_RIGHT = 106;
     public final static int SCANCODE_DOWN = 108;
     public final static int SCANCODE_COMMA = 51;
+    public final static int SCANCODE_PERIOD = 52;
+    public final static int SCANCODE_SLASH = 53;
 
     public Apple2KeyboardSettingsMenu(Apple2Activity activity) {
         super(activity);
@@ -134,6 +151,102 @@ public class Apple2KeyboardSettingsMenu extends Apple2AbstractMenu {
                     }
                 });
                 return convertView;
+            }
+        },
+        KEYBOARD_CHOOSE_ALT {
+            @Override
+            public final String getTitle(Apple2Activity activity) {
+                return activity.getResources().getString(R.string.keyboard_choose_alt);
+            }
+
+            @Override
+            public final String getSummary(Apple2Activity activity) {
+                return activity.getResources().getString(R.string.keyboard_choose_alt_summary);
+            }
+
+            @Override
+            public String getPrefKey() {
+                return "altPathIndex";
+            }
+
+            @Override
+            public Object getPrefDefault() {
+                return 0;
+            }
+
+            @Override
+            public final View getView(final Apple2Activity activity, View convertView) {
+                convertView = _basicView(activity, this, convertView);
+                _addPopupIcon(activity, this, convertView);
+                return convertView;
+            }
+
+            @Override
+            public void handleSelection(final Apple2Activity activity, final Apple2AbstractMenu settingsMenu, boolean isChecked) {
+
+                File extKeyboardDir = Apple2Utils.getExternalStorageDirectory(activity);
+
+                FilenameFilter kbdJsonFilter = new FilenameFilter() {
+                    public boolean accept(File dir, String name) {
+                        File file = new File(dir, name);
+                        if (file.isDirectory()) {
+                            return false;
+                        }
+
+                        // check file extensions ... sigh ... no String.endsWithIgnoreCase() ?
+
+                        final String extension = ".kbd.json";
+                        final int nameLen = name.length();
+                        final int extLen = extension.length();
+                        if (nameLen <= extLen) {
+                            return false;
+                        }
+
+                        String suffix = name.substring(nameLen - extLen, nameLen);
+                        return (suffix.equalsIgnoreCase(extension));
+                    }
+                };
+
+                File[] files = null;
+                if (extKeyboardDir != null) {
+                    files = extKeyboardDir.listFiles(kbdJsonFilter);
+                }
+                if (files == null) {
+                    // read keyboard data from /data/data/...
+                    File keyboardDir = new File(Apple2Utils.getDataDir(activity) + File.separator + "keyboards");
+                    files = keyboardDir.listFiles(kbdJsonFilter);
+                    if (files == null) {
+                        Apple2Activity.logMessage(Apple2Activity.LogType.ERROR, TAG, "OOPS, could not read keyboard data directory");
+                        return;
+                    }
+                }
+
+                Arrays.sort(files);
+
+                final File[] allFiles = files;
+                String[] titles = new String[allFiles.length];
+                int idx = 0;
+                for (File file : allFiles) {
+                    titles[idx] = file.getName();
+                    ++idx;
+                }
+
+                final String keyboardDirName = extKeyboardDir == null ? "Keyboards" : extKeyboardDir.getPath();
+
+                final IMenuEnum self = this;
+                _alertDialogHandleSelection(activity, keyboardDirName, titles, new IPreferenceLoadSave() {
+                    @Override
+                    public int intValue() {
+                        return (int) Apple2Preferences.getJSONPref(self);
+                    }
+
+                    @Override
+                    public void saveInt(int value) {
+                        Apple2Preferences.setJSONPref(self, value);
+                        String path = allFiles[value].getPath();
+                        Apple2Preferences.setJSONPref(Apple2Preferences.PREF_DOMAIN_KEYBOARD, "altPath", path);
+                    }
+                });
             }
         },
         KEYBOARD_VISIBILITY_INACTIVE {
@@ -255,6 +368,41 @@ public class Apple2KeyboardSettingsMenu extends Apple2AbstractMenu {
                 return convertView;
             }
         },
+        KEYBOARD_ENABLE_DUO_TOUCH {
+            @Override
+            public final String getTitle(Apple2Activity activity) {
+                return activity.getResources().getString(R.string.keyboard_duotouch_enabled);
+            }
+
+            @Override
+            public final String getSummary(Apple2Activity activity) {
+                return activity.getResources().getString(R.string.keyboard_duotouch_enabled_summary);
+            }
+
+            @Override
+            public String getPrefKey() {
+                return "duoTouchEnabled";
+            }
+
+            @Override
+            public Object getPrefDefault() {
+                return false;
+            }
+
+            @Override
+            public View getView(final Apple2Activity activity, View convertView) {
+                convertView = _basicView(activity, this, convertView);
+                CheckBox cb = _addCheckbox(activity, this, convertView, (boolean) Apple2Preferences.getJSONPref(this));
+                final IMenuEnum self = this;
+                cb.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                    @Override
+                    public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                        Apple2Preferences.setJSONPref(self, isChecked);
+                    }
+                });
+                return convertView;
+            }
+        },
         KEYBOARD_ENABLE_LOWERCASE {
             @Override
             public final String getTitle(Apple2Activity activity) {
@@ -288,102 +436,6 @@ public class Apple2KeyboardSettingsMenu extends Apple2AbstractMenu {
                     }
                 });
                 return convertView;
-            }
-        },
-        KEYBOARD_CHOOSE_ALT {
-            @Override
-            public final String getTitle(Apple2Activity activity) {
-                return activity.getResources().getString(R.string.keyboard_choose_alt);
-            }
-
-            @Override
-            public final String getSummary(Apple2Activity activity) {
-                return activity.getResources().getString(R.string.keyboard_choose_alt_summary);
-            }
-
-            @Override
-            public String getPrefKey() {
-                return "altPathIndex";
-            }
-
-            @Override
-            public Object getPrefDefault() {
-                return 0;
-            }
-
-            @Override
-            public final View getView(final Apple2Activity activity, View convertView) {
-                convertView = _basicView(activity, this, convertView);
-                _addPopupIcon(activity, this, convertView);
-                return convertView;
-            }
-
-            @Override
-            public void handleSelection(final Apple2Activity activity, final Apple2AbstractMenu settingsMenu, boolean isChecked) {
-
-                File extKeyboardDir = Apple2Utils.getExternalStorageDirectory(activity);
-
-                FilenameFilter kbdJsonFilter = new FilenameFilter() {
-                    public boolean accept(File dir, String name) {
-                        File file = new File(dir, name);
-                        if (file.isDirectory()) {
-                            return false;
-                        }
-
-                        // check file extensions ... sigh ... no String.endsWithIgnoreCase() ?
-
-                        final String extension = ".kbd.json";
-                        final int nameLen = name.length();
-                        final int extLen = extension.length();
-                        if (nameLen <= extLen) {
-                            return false;
-                        }
-
-                        String suffix = name.substring(nameLen - extLen, nameLen);
-                        return (suffix.equalsIgnoreCase(extension));
-                    }
-                };
-
-                File[] files = null;
-                if (extKeyboardDir != null) {
-                    files = extKeyboardDir.listFiles(kbdJsonFilter);
-                }
-                if (files == null) {
-                    // read keyboard data from /data/data/...
-                    File keyboardDir = new File(Apple2Utils.getDataDir(activity) + File.separator + "keyboards");
-                    files = keyboardDir.listFiles(kbdJsonFilter);
-                    if (files == null) {
-                        Log.e(TAG, "OOPS, could not read keyboard data directory");
-                        return;
-                    }
-                }
-
-                Arrays.sort(files);
-
-                final File[] allFiles = files;
-                String[] titles = new String[allFiles.length];
-                int idx = 0;
-                for (File file : allFiles) {
-                    titles[idx] = file.getName();
-                    ++idx;
-                }
-
-                final String keyboardDirName = extKeyboardDir == null ? "Keyboards" : extKeyboardDir.getPath();
-
-                final IMenuEnum self = this;
-                _alertDialogHandleSelection(activity, keyboardDirName, titles, new IPreferenceLoadSave() {
-                    @Override
-                    public int intValue() {
-                        return (int) Apple2Preferences.getJSONPref(self);
-                    }
-
-                    @Override
-                    public void saveInt(int value) {
-                        Apple2Preferences.setJSONPref(self, value);
-                        String path = allFiles[value].getPath();
-                        Apple2Preferences.setJSONPref(Apple2Preferences.PREF_DOMAIN_KEYBOARD, "altPath", path);
-                    }
-                });
             }
         },
         KEYBOARD_GLYPH_SCALE {

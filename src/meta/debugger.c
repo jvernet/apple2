@@ -12,6 +12,7 @@
  */
 
 #include "common.h"
+#include "meta/debug_private.h"
 
 #include <test/sha1.h>
 
@@ -30,15 +31,13 @@
 #define SW_DHIRES 0xC05E
 #define SW_IOUDIS 0xC07E
 
-const struct opcode_struct *opcodes;
-
 static char input_str[1024] = { 0 }; // ASCII values
 static bool input_deterministically = false; // slows down testing ...
 
-static stepping_struct_t stepping_struct = { 0 };
+static stepping_struct_s stepping_struct = { 0 };
 static unsigned int stepping_timeout = 0;
 
-volatile bool is_debugging = false;
+bool is_debugging = false;
 
 extern pthread_mutex_t interface_mutex;
 extern pthread_cond_t cpu_thread_cond;
@@ -60,7 +59,9 @@ int arg1, arg2, arg3;                   /* command arguments */
 int breakpoints[MAX_BRKPTS];            /* memory breakpoints */
 int watchpoints[MAX_BRKPTS];            /* memory watchpoints */
 
+#if TESTING
 static bool(*shouldBreakCallback)(void) = NULL;
+#endif
 
 #ifdef INTERFACE_CLASSIC
 /* debugger globals */
@@ -1180,18 +1181,17 @@ static int begin_cpu_stepping() {
     return ch;
 }
 
-/* -------------------------------------------------------------------------
-    c_debugger_should_break()
-   ------------------------------------------------------------------------- */
-bool c_debugger_should_break() {
+bool debugger_shouldBreak(void) {
 
     ASSERT_ON_CPU_THREAD();
 
     bool break_stepping = false;
     if (at_haltpt()) {
         stepping_struct.should_break = true;
+#if TESTING
     } else if (shouldBreakCallback && shouldBreakCallback()) {
         stepping_struct.should_break = true;
+#endif
     } else {
         uint8_t op = get_last_opcode();
 
@@ -1263,9 +1263,9 @@ bool c_debugger_should_break() {
 }
 
 /* -------------------------------------------------------------------------
-    debugger_go () - step into or step over commands
+    _debugger_go () - step into or step over commands
    ------------------------------------------------------------------------- */
-int debugger_go(stepping_struct_t s) {
+int _debugger_go(stepping_struct_s s) {
     memcpy(&stepping_struct, &s, sizeof(s));
 
     int ch = begin_cpu_stepping();
@@ -1418,8 +1418,6 @@ void c_interface_debugging(void) {
     int ch;
     int command_pos = PROMPT_X;
 
-    opcodes = opcodes_65c02;
-
     /* initialize the buffers */
     for (i=0; i<BUF_Y; i++)
     {
@@ -1495,15 +1493,16 @@ void c_interface_debugging(void) {
 }
 #endif
 
-/* -------------------------------------------------------------------------
-    debugger testing-driven API
-   ------------------------------------------------------------------------- */
+#if TESTING
+// ----------------------------------------------------------------------------
+// debugger testing-driven API
+
 void debugger_setInputText(const char *text, const bool deterministically) {
     strcat(input_str, text);
     input_deterministically = deterministically;
 }
 
-void c_debugger_go(void) {
+void debugger_go(void) {
     void *buf = NULL;
     if (strlen(input_str)) {
         buf = STRDUP(input_str);
@@ -1512,7 +1511,7 @@ void c_debugger_go(void) {
     bool deterministically = input_deterministically;
     input_deterministically = false;
 
-    stepping_struct_t s = (stepping_struct_t){
+    stepping_struct_s s = (stepping_struct_s){
         .step_deterministically = deterministically,
         .step_text = buf,
         .step_type = GOING,
@@ -1522,7 +1521,7 @@ void c_debugger_go(void) {
     num_buffer_lines = 0;
     is_debugging = true;
 
-    debugger_go(s);
+    _debugger_go(s);
 
     FREE(buf);
 
@@ -1530,11 +1529,11 @@ void c_debugger_go(void) {
     num_buffer_lines = 0;
 }
 
-void c_debugger_set_timeout(const unsigned int secs) {
+void debugger_setTimeout(const unsigned int secs) {
     stepping_timeout = secs;
 }
 
-bool c_debugger_set_watchpoint(const uint16_t addr) {
+bool debugger_setWatchpoint(const uint16_t addr) {
     return set_halt(watchpoints, addr);
 }
 
@@ -1542,7 +1541,8 @@ void debugger_setBreakCallback(bool(*cb)(void)) {
     shouldBreakCallback = cb;
 }
 
-void c_debugger_clear_watchpoints(void) {
+void debugger_clearWatchpoints(void) {
     clear_halt(watchpoints, 0);
 }
+#endif
 

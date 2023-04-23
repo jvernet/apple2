@@ -63,7 +63,7 @@ typedef struct EngineContext_s {
 
 } EngineContext_s;
 
-static AudioBackend_s opensles_audio_backend = { 0 };
+static AudioBackend_s opensles_audio_backend = { { 0 } };
 
 // ----------------------------------------------------------------------------
 // AudioBuffer_s internal processing routines
@@ -71,10 +71,10 @@ static AudioBackend_s opensles_audio_backend = { 0 };
 // Check and resets underrun condition (readHead has advanced beyond writeHead)
 static inline bool _underrun_check_and_manage(SLVoice *voice, OUTPARM unsigned long *workingBytes) {
 
-    SPINLOCK_ACQUIRE(&voice->spinLock);
+    SPIN_LOCK_FULL(&voice->spinLock);
     unsigned long readHead = voice->readHead;
     unsigned long readWrapCount = voice->readWrapCount;
-    SPINLOCK_RELINQUISH(&voice->spinLock);
+    SPIN_UNLOCK_FULL(&voice->spinLock);
 
     assert(readHead < voice->bufferSize);
     assert(voice->writeHead < voice->bufferSize);
@@ -160,10 +160,10 @@ static void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *context) {
             ++newReadWrapCount0;
         }
 
-        SPINLOCK_ACQUIRE(&voice0->spinLock);
+        SPIN_LOCK_FULL(&voice0->spinLock);
         voice0->readHead = newReadHead0;
         voice0->readWrapCount = newReadWrapCount0;
-        SPINLOCK_RELINQUISH(&voice0->spinLock);
+        SPIN_UNLOCK_FULL(&voice0->spinLock);
 
         if (voice1) {
             memset(voice1->ringBuffer+voice1->readHead, 0x0, ctx->submitSize); // backfill quiet samples
@@ -178,10 +178,10 @@ static void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *context) {
                 ++newReadWrapCount1;
             }
 
-            SPINLOCK_ACQUIRE(&voice1->spinLock);
+            SPIN_LOCK_FULL(&voice1->spinLock);
             voice1->readHead = newReadHead1;
             voice1->readWrapCount = newReadWrapCount1;
-            SPINLOCK_RELINQUISH(&voice1->spinLock);
+            SPIN_UNLOCK_FULL(&voice1->spinLock);
         }
 
     } while (0);
@@ -230,6 +230,8 @@ static long SLGetPosition(AudioBuffer_s *_this, OUTPARM unsigned long *bytes_que
 
         assert(workingBytes <= voice->bufferSize);
         *bytes_queued = workingBytes;
+
+        (void)queuedBytes;
     } while (0);
 
     return err;
@@ -316,10 +318,10 @@ static long SLUnlockStaticBuffer(AudioBuffer_s *_this, unsigned long audio_bytes
 static long SLReplay(AudioBuffer_s *_this) {
     SLVoice *voice = (SLVoice*)_this->_internal;
 
-    SPINLOCK_ACQUIRE(&voice->spinLock);
+    SPIN_LOCK_FULL(&voice->spinLock);
     voice->readHead = 0;
     voice->writeHead = voice->replay_index;
-    SPINLOCK_RELINQUISH(&voice->spinLock);
+    SPIN_UNLOCK_FULL(&voice->spinLock);
 
     long err = _SLMaybeSubmitAndStart(voice);
 #warning FIXME TODO ... how do we handle mockingboard for new OpenSLES buffer queue codepath?
@@ -729,6 +731,7 @@ static long opensles_systemPause(AudioContext_s *audio_context) {
     EngineContext_s *ctx = (EngineContext_s *)(audio_context->_internal);
     SLresult result = (*(ctx->bqPlayerPlay))->SetPlayState(ctx->bqPlayerPlay, SL_PLAYSTATE_PAUSED);
 
+    (void)result;
     return 0;
 }
 
@@ -751,7 +754,7 @@ static long opensles_systemResume(AudioContext_s *audio_context) {
 
         if (state == SL_PLAYSTATE_PAUSED) {
             // Balanced resume OK here
-            SLresult result = (*(ctx->bqPlayerPlay))->SetPlayState(ctx->bqPlayerPlay, SL_PLAYSTATE_PLAYING);
+            result = (*(ctx->bqPlayerPlay))->SetPlayState(ctx->bqPlayerPlay, SL_PLAYSTATE_PLAYING);
         } else if (state == SL_PLAYSTATE_STOPPED) {
             // Do not resume for stopped state, let this get forced from CPU/speaker thread otherwise we starve. (The
             // stopped state happens if user dynamically changed buffer parameters in menu settings which triggered an

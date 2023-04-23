@@ -11,13 +11,14 @@
 
 package org.deadc0de.apple2ix;
 
-import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.ParcelFileDescriptor;
+import androidx.appcompat.app.ActionBar;
+import androidx.appcompat.app.AlertDialog;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -33,7 +34,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import org.deadc0de.apple2ix.basic.R;
-import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.File;
@@ -179,14 +179,14 @@ public class Apple2MainMenu {
         mainMenuView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                Log.d(TAG, "position:" + position + " tapped...");
+                Apple2Activity.logMessage(Apple2Activity.LogType.DEBUG, TAG, "position:" + position + " tapped...");
                 SETTINGS setting = SETTINGS.values()[position];
                 setting.handleSelection(Apple2MainMenu.this);
             }
         });
 
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.GINGERBREAD_MR1) {
-            mMainMenuPopup = new PopupWindow(mainPopupContainer, android.app.ActionBar.LayoutParams.WRAP_CONTENT, android.app.ActionBar.LayoutParams.WRAP_CONTENT, true);
+            mMainMenuPopup = new PopupWindow(mainPopupContainer, ActionBar.LayoutParams.WRAP_CONTENT, ActionBar.LayoutParams.WRAP_CONTENT, true);
         } else {
             // 2015/03/11 ... there may well be a less hackish way to support Gingerbread, but eh ... diminishing returns
             final int TOTAL_MARGINS = 16;
@@ -267,7 +267,7 @@ public class Apple2MainMenu {
         final RadioButton noAppleSelected = (RadioButton) resetConfirmationView.findViewById(R.id.radioButton_noApple);
         noAppleSelected.setChecked(false);
 
-        AlertDialog rebootQuitDialog = new AlertDialog.Builder(mActivity).setIcon(R.drawable.ic_launcher).setCancelable(true).setTitle(R.string.quit_reboot).setMessage(R.string.quit_reboot_choice).setView(resetConfirmationView).setPositiveButton(R.string.reset, new DialogInterface.OnClickListener() {
+        AlertDialog rebootQuitDialog = new AlertDialog.Builder(mActivity).setIcon(R.drawable.ic_launcher).setCancelable(true).setTitle(R.string.quit_reboot).setMessage(R.string.quit_reboot_choice).setView(resetConfirmationView).setNeutralButton(R.string.reset, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 if (!selectionAlreadyHandled.compareAndSet(false, true)) {
@@ -283,7 +283,7 @@ public class Apple2MainMenu {
                 mActivity.rebootEmulation(resetState);
                 Apple2MainMenu.this.dismiss();
             }
-        }).setNeutralButton(R.string.quit, new DialogInterface.OnClickListener() {
+        }).setPositiveButton(R.string.quit, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 if (!selectionAlreadyHandled.compareAndSet(false, true)) {
@@ -292,7 +292,7 @@ public class Apple2MainMenu {
                 }
                 mActivity.quitEmulator();
             }
-        }).setNegativeButton(R.string.cancel, null).create();
+        }).create();
 
         mActivity.registerAndShowDialog(rebootQuitDialog);
     }
@@ -337,12 +337,12 @@ public class Apple2MainMenu {
             try {
                 diskArgs.pfd.close(); // at this point diskArgs.pfd !null
             } catch (IOException ioe) {
-                Log.e(TAG, "Error attempting to close PFD : " + ioe);
+                Apple2Activity.logMessage(Apple2Activity.LogType.ERROR, TAG, "Error attempting to close PFD : " + ioe);
             }
             diskArgs.pfd = null;
 
         } catch (Exception e) {
-            Log.e(TAG, "OOPS: " + e);
+            Apple2Activity.logMessage(Apple2Activity.LogType.ERROR, TAG, "OOPS: " + e);
         }
 
         return restored;
@@ -386,7 +386,7 @@ public class Apple2MainMenu {
 
                     pfds[i] = Apple2DiskChooserActivity.openFileDescriptorFromUri(activity, uri);
                     if (pfds[i] == null) {
-                        Log.e(TAG, "Did not find URI for drive #" + i + " specified in " + SAVE_FILE + " file : " + diskPath);
+                        Apple2Activity.logMessage(Apple2Activity.LogType.ERROR, TAG, "Did not find URI for drive #" + i + " specified in " + SAVE_FILE + " file : " + diskPath);
                     } else {
                         int fd = pfds[i].getFd();
                         map.put(fdKeys[i], fd);
@@ -394,7 +394,7 @@ public class Apple2MainMenu {
                 } else {
                     boolean exists = new File(diskPath).exists();
                     if (!exists) {
-                        Log.e(TAG, "Did not find path for drive #" + i + " specified in " + SAVE_FILE + " file : " + diskPath);
+                        Apple2Activity.logMessage(Apple2Activity.LogType.ERROR, TAG, "Did not find path for drive #" + i + " specified in " + SAVE_FILE + " file : " + diskPath);
                     }
                 }
             }
@@ -407,7 +407,7 @@ public class Apple2MainMenu {
                         pfds[i].close();
                     }
                 } catch (IOException ioe) {
-                    Log.e(TAG, "Error attempting to close PFD #" + i + " : " + ioe);
+                    Apple2Activity.logMessage(Apple2Activity.LogType.ERROR, TAG, "Error attempting to close PFD #" + i + " : " + ioe);
                 }
             }
             map = new JSONObject(jsonString);
@@ -435,7 +435,7 @@ public class Apple2MainMenu {
 
         final AtomicBoolean selectionAlreadyHandled = new AtomicBoolean(false);
 
-        AlertDialog saveRestoreDialog = new AlertDialog.Builder(mActivity).setIcon(R.drawable.ic_launcher).setCancelable(true).setTitle(R.string.saverestore).setMessage(R.string.saverestore_choice).setPositiveButton(R.string.save, new DialogInterface.OnClickListener() {
+        AlertDialog saveRestoreDialog = new AlertDialog.Builder(mActivity).setIcon(R.drawable.ic_launcher).setCancelable(true).setTitle(R.string.saverestore).setMessage(R.string.saverestore_choice).setNeutralButton(R.string.save, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 if (!selectionAlreadyHandled.compareAndSet(false, true)) {
@@ -447,7 +447,7 @@ public class Apple2MainMenu {
                 mActivity.saveState(jsonString);
                 Apple2MainMenu.this.dismiss();
             }
-        }).setNeutralButton(R.string.restore, new DialogInterface.OnClickListener() {
+        }).setPositiveButton(R.string.restore, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
 
@@ -463,7 +463,7 @@ public class Apple2MainMenu {
                 }
                 Apple2MainMenu.this.dismiss();
             }
-        }).setNegativeButton(R.string.cancel, null).create();
+        }).create();
 
         mActivity.registerAndShowDialog(saveRestoreDialog);
     }

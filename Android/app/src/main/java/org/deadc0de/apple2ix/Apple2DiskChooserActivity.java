@@ -11,21 +11,23 @@
 
 package org.deadc0de.apple2ix;
 
-import android.app.Activity;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.ParcelFileDescriptor;
 import android.provider.DocumentsContract;
-import android.support.annotation.Nullable;
-import android.util.Log;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
+
+import android.provider.OpenableColumns;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class Apple2DiskChooserActivity extends Activity {
+public class Apple2DiskChooserActivity extends AppCompatActivity {
 
     public static final AtomicBoolean sDiskChooserIsChoosing = new AtomicBoolean(false);
     public static Callback sDisksCallback;
@@ -52,15 +54,44 @@ public class Apple2DiskChooserActivity extends Activity {
             resolver.takePersistableUriPermission(uri, (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION));
             pfd = resolver.openFileDescriptor(uri, "rw");
         } catch (Throwable t) {
-            Log.e(TAG, "OOPS, could not get appropriate access to URI ( " + uri + " ) : " + t);
+            Apple2Activity.logMessage(Apple2Activity.LogType.ERROR, TAG, "OOPS, could not get appropriate access to URI ( " + uri + " ) : " + t);
         }
 
         return pfd;
     }
 
+    @Nullable
+    public static String getFileNameFromUri(Context ctx, Uri uri) {
+
+        String fileName = null;
+
+        try {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
+                throw new RuntimeException("SDK Version not allowed access");
+            }
+
+            if (!DocumentsContract.isDocumentUri(ctx, uri)) {
+                throw new RuntimeException("Not a Document URI for " + uri);
+            }
+
+            ContentResolver resolver = ctx.getContentResolver();
+
+            Cursor returnCursor = resolver.query(uri, null, null, null, null);
+            int nameIndex = returnCursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+            returnCursor.moveToFirst();
+            fileName = returnCursor.getString(nameIndex);
+
+        } catch (Throwable t) {
+            Apple2Activity.logMessage(Apple2Activity.LogType.ERROR, TAG, "OOPS, could not get filename from URI ( " + uri + " ) : " + t);
+        }
+
+        return fileName;
+    }
+
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         outState.putBoolean("ran", true);
+        super.onSaveInstanceState(outState);
     }
 
     @Override
@@ -85,13 +116,14 @@ public class Apple2DiskChooserActivity extends Activity {
         }
 
         boolean ran = b.getBoolean("ran");
+        /* -- Android onCreate() can be called multiple times, for example, on an orientation change ... this codepath was aborting the disk selection process when an orientation event occurred...
         if (ran) {
-            Log.e(TAG, "OOPS, already ran...");
+            Apple2Activity.logMessage(Apple2Activity.LogType.ERROR, TAG, "OOPS, already ran...");
             finish();
             return;
         }
+        */
 
-        ////Intent pickIntent = new Intent(Intent.ACTION_GET_CONTENT);
         Intent pickIntent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
 
         try {
@@ -107,7 +139,7 @@ public class Apple2DiskChooserActivity extends Activity {
                 startActivityForResult(pickIntent, EDIT_REQUEST_CODE);
             }
         } catch (Throwable t) {
-            Log.e(TAG, "OOPS : " + t);
+            Apple2Activity.logMessage(Apple2Activity.LogType.ERROR, TAG, "OOPS : " + t);
             setResult(RESULT_CANCELED);
             finish();
         }
@@ -142,6 +174,7 @@ public class Apple2DiskChooserActivity extends Activity {
 
             if (chosenUri != null) {
                 chosenPfd = openFileDescriptorFromUri(this, chosenUri);
+                chosenFileName = getFileNameFromUri(this, chosenUri);
             }
         }
 
@@ -157,7 +190,7 @@ public class Apple2DiskChooserActivity extends Activity {
     @Override
     public void finish() {
         sDiskChooserIsChoosing.set(false);
-        String name = chosenUri == null ? "" : chosenUri.toString();
+        String name = chosenFileName == null ? (chosenUri == null ? "" : chosenUri.toString()) : chosenFileName;
         if (sDisksCallback != null) {
             sDisksCallback.onDisksChosen(new DiskArgs(name, chosenUri, chosenPfd));
         }
@@ -167,6 +200,8 @@ public class Apple2DiskChooserActivity extends Activity {
     private Uri chosenUri;
 
     private ParcelFileDescriptor chosenPfd;
+
+    private String chosenFileName;
 
     private static final String TAG = "A2DiskChooserActivity";
 

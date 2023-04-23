@@ -43,7 +43,7 @@ extern bool joy_auto_recenter;
 extern short joy_step;
 #endif
 
-void c_joystick_reset(void);
+void joystick_reset(void);
 
 #ifdef INTERFACE_CLASSIC
 void c_calibrate_joystick(void);
@@ -69,17 +69,5 @@ void joydriver_setButton1Pressed(bool pressed);
 
 // backend joystick driver reset procedure
 extern void (*joydriver_resetJoystick)(void);
-
-#if INTERFACE_TOUCH
-
-typedef enum touchjoy_button_type_t {
-    TOUCH_NONE = 0,
-    TOUCH_BUTTON1 = 1,
-    TOUCH_BUTTON2,
-    TOUCH_BOTH,
-    // --or-- an ASCII/fonttext value ...
-} touchjoy_button_type_t;
-
-#endif // INTERFACE_TOUCH
 
 #endif // whole file

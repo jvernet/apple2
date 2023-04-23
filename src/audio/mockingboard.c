@@ -1253,7 +1253,11 @@ static void MB_Update()
             assert(requestedBufSize <= originalRequestedBufSize);
             ++counter;
         } while (bufIdx < originalRequestedBufSize && counter < 2);
-        assert(bufIdx == originalRequestedBufSize);
+
+        if (UNLIKELY(bufIdx != originalRequestedBufSize)) {
+            // platform audio system getting bogged down?
+            LOG("WHOA, mockingboard dropping samples %lu != %lu", bufIdx, originalRequestedBufSize);
+        }
 #   endif
 #endif
 
@@ -1712,11 +1716,8 @@ static bool MB_DSInit()
 
 #if 1 // APPLE2IX
         {
-            int err = 0;
-            if ((err = pthread_create(&g_hThread, NULL, SSI263Thread, NULL)))
-            {
-                LOG("SSI263Thread");
-            }
+            int err = TEMP_FAILURE_RETRY(pthread_create(&g_hThread, NULL, SSI263Thread, NULL));
+            assert(!err);
 
             // assuming time critical ...
 #   if defined(__APPLE__) || defined(ANDROID)
@@ -2255,8 +2256,8 @@ static void RegisterIoHandler(unsigned int uSlot, iorfunction IOReadC0, iowfunct
         assert((uintptr_t)IOWriteC0);
         for (unsigned int i = 0; i < 16; i++)
         {
-            cpu65_vmem_r[base_addr+i] = IOReadC0;
-            cpu65_vmem_w[base_addr+i] = IOWriteC0;
+            cpu65_vmem_r[(base_addr+i)>>8] = IOReadC0;
+            cpu65_vmem_w[(base_addr+i)>>8] = IOWriteC0;
         }
     }
 
@@ -2264,8 +2265,8 @@ static void RegisterIoHandler(unsigned int uSlot, iorfunction IOReadC0, iowfunct
     base_addr = 0xC000 + (uSlot<<8); // uSlot == 4 => 0xC400 , uSlot == 5 => 0xC500
     for (unsigned int i = 0; i < 0x100; i++)
     {
-        //cpu65_vmem_r[base_addr+i] = IOReadCx; -- CANNOT DO THIS HERE -- DEPENDS ON cxrom softswitch
-        cpu65_vmem_w[base_addr+i] = IOWriteCx;
+        //cpu65_vmem_r[(base_addr+i)>>8] = IOReadCx; -- CANNOT DO THIS HERE -- DEPENDS ON cxrom softswitch
+        cpu65_vmem_w[(base_addr+i)>>8] = IOWriteCx;
     }
 }
 #endif
@@ -2344,8 +2345,11 @@ void MB_StartOfCpuExecute()
 }
 
 // Called by ContinueExecution() at the end of every video frame
-void MB_EndOfVideoFrame()
+static void MB_EndOfVideoFrame(uint8_t unused)
 {
+#if 1 // APPLE2IX
+    (void)unused;
+#endif
 	if(g_SoundcardType == CT_Empty)
 		return;
 #if MB_TRACING
@@ -2617,10 +2621,6 @@ static void mb_prefsChanged(const char *domain) {
         goesToTen = 10;
     }
     MB_SetVolumeZeroToTen(goesToTen);
-}
-
-static __attribute__((constructor)) void _init_mockingboard(void) {
-    prefs_registerListener(PREF_DOMAIN_AUDIO, &mb_prefsChanged);
 }
 
 static bool _sy6522_saveState(StateHelper_s *helper, SY6522 *sy6522) {
@@ -3399,3 +3399,13 @@ void mb_traceEnd(void) {
     }
 }
 #endif
+
+static void _init_mockingboard(void) {
+    prefs_registerListener(PREF_DOMAIN_AUDIO, &mb_prefsChanged);
+    static video_frame_callback_fn frameCallback = &MB_EndOfVideoFrame;
+    video_registerFrameCallback(&frameCallback);
+}
+
+static __attribute__((constructor)) void __init_mockingboard(void) {
+    emulator_registerStartupCallback(CTOR_PRIORITY_EARLY, &_init_mockingboard);
+}

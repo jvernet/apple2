@@ -1,7 +1,7 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 27
+    compileSdkVersion 29
     signingConfigs {
         release {
             storeFile file("release2.keystore")
@@ -21,6 +21,23 @@ android {
             jniDebuggable true
         }
     }
+    splits {
+
+        // Configures multiple APKs based on ABI
+        abi {
+            // Enables building multiple APKs per ABI
+            enable true
+
+            // Resets the list of ABIs that Gradle should create APKs for to none
+            reset()
+
+            // Include just these ...
+            include "armeabi-v7a", "arm64-v8a", "x86", "x86_64"
+
+            // Specifies that we do not want to also generate a universal APK that includes all ABIs
+            //universalApk false
+        }
+    }
     lintOptions {
         checkReleaseBuilds false
     }
@@ -28,9 +45,9 @@ android {
     defaultConfig {
         applicationId "org.deadc0de.apple2ix.basic"
         minSdkVersion 14
-        targetSdkVersion 27
-        versionCode 23
-        versionName "2.0.0"
+        targetSdkVersion 29
+        versionCode 25
+        versionName "2.1.0-RC2"
         ndk {
             moduleName "apple2ix"
         }
@@ -39,5 +56,5 @@ android {
 
 dependencies {
     api fileTree(dir: 'libs', include: ['*.jar'])
-    api 'com.android.support:appcompat-v7:27.1.1'
+    api 'androidx.appcompat:appcompat:1.1.0'
 }

@@ -29,8 +29,8 @@ static pthread_mutex_t irq_mutex = PTHREAD_MUTEX_INITIALIZER;
 uint8_t cpu65_flags_encode[256] = { 0 };
 uint8_t cpu65_flags_decode[256] = { 0 };
 
-void *cpu65_vmem_r[0x10000] = { 0 };
-void *cpu65_vmem_w[0x10000] = { 0 };
+void *cpu65_vmem_r[256] = { 0 };
+void *cpu65_vmem_w[256] = { 0 };
 
 #if CPU_TRACING
 static int8_t opargs[3] = { 0 };
@@ -567,8 +567,8 @@ uint8_t cpu65__opcycles[256] = {
 
 // NOTE: currently this is a conversion table between i386 flags <-> 6502 P register
 static void init_flags_conversion_tables(void) {
-    for (unsigned i = 0; i < 256; i++) {
-        unsigned char val = 0;
+    for (unsigned int i = 0; i < 256; i++) {
+        uint8_t val = 0;
 
         if (i & C_Flag) {
             val |= C_Flag_6502;
@@ -603,7 +603,7 @@ static void init_flags_conversion_tables(void) {
         }
 
         cpu65_flags_encode[ i ] = val;
-        cpu65_flags_decode[ val ] = i;
+        cpu65_flags_decode[ val ] = (uint8_t)i;
     }
 }
 
@@ -662,7 +662,7 @@ void cpu65_uninterrupt(int reason) {
 }
 
 void cpu65_reboot(void) {
-    run_args.joy_button0 = 0xff; // OpenApple -- should be balanced by c_joystick_reset() triggers on CPU thread
+    run_args.joy_button0 = 0xff; // OpenApple -- should be balanced by joystick_reset() triggers on CPU thread
     cpu65_interrupt(ResetSig);
 }
 
@@ -752,6 +752,8 @@ bool cpu65_loadState(StateHelper_s *helper) {
 }
 
 #if CPU_TRACING
+extern const struct opcode_struct_s opcodes_65c02[256];
+extern const uint8_t opcodes_65c02_numargs[256];
 
 /* -------------------------------------------------------------------------
     CPU Tracing routines
